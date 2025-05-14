@@ -39,56 +39,61 @@ of Elite with no combat or missions.
 #include <math.h>
 #include <ctype.h>
 
-#define tonnes (0)
-#define maxlen (20) /* Length of strings */
+// Forward declarations for structs
+struct SeedType;
+struct PlanSys;
 
-int exit_status = EXIT_SUCCESS;
+#define MAX_LEN 30
+#define GAL_SIZE (256)
+#define ALIEN_ITEMS (16)
+#define LAST_TRADE ALIEN_ITEMS
+#define NUM_COMMANDS (14) // Renamed from nocomms
 
-typedef int planetnum;
+const int TONNES = 0;
 
-typedef struct
-{
-	uint8_t a,b,c,d;
-} fastseedtype;  /* four byte random number used for planet description */
+int ExitStatus = EXIT_SUCCESS;
 
+typedef int PlanetNum;
 
-typedef struct
-{
-	uint16_t w0;
-	uint16_t w1;
-	uint16_t w2;
-} seedtype;  /* six byte random number used as seed for planets */
+// Simplified struct definitions
+struct FastSeedType {
+    uint8_t a, b, c, d; // Renamed from A, B, C, D
+}; // Four-byte random number used for planet description
 
-typedef struct
-{
-	uint16_t x;
-	uint16_t y;       /* One byte unsigned */
-	uint16_t economy; /* These two are actually only 0-7  */
-	uint16_t govtype;   
-	uint16_t techlev; /* 0-16 i think */
-	uint16_t population;   /* One byte */
-	uint16_t productivity; /* Two byte */
-	uint16_t radius; /* Two byte (not used by game at all) */
-	fastseedtype	goatsoupseed;
-	char name[12];
-} plansys;
+struct SeedType {
+    uint16_t w0; // Renamed from W0
+    uint16_t w1; // Renamed from W1
+    uint16_t w2; // Renamed from W2
+}; // Six-byte random number used as seed for planets
 
-#define galsize (256)
-#define AlienItems (16)
-#define lasttrade AlienItems
+struct PlanSys {
+    uint16_t x; // Renamed from X
+    uint16_t y; // Renamed from Y
+    uint16_t economy; // Renamed from Economy
+    uint16_t govType; // Renamed from GovType
+    uint16_t techLev; // Renamed from TechLev
+    uint16_t population;   // Renamed from Population
+    uint16_t productivity; // Renamed from Productivity
+    uint16_t radius;       // Renamed from Radius
+    struct FastSeedType goatSoupSeed; // Renamed from GoatSoupSeed
+    char name[12]; // Renamed from Name
+};
 
-#define numforLave 7       /* Lave is 7th generated planet in galaxy one */
-#define numforZaonce 129
-#define numforDiso 147
-#define numforRied 46
+static_assert(GAL_SIZE == 256, "Galaxy size must be 256");
+static_assert(ALIEN_ITEMS == 16, "AlienItems must be 16");
 
-plansys galaxy[galsize]; /* Need 0 to galsize-1 inclusive */
+#define NUM_FOR_LAVE 7       /* Lave is 7th generated planet in galaxy one */
+#define NUM_FOR_ZAONCE 129
+#define NUM_FOR_DISO 147
+#define NUM_FOR_RIED 46
 
-seedtype seed;
+struct PlanSys Galaxy[GAL_SIZE]; /* Need 0 to galsize-1 inclusive */
 
-fastseedtype rnd_seed;
+struct SeedType Seed;
 
-bool nativerand;
+struct FastSeedType RndSeed;
+
+bool NativeRand;
 
 /* In 6502 version these were:
 typedef struct
@@ -101,38 +106,35 @@ typedef struct
 }
 */
 
-typedef struct
-{
-	uint16_t baseprice;
-	int16_t  gradient;
-	uint16_t basequant;
-	uint16_t maskbyte;
-	uint16_t units;
-	char     name[20]; 
-} tradegood;
+typedef struct {
+    uint16_t basePrice; // Renamed from BasePrice
+    int16_t gradient; // Renamed from Gradient
+    uint16_t baseQuant; // Renamed from BaseQuant
+    uint16_t maskByte; // Renamed from MaskByte
+    uint16_t units; // Renamed from Units
+    char name[20]; // Renamed from Name
+} TradeGood;
 
-
-typedef struct
-{
-	uint16_t quantity[lasttrade+1];
-	uint16_t price[lasttrade+1];
-} markettype ;
+typedef struct {
+    uint16_t quantity[LAST_TRADE + 1]; // Renamed from Quantity
+    uint16_t price[LAST_TRADE + 1]; // Renamed from Price
+} MarketType;
 
 /* Player workspace */
-uint16_t     shipshold[lasttrade+1];  /* Contents of cargo bay */
-int          currentplanet;           /* Current planet */
-uint16_t     galaxynum;               /* Galaxy number (1-8) */
-int32_t      cash;
-uint16_t     fuel;
-markettype   localmarket;
-uint16_t     holdspace;
+uint16_t ShipHold[LAST_TRADE + 1];  /* Contents of cargo bay */
+int CurrentPlanet;                 /* Current planet */
+uint16_t GalaxyNum;                /* Galaxy number (1-8) */
+int32_t Cash;
+uint16_t Fuel;
+MarketType LocalMarket;
+uint16_t HoldSpace;
 
-int fuelcost =2; /* 0.2 CR/Light year */
-int maxfuel =70; /* 7.0 LY tank */
+int FuelCost = 2; /* 0.2 CR/Light year */
+int MaxFuel = 70; /* 7.0 LY tank */
 
-const uint16_t base0=0x5A4A;
-const uint16_t base1=0x0248;
-const uint16_t base2=0xB753;  /* Base seed for galaxy 1 */
+const uint16_t BASE_0 = 0x5A4A;
+const uint16_t BASE_1 = 0x0248;
+const uint16_t BASE_2 = 0xB753;  /* Base seed for galaxy 1 */
 
 
 //static const char *digrams=
@@ -163,14 +165,14 @@ char pairs[] = "..LEXEGEZACEBISO"
 
 #endif
 
-char govnames[][maxlen]={"Anarchy","Feudal","Multi-gov","Dictatorship",
-	"Communist","Confederacy","Democracy","Corporate State"};
+char GovNames[][MAX_LEN] = {"Anarchy", "Feudal", "Multi-gov", "Dictatorship",
+	"Communist", "Confederacy", "Democracy", "Corporate State"};
 
-char econnames[][maxlen]={"Rich Ind","Average Ind","Poor Ind","Mainly Ind",
-	"Mainly Agri","Rich Agri","Average Agri","Poor Agri"};
+char EconNames[][MAX_LEN] = {"Rich Ind", "Average Ind", "Poor Ind", "Mainly Ind",
+	"Mainly Agri", "Rich Agri", "Average Agri", "Poor Agri"};
 
 
-char unitnames[][5] ={"t","kg","g"};
+char UnitNames[][5] ={"t","kg","g"};
 
 /* Data for DB's price/availability generation system */
 /* Base  Grad Base Mask Un   Name price ient quant     it              */ 
@@ -178,34 +180,26 @@ char unitnames[][5] ={"t","kg","g"};
 #define POLITICALLY_CORRECT	0
 /* Set to 1 for NES-sanitised trade goods */
 
-tradegood commodities[]=
-{
-	{0x13,-0x02,0x06,0x01,0,"Food        "},
-	{0x14,-0x01,0x0A,0x03,0,"Textiles    "},
-	{0x41,-0x03,0x02,0x07,0,"Radioactives"},
+TradeGood Commodities[] = {
+    {0x13, -0x02, 0x06, 0x01, 0, "Food        "},
+    {0x14, -0x01, 0x0A, 0x03, 0, "Textiles    "},
+    {0x41, -0x03, 0x02, 0x07, 0, "Radioactives"},
 #if POLITICALLY_CORRECT
-	{0x28,-0x05,0xE2,0x1F,0,"Robot Slaves"},
-	{0x53,-0x05,0xFB,0x0F,0,"Beverages   "},
+    {0x28, -0x05, 0xE2, 0x1F, 0, "Robot Slaves"},
+    {0x53, -0x05, 0xFB, 0x0F, 0, "Beverages   "},
 #else
-	{0x28,-0x05,0xE2,0x1F,0,"Slaves      "},
-	{0x53,-0x05,0xFB,0x0F,0,"Liquor/Wines"},
-#endif 
-	{0xC4,+0x08,0x36,0x03,0,"Luxuries    "},
+    {0x28, -0x05, 0xE2, 0x1F, 0, "Slaves      "},
+    {0x53, -0x05, 0xFB, 0x0F, 0, "Liquor/Wines"},
+#endif
+    {0xC4, +0x08, 0x36, 0x03, 0, "Luxuries    "},
 #if POLITICALLY_CORRECT
-	{0xEB,+0x1D,0x08,0x78,0,"Rare Species"},
+    {0xEB, +0x1D, 0x08, 0x78, 0, "Rare Species"},
 #else
-	{0xEB,+0x1D,0x08,0x78,0,"Narcotics   "},
-#endif 
-	{0x9A,+0x0E,0x38,0x03,0,"Computers   "},
-	{0x75,+0x06,0x28,0x07,0,"Machinery   "},
-	{0x4E,+0x01,0x11,0x1F,0,"Alloys      "},
-	{0x7C,+0x0d,0x1D,0x07,0,"Firearms    "},
-	{0xB0,-0x09,0xDC,0x3F,0,"Furs        "},
-	{0x20,-0x01,0x35,0x03,0,"Minerals    "},
-	{0x61,-0x01,0x42,0x07,1,"Gold        "},
-	{0xAB,-0x02,0x37,0x1F,1,"Platinum    "},
-	{0x2D,-0x01,0xFA,0x0F,2,"Gem-Strones "},
-	{0x35,+0x0F,0xC0,0x07,0,"Alien Items "},
+    {0xEB, +0x1D, 0x08, 0x78, 0, "Narcotics   "},
+#endif
+    {0x9A, +0x0E, 0x38, 0x03, 0, "Computers   "},
+    {0x75, +0x06, 0x28, 0x07, 0, "Machinery   "},
+    {0x4E, +0x01, 0x11, 0x1F, 0, "Alloys      "},
 };
 
 /* ================================ *
@@ -213,28 +207,33 @@ tradegood commodities[]=
  * ================================ */
 
 /* Tradegood names used in text commands Set using commodities array */
-char tradnames[lasttrade][maxlen]; 
+char tradnames[LAST_TRADE][MAX_LEN]; 
 
-void goat_soup(const char *source,plansys * psy);
+// Forward function declarations
+void tweak_seed(struct SeedType *seedToTweak);
+struct PlanSys make_system(struct SeedType *initialSeed);
+MarketType generate_market(uint16_t fluctuation, struct PlanSys planetSystem);
+void next_galaxy(struct SeedType *currentSeed);
+uint16_t distance(struct PlanSys systemA, struct PlanSys systemB);
+void print_system_info(struct PlanSys planetSystemInfo, bool useCompressedOutput);
+void goat_soup(const char *sourceString, struct PlanSys *planetSystem);
 
-#define nocomms (14)
+bool do_buy(char *commandArguments);
+bool do_sell(char *commandArguments);
+bool do_fuel(char *commandArguments);
+bool do_jump(char *commandArguments);
+bool do_cash(char *commandArguments);
+bool do_market_display(char *commandArguments);
+bool do_help(char *commandArguments);
+bool do_hold(char *commandArguments);
+bool do_sneak(char *commandArguments);
+bool do_local_systems_display(char *commandArguments);
+bool do_planet_info_display(char *commandArguments);
+bool do_galactic_hyperspace(char *commandArguments);
+bool do_quit(char *commandArguments);
+bool do_tweak_random_native(char *commandArguments);
 
-bool dobuy(char *);
-bool dosell(char *);
-bool dofuel(char *);
-bool dojump(char *);
-bool docash(char *);
-bool domkt(char *);
-bool dohelp(char *);
-bool dohold(char *);
-bool dosneak(char *);
-bool dolocal(char *);
-bool doinfo(char *);
-bool dogalhyp(char *);
-bool doquit(char *);
-bool dotweakrand(char *);
-
-char commands[nocomms][maxlen]=
+char commands[NUM_COMMANDS][MAX_LEN]=
 {
 	"buy",        "sell",     "fuel",     "jump",
 	"cash",       "mkt",      "help",     "hold",
@@ -242,12 +241,12 @@ char commands[nocomms][maxlen]=
 	"quit",       "rand"	
 };
 
-bool (*comfuncs[nocomms])(char *)=
+bool (*comfuncs[NUM_COMMANDS])(char *)=
 {
-	dobuy,         dosell,       dofuel,    dojump,
-	docash,        domkt,        dohelp,    dohold,
-	dosneak,       dolocal,      doinfo,    dogalhyp,
-	doquit,                              dotweakrand
+	do_buy,         do_sell,       do_fuel,    do_jump,
+	do_cash,        do_market_display,        do_help,    do_hold,
+	do_sneak,       do_local_systems_display,      do_planet_info_display,    do_galactic_hyperspace,
+	do_quit,                              do_tweak_random_native
 };  
 
 /* ================= *
@@ -258,17 +257,17 @@ int port_rand(void);
 
 static unsigned int lastrand = 0;
 
-void mysrand(unsigned int seed)
+void my_srand(unsigned int initialSeed)
 {
-	srand(seed);
-	lastrand = seed - 1;
+	srand(initialSeed);
+	lastrand = initialSeed - 1;
 }
 
-int myrand(void)
+int my_rand(void)
 {
 	int r;
 
-	if(nativerand) 
+	if(NativeRand) 
 		r=rand();
 	else
 	{	// As supplied by D McDonnell	from SAS Insititute C
@@ -281,39 +280,39 @@ int myrand(void)
 	return(r);
 }
 
-char randbyte(void)
+char random_byte(void)
 { 
-	return (char)(myrand()&0xFF);
+	return (char)(my_rand()&0xFF);
 }
 
-uint16_t mymin(uint16_t a,uint16_t b)
+uint16_t minimum_value(uint16_t valueA, uint16_t valueB)
 { 
-	return a < b ? a : b;
+	return valueA < valueB ? valueA : valueB;
 }
 
-void stop(char * string)
+void stop(char *messageString)
 {
-	printf("\n%s",string);
+	printf("\n%s",messageString);
 	exit(1);
 }
 
-signed int ftoi(double value)
+signed int float_to_int_round(double inputValue)
 { 
-	return ((signed int)floor(value+0.5));
+	return ((signed int)floor(inputValue+0.5));
 }
 
-signed int ftoi2(double value)
+signed int float_to_int_floor(double inputValue)
 {
-	return ((signed int)floor(value));
+	return ((signed int)floor(inputValue));
 }
 
-void tweakseed(seedtype *s)
+void tweak_seed(struct SeedType *seedToTweak)
 {
 	uint16_t temp;
-	temp = ((*s).w0)+((*s).w1)+((*s).w2); /* 2 byte aritmetic */
-	(*s).w0 = (*s).w1;
-	(*s).w1 = (*s).w2;
-	(*s).w2 = temp;
+	temp = ((*seedToTweak).w0)+((*seedToTweak).w1)+((*seedToTweak).w2); /* 2 byte aritmetic */
+	(*seedToTweak).w0 = (*seedToTweak).w1;
+	(*seedToTweak).w1 = (*seedToTweak).w2;
+	(*seedToTweak).w2 = temp;
 }
 
 /* =================================== *
@@ -321,26 +320,26 @@ void tweakseed(seedtype *s)
  * =================================== */
 
 /* Remove all c's from string s */
-void stripout(char *s,const char c)
+void strip_char_from_string(char *inputString, const char charToStrip)
 {
 	size_t i=0,j=0;
 
-	while(i<strlen(s))
+	while(i<strlen(inputString))
 	{
-		if(s[i]!=c) { s[j]=s[i]; j++;}
+		if(inputString[i]!=charToStrip) { inputString[j]=inputString[i]; j++;}
 		i++;
 	}
 
-	s[j]=0;
+	inputString[j]=0;
 }
 
 /* Return nonzero iff string t begins with non-empty string s */
-bool stringbeg(char *s,char *t)
+bool string_begins_with(char *prefixString, char *fullString)
 {
 	size_t i=0;
-	size_t l=strlen(s);
+	size_t l=strlen(prefixString);
 	if(l>0)
-	{ while((i<l)&(toupper(s[i])==toupper(t[i])))	i++;
+	{ while((i<l)&(toupper(prefixString[i])==toupper(fullString[i])))	i++;
 		if(i==l) return true;
 	}
 	return false;
@@ -350,11 +349,11 @@ bool stringbeg(char *s,char *t)
  * Check string s against n options in string array a
  * If matches ith element return i+1 else return 0
  */
-uint16_t stringmatch(char *s,char a[][20],uint16_t n)
+uint16_t match_string_in_array(char *searchString, char stringArray[][MAX_LEN], uint16_t arraySize)
 {
-	for(uint16_t i = 0; i < n; i++)
+	for(uint16_t i = 0; i < arraySize; i++)
 	{
-		if( stringbeg( s, a[i] ) )
+		if( string_begins_with( searchString, stringArray[i] ) )
 			return i + 1;
 	}
 
@@ -362,51 +361,51 @@ uint16_t stringmatch(char *s,char a[][20],uint16_t n)
 }
 
 /* Strip leading and trailing space characters from the given string. */
-char *spacestrip(char *s)
+char *strip_leading_trailing_spaces(char *inputString)
 {
 	char *p;
-	while (*s != '\0' && isspace(*s))
+	while (*inputString != '\0' && isspace(*inputString))
 	{
-		++s;
+		++inputString;
 	}
-	p = s + strlen(s);
-	while (p > s && isspace(*(p - 1)))
+	p = inputString + strlen(inputString);
+	while (p > inputString && isspace(*(p - 1)))
 	{
 		--p;
 		*p = '\0';
 	}
-	return s;
+	return inputString;
 }
 
 /* Split string s at first space, returning first 'word' in t & shortening s */
-void spacesplit(char *s,char *t)
+void split_string_at_first_space(char *inputString, char *firstWord)
 {
-	size_t l=strlen(s);
+	size_t l=strlen(inputString);
 	size_t i=0,j=0;
 
 	/* Strip leading spaces */
-	for(; (i < l) &(s[i]==' '); i++);
+	for(; (i < l) &(inputString[i]==' '); i++);
 
 	if(i == l)
 	{
-		s[0]=0;
-		t[0]=0;
+		inputString[0]=0;
+		firstWord[0]=0;
 		return;
 	};
 
-	for(; (i < l ) &(s[i] != ' '); i++, j++)
-		t[j] = s[i];
+	for(; (i < l ) &(inputString[i] != ' '); i++, j++)
+		firstWord[j] = inputString[i];
 
-	t[j]=0;
+	firstWord[j]=0;
 	i++;
 	j=0;
 
 	for(; i < l; i++, j++)
 	{
-		s[j] = s[i];
+		inputString[j] = inputString[i];
 	}
 
-	s[j]=0;
+	inputString[j]=0;
 }
 
 /* ========================== *
@@ -418,110 +417,110 @@ void spacesplit(char *s,char *t)
  * Return ammount bought
  * Cannot buy more than is availble, can afford, or will fit in hold
  */
-uint16_t gamebuy(uint16_t i, uint16_t a)
+uint16_t execute_buy_order(uint16_t itemIndex, uint16_t amount)
 {
 	uint16_t t;
-	if(cash < 0) t=0;
+	if(Cash < 0) t=0;
 	else
 	{
-		t=mymin(localmarket.quantity[i],a);
-		if ((commodities[i].units)==tonnes) {t = mymin(holdspace,t);}
-		t = mymin(t, (uint16_t)floor((double)cash/(localmarket.price[i])));
+		t=minimum_value(LocalMarket.quantity[itemIndex],amount);
+		if ((Commodities[itemIndex].units)==TONNES) {t = minimum_value(HoldSpace,t);}
+		t = minimum_value(t, (uint16_t)floor((double)Cash/(LocalMarket.price[itemIndex])));
 	}
-	shipshold[i]+=t;
-	localmarket.quantity[i]-=t;
-	cash-=t*(localmarket.price[i]);
-	if ((commodities[i].units)==tonnes)
-		holdspace-=t;
+	ShipHold[itemIndex]+=t;
+	LocalMarket.quantity[itemIndex]-=t;
+	Cash-=t*(LocalMarket.price[itemIndex]);
+	if ((Commodities[itemIndex].units)==TONNES)
+		HoldSpace-=t;
 	return t;
 }
 
-uint16_t gamesell(uint16_t i,uint16_t a) /* As gamebuy but selling */
+uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount) /* As gamebuy but selling */
 {
-	uint16_t t=mymin(shipshold[i],a);
-	shipshold[i]-=t;
-	localmarket.quantity[i]+=t;
-	if ((commodities[i].units)==tonnes) {holdspace+=t;}
-	cash+=t*(localmarket.price[i]);
+	uint16_t t=minimum_value(ShipHold[itemIndex],amount);
+	ShipHold[itemIndex]-=t;
+	LocalMarket.quantity[itemIndex]+=t;
+	if ((Commodities[itemIndex].units)==TONNES) {HoldSpace+=t;}
+	Cash+=t*(LocalMarket.price[itemIndex]);
 	return t;
 }
 
-markettype genmarket(uint16_t fluct, plansys p)
+MarketType generate_market(uint16_t fluctuation, struct PlanSys planetSystem)
 {
-	markettype market;
+	MarketType market;
 	uint16_t i;
-	for(i=0;i<=lasttrade;i++)
+	for(i=0;i<=LAST_TRADE;i++)
 	{
 		int32_t q; 
-		int32_t product = (p.economy)*(commodities[i].gradient);
-		int32_t changing = fluct & (commodities[i].maskbyte);
-		q =  (commodities[i].basequant) + changing - product;	
+		int32_t product = (planetSystem.economy)*(Commodities[i].gradient);
+		int32_t changing = fluctuation & (Commodities[i].maskByte);
+		q =  (Commodities[i].baseQuant) + changing - product;	
 		q = q&0xFF;
 		if(q&0x80) {q=0;};                       /* Clip to positive 8-bit */
 
 		market.quantity[i] = (uint16_t)(q & 0x3F); /* Mask to 6 bits */
 
-		q =  (commodities[i].baseprice) + changing + product;
+		q =  (Commodities[i].basePrice) + changing + product;
 		q = q & 0xFF;
 		market.price[i] = (uint16_t) (q*4);
 	}
-	market.quantity[AlienItems] = 0; /* Override to force nonavailability */
+	market.quantity[ALIEN_ITEMS] = 0; /* Override to force nonavailability */
 	return market;
 }
 
-void displaymarket(markettype m)
+void display_market_info(MarketType marketData)
 {
 	uint16_t i;
-	for(i=0;i<=lasttrade;i++)
+	for(i=0;i<=LAST_TRADE;i++)
 	{ printf("\n");
-		printf("%s", commodities[i].name);
-		printf("   %.1f",((float)(m.price[i])/10));
-		printf("   %u",m.quantity[i]);
-		printf("%s", unitnames[commodities[i].units]);
-		printf("   %u",shipshold[i]);
+		printf("%s", Commodities[i].name);
+		printf("   %.1f",((float)(marketData.price[i])/10));
+		printf("   %u",marketData.quantity[i]);
+		printf("%s", UnitNames[Commodities[i].units]);
+		printf("   %u",ShipHold[i]);
 	}
 }	
 
 
 /* Generate system info from seed */
-plansys makesystem(seedtype *s)
+struct PlanSys make_system(struct SeedType *initialSeed)
 {
-	plansys thissys;
+	struct PlanSys thissys;
 	uint16_t pair1,pair2,pair3,pair4;
-	uint16_t longnameflag=((*s).w0)&64;
+	uint16_t longnameflag=((*initialSeed).w0)&64;
 
-	thissys.x=(((*s).w1)>>8);
-	thissys.y=(((*s).w0)>>8);
+	thissys.x=(((*initialSeed).w1)>>8);
+	thissys.y=(((*initialSeed).w0)>>8);
 
-	thissys.govtype =((((*s).w1)>>3)&7); /* bits 3,4 &5 of w1 */
+	thissys.govType =((((*initialSeed).w1)>>3)&7); /* bits 3,4 &5 of w1 */
 
-	thissys.economy =((((*s).w0)>>8)&7); /* bits 8,9 &A of w0 */
-	if (thissys.govtype <=1)
+	thissys.economy =((((*initialSeed).w0)>>8)&7); /* bits 8,9 &A of w0 */
+	if (thissys.govType <=1)
 	{ thissys.economy = ((thissys.economy)|2);
 	} 
 
-	thissys.techlev =((((*s).w1)>>8)&3)+((thissys.economy)^7);
-	thissys.techlev +=((thissys.govtype)>>1);
-	if (((thissys.govtype)&1)==1)	thissys.techlev+=1;
+	thissys.techLev =((((*initialSeed).w1)>>8)&3)+((thissys.economy)^7);
+	thissys.techLev +=((thissys.govType)>>1);
+	if (((thissys.govType)&1)==1)	thissys.techLev+=1;
 	/* C simulation of 6502's LSR then ADC */
 
-	thissys.population = 4*(thissys.techlev) + (thissys.economy);
-	thissys.population +=  (thissys.govtype) + 1;
+	thissys.population = 4*(thissys.techLev) + (thissys.economy);
+	thissys.population +=  (thissys.govType) + 1;
 
-	thissys.productivity = (((thissys.economy)^7)+3)*((thissys.govtype)+4);
+	thissys.productivity = (((thissys.economy)^7)+3)*((thissys.govType)+4);
 	thissys.productivity *= (thissys.population)*8;
 
-	thissys.radius = 256*(((((*s).w2)>>8)&15)+11) + thissys.x;  
+	thissys.radius = 256*(((((*initialSeed).w2)>>8)&15)+11) + thissys.x;  
 
-	thissys.goatsoupseed.a = (*s).w1 & 0xFF;;
-	thissys.goatsoupseed.b = (*s).w1 >>8;
-	thissys.goatsoupseed.c = (*s).w2 & 0xFF;
-	thissys.goatsoupseed.d = (*s).w2 >> 8;
+	thissys.goatSoupSeed.a = (*initialSeed).w1 & 0xFF;;
+	thissys.goatSoupSeed.b = (*initialSeed).w1 >>8;
+	thissys.goatSoupSeed.c = (*initialSeed).w2 & 0xFF;
+	thissys.goatSoupSeed.d = (*initialSeed).w2 >> 8;
 
-	pair1=2*((((*s).w2)>>8)&31);  tweakseed(s);
-	pair2=2*((((*s).w2)>>8)&31);  tweakseed(s);
-	pair3=2*((((*s).w2)>>8)&31);  tweakseed(s);
-	pair4=2*((((*s).w2)>>8)&31);	tweakseed(s);
+	pair1=2*((((*initialSeed).w2)>>8)&31);  tweak_seed(initialSeed);
+	pair2=2*((((*initialSeed).w2)>>8)&31);  tweak_seed(initialSeed);
+	pair3=2*((((*initialSeed).w2)>>8)&31);  tweak_seed(initialSeed);
+	pair4=2*((((*initialSeed).w2)>>8)&31);	tweak_seed(initialSeed);
 	/* Always four iterations of random number */
 
 	(thissys.name)[0]=pairs[pair1];
@@ -538,7 +537,7 @@ plansys makesystem(seedtype *s)
 		(thissys.name)[8]=0;
 	}
 	else (thissys.name)[6]=0;
-	stripout(thissys.name,'.');
+	strip_char_from_string(thissys.name,'.');
 
 
 
@@ -556,33 +555,33 @@ plansys makesystem(seedtype *s)
 
 /* rotate 8 bit number leftwards */
 /* (tried to use chars but too much effort persuading this braindead language to do bit operations on bytes!) */
-uint16_t rotatel(uint16_t x) 
+uint16_t rotate_left(uint16_t valueToRotate) 
 {
-	uint16_t temp = x&128;
-	return (2*(x&127))+(temp>>7);
+	uint16_t temp = valueToRotate&128;
+	return (2*(valueToRotate&127))+(temp>>7);
 } 
 
-uint16_t twist(uint16_t x)
+uint16_t twist(uint16_t valueToTwist)
 {
-	return (uint16_t)((256*rotatel(x>>8))+rotatel(x&255));
+	return (uint16_t)((256*rotate_left(valueToTwist>>8))+rotate_left(valueToTwist&255));
 } 
 
 /* Apply to base seed; once for galaxy 2  */
-void nextgalaxy(seedtype *s)
+void next_galaxy(struct SeedType *currentSeed)
 { 
-	(*s).w0 = twist((*s).w0);  /* twice for galaxy 3, etc. */
-	(*s).w1 = twist((*s).w1);  /* Eighth application gives galaxy 1 again*/
-	(*s).w2 = twist((*s).w2);
+	(*currentSeed).w0 = twist((*currentSeed).w0);  /* twice for galaxy 3, etc. */
+	(*currentSeed).w1 = twist((*currentSeed).w1);  /* Eighth application gives galaxy 1 again*/
+	(*currentSeed).w2 = twist((*currentSeed).w2);
 }
 
 /* Original game generated from scratch each time info needed */
-void buildgalaxy(uint16_t galaxynum)
+void build_galaxy_data(uint16_t galaxyNumber)
 {
 	uint16_t syscount,galcount;
-	seed.w0=base0; seed.w1=base1; seed.w2=base2; /* Initialise seed for galaxy 1 */
-	for(galcount=1;galcount<galaxynum;++galcount) nextgalaxy(&seed);
+	Seed.w0=BASE_0; Seed.w1=BASE_1; Seed.w2=BASE_2; /* Initialise seed for galaxy 1 */
+	for(galcount=1;galcount<galaxyNumber;++galcount) next_galaxy(&Seed);
 	/* Put galaxy data into array of structures */  
-	for(syscount=0;syscount<galsize;++syscount) galaxy[syscount]=makesystem(&seed);
+	for(syscount=0;syscount<GAL_SIZE;++syscount) Galaxy[syscount]=make_system(&Seed);
 }
 
 /* ======================== *
@@ -590,30 +589,30 @@ void buildgalaxy(uint16_t galaxynum)
  * ======================== */
 
 /* Move to system i */
-void gamejump(planetnum i)
+void execute_jump_to_planet(PlanetNum planetIndex)
 {
-	currentplanet=i;
-	localmarket = genmarket(randbyte(),galaxy[i]);
+	CurrentPlanet=planetIndex;
+	LocalMarket = generate_market(random_byte(),Galaxy[planetIndex]);
 }
 
 /* Seperation between two planets (4*sqrt(X*X+Y*Y/4)) */
-uint16_t distance(plansys a,plansys b)
+uint16_t distance(struct PlanSys systemA, struct PlanSys systemB)
 {
-	return (uint16_t)ftoi(4*sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)/4));
+	return (uint16_t)float_to_int_round(4*sqrt((systemA.x-systemB.x)*(systemA.x-systemB.x)+(systemA.y-systemB.y)*(systemA.y-systemB.y)/4));
 }
 
 
 /* Return id of the planet whose name matches passed strinmg
    closest to currentplanet - if none return currentplanet */
-planetnum matchsys(char *s)
+PlanetNum find_matching_system_name(char *searchName)
 {
-	planetnum syscount;
-	planetnum p=currentplanet;
+	PlanetNum syscount;
+	PlanetNum p=CurrentPlanet;
 	uint16_t d=9999;
-	for(syscount=0;syscount<galsize;++syscount)
-	{ if (stringbeg(s,galaxy[syscount].name))
-		{	if (distance(galaxy[syscount],galaxy[currentplanet])<d)
-			{ d=distance(galaxy[syscount],galaxy[currentplanet]);
+	for(syscount=0;syscount<GAL_SIZE;++syscount)
+	{ if (string_begins_with(searchName,Galaxy[syscount].name))
+		{	if (distance(Galaxy[syscount],Galaxy[CurrentPlanet])<d)
+			{ d=distance(Galaxy[syscount],Galaxy[CurrentPlanet]);
 				p=syscount;
 			}
 		}
@@ -623,59 +622,60 @@ planetnum matchsys(char *s)
 
 
 /* Print data for given system */
-void prisys(plansys plsy,bool compressed)
+void print_system_info(struct PlanSys planetSystemInfo, bool useCompressedOutput)
 {
-	if (compressed)
+	if (useCompressedOutput)
 	{	
 		//	  printf("\n ");
-		printf("%10s",plsy.name);
-		printf(" TL: %2i ",(plsy.techlev)+1);
-		printf("%12s",econnames[plsy.economy]);
-		printf(" %15s",govnames[plsy.govtype]);
+		printf("%10s",planetSystemInfo.name);
+		printf(" TL: %2i ",(planetSystemInfo.techLev)+1);
+		printf("%12s",EconNames[planetSystemInfo.economy]);
+		printf(" %15s",GovNames[planetSystemInfo.govType]);
 	}
 	else
 	{	printf("\n\nSystem:  ");
-		printf("%s", plsy.name);
-		printf("\nPosition (%i,",plsy.x);
-		printf("%i)",plsy.y);
-		printf("\nEconomy: (%i) ",plsy.economy);
-		printf("%s", econnames[plsy.economy]);
-		printf("\nGovernment: (%i) ",plsy.govtype);
-		printf("%s", govnames[plsy.govtype]);
-		printf("\nTech Level: %2i",(plsy.techlev)+1);
-		printf("\nTurnover: %u",(plsy.productivity));
-		printf("\nRadius: %u",plsy.radius);
-		printf("\nPopulation: %u Billion",(plsy.population)>>3);
+		printf("%s", planetSystemInfo.name);
+		printf("\nPosition (%i,",planetSystemInfo.x);
+		printf("%i)",planetSystemInfo.y);
+		printf("\nEconomy: (%i) ",planetSystemInfo.economy);
+		printf("%s", EconNames[planetSystemInfo.economy]);
+		printf("\nGovernment: (%i) ",planetSystemInfo.govType);
+		printf("%s", GovNames[planetSystemInfo.govType]);
+		printf("\nTech Level: %2i",(planetSystemInfo.techLev)+1);
+		printf("\nTurnover: %u",(planetSystemInfo.productivity));
+		printf("\nRadius: %u",planetSystemInfo.radius);
+		printf("\nPopulation: %u Billion",(planetSystemInfo.population)>>3);
 
-		rnd_seed = plsy.goatsoupseed;
-		printf("\n");goat_soup("\x8F is \x97.",&plsy);
+		RndSeed = planetSystemInfo.goatSoupSeed;
+		printf("\n");goat_soup("\x8F is \x97.",&planetSystemInfo);
 	}
 }
 
 /* Various command functions */
-bool dotweakrand(char * s)
+bool do_tweak_random_native(char *commandArguments) 
 {
-	nativerand ^=1;
+	(void)commandArguments; // Mark 's' as unused
+	NativeRand ^=1;
 	return true;
 }
 
-bool dolocal(char *s)
+bool do_local_systems_display(char *commandArguments)
 {
-	uint16_t d = (uint16_t)atoi(s);
+	uint16_t d = (uint16_t)atoi(commandArguments);
 
-	printf("Galaxy number %i",galaxynum);
-	for(planetnum syscount=0; syscount < galsize; ++syscount)
+	printf("Galaxy number %i",GalaxyNum);
+	for(PlanetNum syscount=0; syscount < GAL_SIZE; ++syscount)
 	{
-		d=distance( galaxy[syscount], galaxy[currentplanet] );
+		d=distance( Galaxy[syscount], Galaxy[CurrentPlanet] );
 
-		if(d <= maxfuel)
+		if(d <= MaxFuel)
 		{
-			if( d <= fuel )
+			if( d <= Fuel )
 				printf("\n * ");
 			else
 				printf("\n - ");
 
-			prisys( galaxy[syscount], true );
+			print_system_info( Galaxy[syscount], true );
 			printf(" (%.1f LY)", (float)d / 10);
 		}
 	}
@@ -685,76 +685,76 @@ bool dolocal(char *s)
 
 
 /* Jump to planet name s */
-bool dojump(char *s)
+bool do_jump(char *commandArguments)
 {
 	uint16_t d;
-	planetnum dest=matchsys(s);
+	PlanetNum dest=find_matching_system_name(commandArguments);
 
-	if(dest==currentplanet)
+	if(dest==CurrentPlanet)
 	{
 		printf("\nBad jump");
 		return false;
 	}
 
-	d=distance(galaxy[dest],galaxy[currentplanet]);
+	d=distance(Galaxy[dest],Galaxy[CurrentPlanet]);
 
-	if (d>fuel)
+	if (d>Fuel)
 	{
 		printf("\nJump to far");
 		return false;
 	}
 
-	fuel-=d;
-	gamejump(dest);
-	prisys(galaxy[currentplanet],false);
+	Fuel-=d;
+	execute_jump_to_planet(dest);
+	print_system_info(Galaxy[CurrentPlanet],false);
 	return true;
 }
 
 /* As dojump but no fuel cost */
-bool dosneak(char *s)
+bool do_sneak(char *commandArguments)
 {
-	uint16_t fuelkeep=fuel;
+	uint16_t fuelkeep=Fuel;
 	bool b;
-	fuel=666;
-	b=dojump(s);
-	fuel=fuelkeep;
+	Fuel=666;
+	b=do_jump(commandArguments);
+	Fuel=fuelkeep;
 	return b;
 }
 
 
 /* Jump to next galaxy */
-bool dogalhyp(char *s)
+bool do_galactic_hyperspace(char *commandArguments)
 /*
  * Preserve planetnum (eg. if leave 7th planet
  * arrive at 7th planet) 
  * Classic Elite always jumped to planet nearest (0x60,0x60)
  */
 {
-	(void)(&s);     /* Discard s */
-	galaxynum++;
-	if(galaxynum==9) {galaxynum=1;}
-	buildgalaxy(galaxynum);
+	(void)(&commandArguments);     /* Discard s */
+	GalaxyNum++;
+	if(GalaxyNum==9) {GalaxyNum=1;}
+	build_galaxy_data(GalaxyNum);
 	return true;
 }
 
 /* Info on planet */
-bool doinfo(char *s)
+bool do_planet_info_display(char *commandArguments)
 {
-	planetnum dest=matchsys(s);
-	prisys(galaxy[dest],false);
+	PlanetNum dest=find_matching_system_name(commandArguments);
+	print_system_info(Galaxy[dest],false);
 	return true;
 }
 
 
-bool dohold(char *s)
+bool do_hold(char *commandArguments)
 {
-	uint16_t a=(uint16_t)atoi(s);
+	uint16_t a=(uint16_t)atoi(commandArguments);
 	uint16_t t=0;
 
-	for(uint16_t i = 0; i <= lasttrade; ++i)
+	for(uint16_t i = 0; i <= LAST_TRADE; ++i)
 	{
-		if (( commodities[i].units ) == tonnes)
-			t += shipshold[i];
+		if (( Commodities[i].units ) == TONNES)
+			t += ShipHold[i];
 	}
 
 	if( t > a )
@@ -763,24 +763,24 @@ bool dohold(char *s)
 		return false;
 	}
 
-	holdspace=a - t;
+	HoldSpace=a - t;
 
 	return true;
 }
 
 /* Sell ammount S(2) of good S(1) */
-bool dosell(char *s)
+bool do_sell(char *commandArguments)
 {
 	uint16_t i;
-	uint16_t a = (uint16_t)atoi(s);
 	uint16_t t;
-	char s2[maxlen];
-	spacesplit(s,s2);
+	char s2[MAX_LEN];
+	split_string_at_first_space(commandArguments,s2);
+	uint16_t a = (uint16_t)atoi(commandArguments); // Correctly parse amount after splitting
 
 	if (a==0)
 		a=1;
 
-	i=stringmatch(s2,tradnames,lasttrade+1);
+	i=match_string_in_array(s2,tradnames,LAST_TRADE+1);
 
 	if(i==0)
 	{
@@ -790,7 +790,7 @@ bool dosell(char *s)
 
 	i-=1;
 
-	t=gamesell(i,a);
+	t=execute_sell_order(i,a);
 
 	if(t==0)
 	{
@@ -798,7 +798,7 @@ bool dosell(char *s)
 	}
 	else
 	{	printf("\nSelling %i",t);
-		printf("%s", unitnames[commodities[i].units]);
+		printf("%s", UnitNames[Commodities[i].units]);
 		printf(" of ");
 	}
 
@@ -810,17 +810,17 @@ bool dosell(char *s)
 
 
 /* Buy ammount S(2) of good S(1) */
-bool dobuy(char *s)
+bool do_buy(char *commandArguments)
 {
 	uint16_t i;
-	uint16_t a = (uint16_t)atoi(s);
 	uint16_t t;
-	char s2[maxlen];
-	spacesplit(s,s2);
+	char s2[MAX_LEN];
+	split_string_at_first_space(commandArguments,s2);
+	uint16_t a = (uint16_t)atoi(commandArguments); // Correctly parse amount after splitting
 
 	if (a==0) a=1;
 
-	i=stringmatch(s2,tradnames,lasttrade+1);
+	i=match_string_in_array(s2,tradnames,LAST_TRADE+1);
 
 	if(i==0)
 	{
@@ -829,13 +829,13 @@ bool dobuy(char *s)
 	} 
 	i-=1;
 
-	t=gamebuy(i,a);
+	t=execute_buy_order(i,a);
 	if(t==0)
 		printf("Cannot buy any ");
 	else
 	{
 		printf("\nBuying %i",t);
-		printf("%s", unitnames[commodities[i].units]);
+		printf("%s", UnitNames[Commodities[i].units]);
 		printf(" of ");
 	}
 
@@ -844,38 +844,38 @@ bool dobuy(char *s)
 }
 
 /* Attempt to buy f tonnes of fuel */
-uint16_t gamefuel(uint16_t f)
+uint16_t calculate_fuel_purchase(uint16_t fuelAmount)
 {
-	if(f+fuel>maxfuel)
-		f=maxfuel-fuel;
+	if(fuelAmount+Fuel>MaxFuel)
+		fuelAmount=MaxFuel-Fuel;
 
-	if(fuelcost>0)
+	if(FuelCost>0)
 	{
-		if((int)f*fuelcost > cash) 
-			f=(uint16_t)(cash/fuelcost);
+		if((int)fuelAmount*FuelCost > Cash) 
+			fuelAmount=(uint16_t)(Cash/FuelCost);
 	}
 
-	fuel+=f;
-	cash-=fuelcost*f;
+	Fuel+=fuelAmount;
+	Cash-=FuelCost*fuelAmount;
 
-	return f;
+	return fuelAmount;
 }
 
 
 /* Buy ammount S of fuel */
-bool dofuel(char *s)
+bool do_fuel(char *commandArguments)
 {
-	uint16_t f=gamefuel((uint16_t)floor(10*atof(s)));
+	uint16_t f=calculate_fuel_purchase((uint16_t)floor(10*atof(commandArguments)));
 	if(f==0) { printf("\nCan't buy any fuel");}
 	printf("\nBuying %.1fLY fuel",(float)f/10);
 	return true;
 }
 
 /* Cheat alter cash by S */
-bool docash(char *s)
+bool do_cash(char *commandArguments)
 {
-	int a=(int)(10*atof(s));
-	cash+=(long)a;
+	int a=(int)(10*atof(commandArguments));
+	Cash+=(long)a;
 
 	if(a != 0) 
 		return true;
@@ -886,31 +886,32 @@ bool docash(char *s)
 }
 
 /* Show stock market */
-bool domkt(char *s)
+bool do_market_display(char *commandArguments)
 {
-	if((uint16_t)atoi(s) >= 0)
-	{
-		displaymarket(localmarket);
+	(void)commandArguments; // Mark 's' as unused as the condition was always true
+	// if((uint16_t)atoi(s) >= 0) // This condition is always true
+	// {
+		display_market_info(LocalMarket);
 
-		printf("\nFuel :%.1f",(float)fuel/10);
-		printf("      Holdspace :%it",holdspace);
+		printf("\nFuel :%.1f",(float)Fuel/10);
+		printf("      Holdspace :%it",HoldSpace);
 		return true;
-	}
-	else
-		return false;
+	// }
+	// else
+	// 	return false; // This branch was unreachable
 }
 
 /* Obey command s */
-bool parser(char *s)
+bool parse_and_execute_command(char *commandString)
 {
 	uint16_t i;
-	char c[maxlen];
-	s = spacestrip(s);
-	if (strlen(s) == 0)
+	char c[MAX_LEN];
+	commandString = strip_leading_trailing_spaces(commandString);
+	if (strlen(commandString) == 0)
 		return false;
-	spacesplit(s,c);
-	i=stringmatch(c,commands,nocomms);
-	if(i)return (*comfuncs[i-1])(s) ;
+	split_string_at_first_space(commandString,c);
+	i=match_string_in_array(c,commands,NUM_COMMANDS);
+	if(i)return (*comfuncs[i-1])(commandString) ;
 	printf("\n Bad command (");
 	printf("%s", c);
 	printf(")");
@@ -918,16 +919,16 @@ bool parser(char *s)
 }
 
 
-bool doquit(char *s)
+bool do_quit(char *commandArguments)
 {
-	(void)(&s);
-	exit(exit_status);
-	return exit_status == EXIT_SUCCESS ? true : false;
+	(void)(&commandArguments);
+	exit(ExitStatus);
+	return ExitStatus == EXIT_SUCCESS ? true : false;
 }
 
-bool dohelp(char *s)
+bool do_help(char *commandArguments)
 {
-	(void)(&s);
+	(void)(&commandArguments);
 	printf("\nCommands are:");
 	printf("\nBuy   tradegood ammount");
 	printf("\nSell  tradegood ammount");
@@ -949,24 +950,24 @@ bool dohelp(char *s)
 
 int main()
 {
-	char getcommand[maxlen];
-	nativerand=1;
+	char getcommand[MAX_LEN];
+	NativeRand=1;
 	printf("\nWelcome to Text Elite 1.5.\n");
 
-	for(uint16_t i = 0; i <= lasttrade; i++)
-		strcpy(tradnames[i], commodities[i].name);
+	for(uint16_t i = 0; i <= LAST_TRADE; i++)
+		strcpy(tradnames[i], Commodities[i].name);
 
-	mysrand(12345);/* Ensure repeatability */
+	my_srand(12345);/* Ensure repeatability */
 
-	galaxynum=1;
-	buildgalaxy(galaxynum);
+	GalaxyNum=1;
+	build_galaxy_data(GalaxyNum);
 
-	currentplanet=numforLave;                        /* Don't use jump */
-	localmarket = genmarket(0x00,galaxy[numforLave]);/* Since want seed=0 */
+	CurrentPlanet=NUM_FOR_LAVE;                        /* Don't use jump */
+	LocalMarket = generate_market(0x00,Galaxy[NUM_FOR_LAVE]);/* Since want seed=0 */
 
-	fuel=maxfuel;
+	Fuel=MaxFuel;
 
-#define PARSER(S) { char buf[0x10]; strcpy(buf,S); parser(buf); }   
+#define PARSER(S) { char buf[0x10]; strcpy(buf,S); parse_and_execute_command(buf); }   
 
 	PARSER("hold 20");         /* Small cargo bay */
 	PARSER("cash +100");       /* 100 CR */
@@ -976,16 +977,16 @@ int main()
 
 	for(;;)
 	{
-		printf("\n\nCash :%.1f>",((float)cash)/10);
+		printf("\n\nCash :%.1f>",((float)Cash)/10);
 		if (!fgets(getcommand, sizeof(getcommand) - 1, stdin))
 			break;
 		getcommand[sizeof(getcommand) - 1] = '\0';
-		parser(getcommand);
+		parse_and_execute_command(getcommand);
 	}
 
 	printf("\n");
 
-	exit(exit_status);
+	exit(ExitStatus);
 }
 
 /* =============================================================================== *
@@ -993,49 +994,49 @@ int main()
  *  reverse engineered sources.                                                    *
  * =============================================================================== */
 
-struct desc_choice
+struct DescChoice // Renamed from desc_choice
 {
-	const char *option[5]; 
+	const char *options[5]; // Renamed from option
 };
 
-static struct desc_choice desc_list[] =
+static struct DescChoice descList[] = // Renamed from desc_list
 {
-	/* 81 */	{{"fabled", "notable", "well known", "famous", "noted"}},
-	/* 82 */	{{"very", "mildly", "most", "reasonably", ""}},
-	/* 83 */	{{"ancient", "\x95", "great", "vast", "pink"}},
-	/* 84 */	{{"\x9E \x9D plantations", "mountains", "\x9C", "\x94 forests", "oceans"}},
-	/* 85 */	{{"shyness", "silliness", "mating traditions", "loathing of \x86", "love for \x86"}},
-	/* 86 */	{{"food blenders", "tourists", "poetry", "discos", "\x8E"}},
-	/* 87 */	{{"talking tree", "crab", "bat", "lobst", "\xB2"}},
-	/* 88 */	{{"beset", "plagued", "ravaged", "cursed", "scourged"}},
-	/* 89 */	{{"\x96 civil war", "\x9B \x98 \x99s", "a \x9B disease", "\x96 earthquakes", "\x96 solar activity"}},
-	/* 8A */	{{"its \x83 \x84", "the \xB1 \x98 \x99","its inhabitants' \x9A \x85", "\xA1", "its \x8D \x8E"}},
-	/* 8B */	{{"juice", "brandy", "water", "brew", "gargle blasters"}},
-	/* 8C */	{{"\xB2", "\xB1 \x99", "\xB1 \xB2", "\xB1 \x9B", "\x9B \xB2"}},
-	/* 8D */	{{"fabulous", "exotic", "hoopy", "unusual", "exciting"}},
-	/* 8E */	{{"cuisine", "night life", "casinos", "sit coms", " \xA1 "}},
-	/* 8F */	{{"\xB0", "The planet \xB0", "The world \xB0", "This planet", "This world"}},
-	/* 90 */	{{"n unremarkable", " boring", " dull", " tedious", " revolting"}},
-	/* 91 */	{{"planet", "world", "place", "little planet", "dump"}},
-	/* 92 */	{{"wasp", "moth", "grub", "ant", "\xB2"}},
-	/* 93 */	{{"poet", "arts graduate", "yak", "snail", "slug"}},
-	/* 94 */	{{"tropical", "dense", "rain", "impenetrable", "exuberant"}},
-	/* 95 */	{{"funny", "wierd", "unusual", "strange", "peculiar"}},
-	/* 96 */	{{"frequent", "occasional", "unpredictable", "dreadful", "deadly"}},
-	/* 97 */	{{"\x82 \x81 for \x8A", "\x82 \x81 for \x8A and \x8A", "\x88 by \x89", "\x82 \x81 for \x8A but \x88 by \x89","a\x90 \x91"}},
-	/* 98 */	{{"\x9B", "mountain", "edible", "tree", "spotted"}},
-	/* 99 */	{{"\x9F", "\xA0", "\x87oid", "\x93", "\x92"}},
-	/* 9A */	{{"ancient", "exceptional", "eccentric", "ingrained", "\x95"}},
-	/* 9B */	{{"killer", "deadly", "evil", "lethal", "vicious"}},
-	/* 9C */	{{"parking meters", "dust clouds", "ice bergs", "rock formations", "volcanoes"}},
-	/* 9D */	{{"plant", "tulip", "banana", "corn", "\xB2weed"}},
-	/* 9E */	{{"\xB2", "\xB1 \xB2", "\xB1 \x9B", "inhabitant", "\xB1 \xB2"}},
-	/* 9F */	{{"shrew", "beast", "bison", "snake", "wolf"}},
-	/* A0 */	{{"leopard", "cat", "monkey", "goat", "fish"}},
-	/* A1 */	{{"\x8C \x8B", "\xB1 \x9F \xA2","its \x8D \xA0 \xA2", "\xA3 \xA4", "\x8C \x8B"}},
-	/* A2 */	{{"meat", "cutlet", "steak", "burgers", "soup"}},
-	/* A3 */	{{"ice", "mud", "Zero-G", "vacuum", "\xB1 ultra"}},
-	/* A4 */	{{"hockey", "cricket", "karate", "polo", "tennis"}},
+/* 81 */	{{"fabled", "notable", "well known", "famous", "noted"}},
+/* 82 */	{{"very", "mildly", "most", "reasonably", ""}},
+/* 83 */	{{"ancient", "\x95", "great", "vast", "pink"}},
+/* 84 */	{{"\x9E \x9D plantations", "mountains", "\x9C", "\x94 forests", "oceans"}},
+/* 85 */	{{"shyness", "silliness", "mating traditions", "loathing of \x86", "love for \x86"}},
+/* 86 */	{{"food blenders", "tourists", "poetry", "discos", "\x8E"}},
+/* 87 */	{{"talking tree", "crab", "bat", "lobst", "\xB2"}},
+/* 88 */	{{"beset", "plagued", "ravaged", "cursed", "scourged"}},
+/* 89 */	{{"\x96 civil war", "\x9B \x98 \x99s", "a \x9B disease", "\x96 earthquakes", "\x96 solar activity"}},
+/* 8A */	{{"its \x83 \x84", "the \xB1 \x98 \x99","its inhabitants' \x9A \x85", "\xA1", "its \x8D \x8E"}},
+/* 8B */	{{"juice", "brandy", "water", "brew", "gargle blasters"}},
+/* 8C */	{{"\xB2", "\xB1 \x99", "\xB1 \xB2", "\xB1 \x9B", "\x9B \xB2"}},
+/* 8D */	{{"fabulous", "exotic", "hoopy", "unusual", "exciting"}},
+/* 8E */	{{"cuisine", "night life", "casinos", "sit coms", " \xA1 "}},
+/* 8F */	{{"\xB0", "The planet \xB0", "The world \xB0", "This planet", "This world"}},
+/* 90 */	{{"n unremarkable", " boring", " dull", " tedious", " revolting"}},
+/* 91 */	{{"planet", "world", "place", "little planet", "dump"}},
+/* 92 */	{{"wasp", "moth", "grub", "ant", "\xB2"}},
+/* 93 */	{{"poet", "arts graduate", "yak", "snail", "slug"}},
+/* 94 */	{{"tropical", "dense", "rain", "impenetrable", "exuberant"}},
+/* 95 */	{{"funny", "wierd", "unusual", "strange", "peculiar"}},
+/* 96 */	{{"frequent", "occasional", "unpredictable", "dreadful", "deadly"}},
+/* 97 */	{{"\x82 \x81 for \x8A", "\x82 \x81 for \x8A and \x8A", "\x88 by \x89", "\x82 \x81 for \x8A but \x88 by \x89","a\x90 \x91"}},
+/* 98 */	{{"\x9B", "mountain", "edible", "tree", "spotted"}},
+/* 99 */	{{"\x9F", "\xA0", "\x87oid", "\x93", "\x92"}},
+/* 9A */	{{"ancient", "exceptional", "eccentric", "ingrained", "\x95"}},
+/* 9B */	{{"killer", "deadly", "evil", "lethal", "vicious"}},
+/* 9C */	{{"parking meters", "dust clouds", "ice bergs", "rock formations", "volcanoes"}},
+/* 9D */	{{"plant", "tulip", "banana", "corn", "\xB2weed"}},
+/* 9E */	{{"\xB2", "\xB1 \xB2", "\xB1 \x9B", "inhabitant", "\xB1 \xB2"}},
+/* 9F */	{{"shrew", "beast", "bison", "snake", "wolf"}},
+/* A0 */	{{"leopard", "cat", "monkey", "goat", "fish"}},
+/* A1 */	{{"\x8C \x8B", "\xB1 \x9F \xA2","its \x8D \xA0 \xA2", "\xA3 \xA4", "\x8C \x8B"}},
+/* A2 */	{{"meat", "cutlet", "steak", "burgers", "soup"}},
+/* A3 */	{{"ice", "mud", "Zero-G", "vacuum", "\xB1 ultra"}},
+/* A4 */	{{"hockey", "cricket", "karate", "polo", "tennis"}},
 };
 
 /* 
@@ -1046,25 +1047,25 @@ static struct desc_choice desc_list[] =
 int gen_rnd_number (void)
 {
 	int a,x;
-	x = (rnd_seed.a * 2) & 0xFF;
-	a = x + rnd_seed.c;
-	if (rnd_seed.a > 127)	a++;
-	rnd_seed.a = a & 0xFF;
-	rnd_seed.c = x;
+	x = (RndSeed.a * 2) & 0xFF;
+	a = x + RndSeed.c;
+	if (RndSeed.a > 127)	a++;
+	RndSeed.a = a & 0xFF;
+	RndSeed.c = x;
 
 	a = a / 256;	/* a = any carry left from above */
-	x = rnd_seed.b;
-	a = (a + x + rnd_seed.d) & 0xFF;
-	rnd_seed.b = a;
-	rnd_seed.d = x;
+	x = RndSeed.b;
+	a = (a + x + RndSeed.d) & 0xFF;
+	RndSeed.b = a;
+	RndSeed.d = x;
 	return a;
 }
 
 
-void goat_soup(const char *source,plansys * psy)
+void goat_soup(const char *sourceString, struct PlanSys *planetSystem)
 {
 	for(;;)
-	{	int c=*(source++);
+	{	int c=*(sourceString++);
 		/* Take just the lower byte of the character. Most C
 		   implementations define char as signed by default; if we
 		   don't do this then the special \x escapes above will be
@@ -1075,20 +1076,20 @@ void goat_soup(const char *source,plansys * psy)
 		else
 		{	if (c <= 0xA4)
 			{	int rnd = gen_rnd_number();
-				goat_soup(desc_list[c-0x81].option[(rnd >= 0x33)+(rnd >= 0x66)+(rnd >= 0x99)+(rnd >= 0xCC)],psy);
+				goat_soup(descList[c-0x81].options[(rnd >= 0x33)+(rnd >= 0x66)+(rnd >= 0x99)+(rnd >= 0xCC)],planetSystem);
 			}
 			else switch(c)
 			{ case 0xB0: /* planet name */
 				{ int i=1;
-					printf("%c",psy->name[0]);
-					while(psy->name[i]!='\0') printf("%c",tolower(psy->name[i++]));
+					printf("%c",planetSystem->name[0]);
+					while(planetSystem->name[i]!='\0') printf("%c",tolower(planetSystem->name[i++]));
 				}	break;
 				case 0xB1: /* <planet name>ian */
 				{ int i=1;
-					printf("%c",psy->name[0]);
-					while(psy->name[i]!='\0')
-					{	if((psy->name[i+1]!='\0') || ((psy->name[i]!='E')	&& (psy->name[i]!='I')))
-						printf("%c",tolower(psy->name[i]));
+					printf("%c",planetSystem->name[0]);
+					while(planetSystem->name[i]!='\0')
+					{	if((planetSystem->name[i+1]!='\0') || ((planetSystem->name[i]!='E')	&& (planetSystem->name[i]!='I')))
+						printf("%c",tolower(planetSystem->name[i]));
 						i++;
 					}
 					printf("ian");

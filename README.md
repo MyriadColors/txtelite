@@ -6,15 +6,57 @@ This is a cleaned up version of the [Text Mode Elite](http://www.iancgbell.clara
 
 This repository is a fork of [fragglet's txtelite repository](https://github.com/fragglet/txtelite), building upon their work to further modernize and enhance the codebase. Thanks to fragglet for their contributions and for starting the effort to bring Ian Bell's original code to a more contemporary state.
 
+## Branch Information - Full Game Branch
+
+**IMPORTANT**: You are viewing the `full-game` branch of this repository, which contains an expanded implementation aimed at creating a complete text-based Elite clone with additional features. This branch diverges from the minimal, modernized core implementation in the `main` branch.
+
+This branch aims to transform the original single-file implementation into a more modular, maintainable codebase that will serve as a foundation for gameplay expansions while preserving the core mechanics of the original Text Elite.
+
 ## Project Scope and Branching Strategy
 
-Please note that the `main` branch of this repository is intended to remain a clean, baseline implementation of the modernized Text Elite code. No new game features will be added to this branch.
+The `main` branch of this repository remains a clean, baseline implementation of the modernized Text Elite code with no additional gameplay features.
 
-Future development of a full game built upon this codebase will occur in a separate branch. This approach ensures that `main` always represents a stable and faithful port of the core mechanics, while new gameplay elements can be developed independently.
+This `full-game` branch is where the active development of a full game built upon the core mechanics takes place. New gameplay elements, UI improvements, and additional systems will be implemented here.
+
+## Recent Refactoring Changes
+
+The following changes have been made to improve code organization and maintainability:
+
+### Modular Header-Only Architecture
+
+The original single-file implementation (`txtelite.c`) has been refactored into multiple header-only modules:
+
+* **`elite_state.h`**: Unified header that centralizes constants, data structures, and global variables
+* **`elite_utils.h`**: Utility functions for random numbers, string manipulation, and math helpers
+* **`elite_galaxy.h`**: Galaxy/system generation logic
+* **`elite_market.h`**: Market data and trading functions
+* **`elite_navigation.h`**: System navigation and distance calculations
+* **`elite_planet_info.h`**: Planet description generation
+* **`elite_commands.h`**: Command implementation functions
+* **`elite_command_handler.h`**: Command parsing and execution
+* **`elite_player_state.h`**: Player state initialization and management
+
+### Implementation Details
+
+1. **Header-Only Approach**: All functions are implemented as `static inline` to maintain the single compilation unit approach while improving code organization
+2. **Unified State Management**: Consolidated all constants, types, and global variable management into a single `elite_state.h` file
+3. **Initialization Flow**: Created a proper `initialize_player_state()` function in `elite_player_state.h` to centralize player setup
+4. **Improved Market Display**: Enhanced the market information display with better formatting
+5. **Robust Error Handling**: Added boundary checks and error handling to critical functions
+6. **Type Safety**: Added a `PlanetNum` typedef for planet indexing to improve code clarity
+7. **Consistent Field Naming**: Updated struct field names (e.g., SeedType fields w0,w1,w2 to a,b,c,d)
+8. **Safe String Handling**: Improved string manipulation with buffer size checks
+
+### Bug Fixes
+
+1. Fixed segmentation fault in the market display by preventing out-of-bounds array access
+2. Corrected initialization order to ensure galaxy data and market information are properly set up
+3. Resolved parameter type mismatches in function calls
+4. Fixed memory corruption issues by properly sizing arrays using consistent constants
 
 ## Changelog
 
-This section details the significant changes made to the original codebase to modernize it, improve readability, and ensure compilability on contemporary systems.
+This section details the significant changes made to the original codebase to modernize it, improve readability, and ensure it compiles on contemporary systems.
 
 **1. Naming Conventions & Readability:**
 

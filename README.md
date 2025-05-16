@@ -82,28 +82,37 @@ This section details the significant changes made to the original codebase to mo
     * `release`: Release build (omitting `-Wall -Werror -Wextra`).
     * `run`: Executes the compiled program.
     * `clean`: Removes build artifacts.
+  
+  * Added `clang` as the default compiler, but can be changed by modifying the `CC` variable in the `Makefile`.
 
 ### Compilation Instructions
 
-**Important Note on C23 Standard:** This project uses C23 features. While the `Makefile` is configured to use `gcc -std=c23`, full C23 support can vary between compilers and their versions. **Using a recent version of GCC is the recommended and safest option to ensure compatibility.**
+**Important Note on C23 Standard:** This project uses C23 features. While the `Makefile` is configured to use `clang -std=c23`, full C23 support can vary between compilers and their versions.
 
 **Linux:**
 
-1. Ensure you have `gcc` and `make` installed.
+1. Ensure you have `clang` and `make` installed.
 2. Open a terminal in the project root directory.
 3. Run `make` to build the executable (default is `main`).
 4. To run the compiled program, execute `./main`.
+
+**Windows (Native LLVM/Clang):**
+
+1. Install LLVM/Clang for Windows from [official LLVM releases](https://releases.llvm.org/download.html).
+2. Make sure to add LLVM to your system PATH during installation.
+3. Install Make for Windows:
+   * You can get it via [chocolatey](https://chocolatey.org/): `choco install make`
+   * Or download a standalone version from [GnuWin32](http://gnuwin32.sourceforge.net/packages/make.htm).
+4. Open Command Prompt or PowerShell in the project root directory.
+5. Run `make` to build the executable (`main.exe`).
+6. To run the compiled program, execute `.\main.exe`.
 
 **Windows (using MSYS2 UCRT64):**
 
 1. Install [MSYS2](https://www.msys2.org/).
 2. Open the **MSYS2 UCRT64** terminal.
 3. Update packages: `pacman -Syu` (you might need to close and reopen the terminal and run it again).
-4. Install GCC and Make: `pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make`.
+4. Install Clang and Make: `pacman -S mingw-w64-ucrt-x86_64-clang mingw-w64-ucrt-x86_64-make`.
 5. Navigate to the project root directory within the MSYS2 UCRT64 terminal.
-6. Run `make windows` to build the Windows executable (`main.exe`).
+6. Run `make` to build the Windows executable (`main.exe`).
 7. To run the compiled program, execute `./main.exe` from the MSYS2 UCRT64 terminal or `main.exe` from Command Prompt/PowerShell in the project directory.
-
-### Future Enhancements / To-Do
-
-* Add a Makefile option or script for native Windows compilation (e.g., using MSVC or MinGW without requiring MSYS2).

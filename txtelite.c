@@ -34,7 +34,7 @@ of Elite with no combat or missions.
 #include <math.h>
 #include <ctype.h>
 
-#include "elite_state.h" // Unified header for constants, structures, and globals
+#include "elite_state.h"
 #include "elite_utils.h"
 #include "elite_galaxy.h"
 #include "elite_market.h"
@@ -42,7 +42,7 @@ of Elite with no combat or missions.
 #include "elite_planet_info.h"
 #include "elite_commands.h"
 #include "elite_command_handler.h"
-#include "elite_player_state.h" // Added include for initialize_player_state
+#include "elite_player_state.h"
 
 /* ================= * 
  * General functions *
@@ -50,19 +50,12 @@ of Elite with no combat or missions.
 
 int main()
 {
+
 	char getcommand[MAX_LEN];
 	printf("\nWelcome to Text Elite 1.5.\n");
 
-	my_srand(12345);/* Ensure repeatability */
-
-    initialize_player_state(); // New function call to set up player data
-    
-    // initialize_player_state already calls build_galaxy_data and sets up LocalMarket,
-    // so we don't need to do it again here.
-    
-    // NOTE: The following lines are now handled inside initialize_player_state:
-    // build_galaxy_data(Seed);
-    // LocalMarket = generate_market(0x00, Galaxy[CurrentPlanet]);
+	my_srand(12345);
+  initialize_player_state();
 
 #define PARSER(S) { char buf[sizeof(S) > 0x10 ? 0x10 : sizeof(S)]; strncpy(buf,S, sizeof(buf)-1); buf[sizeof(buf)-1] = '\0'; parse_and_execute_command(buf); }   
 

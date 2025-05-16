@@ -1,13 +1,27 @@
-CC = gcc
+CC = clang
 SRC = txtelite.c
-TARGET = main
+
+# Check if we're on Windows
+ifeq ($(OS),Windows_NT)
+    TARGET = main.exe
+else
+    TARGET = main
+endif
+
+# Check if we're on Windows
+ifeq ($(OS),Windows_NT)
+    # On Windows, we don't need -lm as math functions are in the standard library
+    LDFLAGS_COMMON = 
+else
+    # On Unix-like systems, we need to link against the math library
+    LDFLAGS_COMMON = -lm
+endif
 
 # Common compiler flags and linker flags
 CFLAGS_COMMON = -std=c23
-LDFLAGS_COMMON = -lm
 
 # Debug specific flags (as per your command)
-DEBUG_SPECIFIC_FLAGS = -Wall -Werror -Wextra
+DEBUG_SPECIFIC_FLAGS = -Wall -Werror -Wextra -Wno-deprecated-declarations
 
 # Combine flags for different build types
 # Debug build flags
@@ -43,10 +57,15 @@ run: $(TARGET)
 # Target to clean build artifacts
 clean:
 	@echo "Cleaning up..."
-	# rm -f is common in Makefiles and works with MinGW/MSYS environments on Windows
-	rm -f $(TARGET)
-	# Adding .exe just in case, though -o $(TARGET) should prevent it
-	rm -f $(TARGET).exe
+ifeq ($(OS),Windows_NT)
+	@# Use cmd commands for Windows
+	@if exist $(TARGET) del /F $(TARGET)
+	@if exist $(TARGET).exe del /F $(TARGET).exe
+else
+	@# Use rm for Unix-like systems
+	@-rm -f $(TARGET)
+	@-rm -f $(TARGET).exe
+endif
 	@echo "Clean complete."
 
 # Declare phony targets (targets that are not files)

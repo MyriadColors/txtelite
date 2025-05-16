@@ -6,10 +6,13 @@
 #include "elite_planet_info.h" // For print_system_info (and goat_soup)
 #include "elite_market.h" // For execute_buy_order, execute_sell_order, display_market_info
 #include "elite_player_state.h" // For calculate_fuel_purchase
+#include "elite_save.h" // For save_game, load_game
 #include <stdlib.h> // For atoi, atof
 #include <math.h> // For floor
 #include <string.h> // For string operations
 #include <math.h> // For floor
+#include <time.h> // For time functions
+#include <windows.h> // For Windows directory operations
 
 static inline bool do_tweak_random_native(char *commandArguments) 
 {
@@ -284,10 +287,162 @@ static inline bool do_help(char *commandArguments)
 	printf("\n  local                   - List systems within 7 light years");
 	printf("\n  cash  <+/-amount>       - Adjust cash (e.g., cash +100.0 or cash -50.5)");
 	printf("\n  hold  <amount>          - Set total cargo hold space in tonnes");
+	printf("\n  save  [description]     - Save the game with optional description");
+	printf("\n  load  [filename]        - List save games or load a specific save");
 	printf("\n  quit                    - Exit the game");
 	printf("\n  rand                    - Toggle RNG between native and portable (debug)");
 	printf("\n\nAbbreviations allowed (e.g., b fo 5 for Buy Food 5, m for mkt).\n");
 	return true;
+}
+
+static inline bool do_save(char *commandArguments) 
+{
+    // Generate filename with current date and time
+    char filename[64];
+    time_t now = time(NULL);
+    struct tm *timeinfo = localtime(&now);
+    strftime(filename, sizeof(filename), "%Y%m%d_%H%M%S.sav", timeinfo);
+    
+    // Use the provided description if available
+    char *description = NULL;
+    
+    // If command arguments were provided, use them as description
+    if (commandArguments && commandArguments[0] != '\0') {
+        description = commandArguments;
+    }
+    
+    // Save the game
+    bool success = save_game(filename, description);
+    
+    return success;
+}
+
+static inline bool do_load(char *commandArguments) 
+{
+    (void)commandArguments; // Unused parameter
+    
+    printf("\nAvailable save files:\n");
+    
+    // Structure to store save file information
+    typedef struct {
+        char filename[MAX_PATH];
+        time_t timestamp;
+    } SaveFileInfo;
+    
+    // Find all .sav files
+    WIN32_FIND_DATA findData;
+    HANDLE hFind = FindFirstFile("*.sav", &findData);
+    
+    if (hFind == INVALID_HANDLE_VALUE) {
+        printf("No save files found.\n");
+        return false;
+    }
+    
+    // Count the number of save files
+    int fileCount = 0;
+    SaveFileInfo saveFiles[100]; // Array to store up to 100 save files
+    
+    do {
+        if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            // Store filename
+            strncpy(saveFiles[fileCount].filename, findData.cFileName, MAX_PATH - 1);
+            saveFiles[fileCount].filename[MAX_PATH - 1] = '\0';
+            
+            // Get file timestamp
+            FILETIME ftCreate, ftAccess, ftWrite;
+            SYSTEMTIME stUTC, stLocal;
+            
+            HANDLE hFile = CreateFile(findData.cFileName, 
+                                    GENERIC_READ, 
+                                    FILE_SHARE_READ, 
+                                    NULL, 
+                                    OPEN_EXISTING, 
+                                    FILE_ATTRIBUTE_NORMAL, 
+                                    NULL);
+                                    
+            if (hFile != INVALID_HANDLE_VALUE) {
+                if (GetFileTime(hFile, &ftCreate, &ftAccess, &ftWrite)) {
+                    FileTimeToSystemTime(&ftWrite, &stUTC);
+                    SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
+                    
+                    // Convert to time_t for sorting
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    tm.tm_year = stLocal.wYear - 1900;
+                    tm.tm_mon = stLocal.wMonth - 1;
+                    tm.tm_mday = stLocal.wDay;
+                    tm.tm_hour = stLocal.wHour;
+                    tm.tm_min = stLocal.wMinute;
+                    tm.tm_sec = stLocal.wSecond;                    tm.tm_min = stLocal.wMinute;
+                    tm.tm_sec = stLocal.wSecond;
+                    saveFiles[fileCount].timestamp = mktime(&tm);
+                }
+                CloseHandle(hFile);
+            }
+            
+            fileCount++;
+            if (fileCount >= 100) break; // Limit to 100 files
+        }
+    } while (FindNextFile(hFind, &findData) != 0);
+    
+    FindClose(hFind);
+    
+    if (fileCount == 0) {
+        printf("No save files found.\n");
+        return false;
+    }
+    
+    // Sort save files by timestamp (most recent first)
+    for (int i = 0; i < fileCount - 1; i++) {
+        for (int j = 0; j < fileCount - i - 1; j++) {
+            if (saveFiles[j].timestamp < saveFiles[j + 1].timestamp) {
+                // Swap
+                SaveFileInfo temp = saveFiles[j];
+                saveFiles[j] = saveFiles[j + 1];
+                saveFiles[j + 1] = temp;
+            }
+        }
+    }
+	
+      // Display the sorted save files
+    for (int i = 0; i < fileCount; i++) {
+        // Read save header to get the description
+        SaveHeader header;
+        FILE* file = fopen(saveFiles[i].filename, "rb");
+        bool headerValid = false;
+        
+        if (file) {
+            if (fread(&header, sizeof(header), 1, file) == 1) {
+                headerValid = (strncmp(header.signature, SAVE_SIGNATURE, strlen(SAVE_SIGNATURE)) == 0);
+            }
+            fclose(file);
+        }
+        
+        // Format date and time
+        struct tm *timeinfo = localtime(&saveFiles[i].timestamp);
+        char timeStr[32];
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeinfo);
+        
+        printf("%2d. %s - %s", i + 1, saveFiles[i].filename, timeStr);
+        if (headerValid) {
+            printf(" - %s", header.description);
+        }
+        printf("\n");
+    }
+    
+    // Prompt user to select a save file
+    if (fileCount > 0) {
+        printf("\nEnter the number of the save file to load (or 0 to cancel): ");
+        char input[10];
+        if (fgets(input, sizeof(input), stdin) != NULL) {
+            int selection = atoi(input);
+            if (selection > 0 && selection <= fileCount) {
+                return load_game(saveFiles[selection - 1].filename);
+            }
+        }
+    }
+    
+    return false;
 }
 
 #endif // ELITE_COMMANDS_H

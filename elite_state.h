@@ -41,7 +41,7 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 #define COMMODITY_ARRAY_SIZE (ALIEN_ITEMS_IDX + 1) // Total size for commodity-related arrays
 
 // Other game constants
-#define NUM_COMMANDS 22            // Number of commands in the commands array
+#define NUM_COMMANDS 24            // Number of commands in the commands array
 #define GOV_MAX_COUNT 8            // Number of government types
 #define ECON_MAX_COUNT 8           // Number of economy types
 

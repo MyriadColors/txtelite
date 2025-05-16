@@ -58,7 +58,7 @@ run: $(TARGET)
 clean:
 	@echo "Cleaning up..."
 ifeq ($(OS),Windows_NT)
-	@# Use cmd commands for Windows
+	@REM Use cmd commands for Windows
 	@if exist $(TARGET) del /F $(TARGET)
 	@if exist $(TARGET).exe del /F $(TARGET).exe
 else

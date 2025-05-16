@@ -2,3 +2,6 @@ txtelite
 main.exe
 .vscode
 *.sav
+implementation_plan.md
+design.md
+.github

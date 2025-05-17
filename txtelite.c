@@ -3,11 +3,10 @@
 /* Converted by Ian Bell from 6502 Elite sources.
    Original 6502 Elite by Ian Bell & David Braben. */
 
-
 /* ----------------------------------------------------------------------
   The nature of basic mechanisms used to generate the Elite socio-economic
 universe are now widely known. A competant games programmer should be able to
-produce equivalent functionality. A competant hacker should be able to lift 
+produce equivalent functionality. A competant hacker should be able to lift
 the exact system from the object code base of official conversions.
 
   This file may be regarded as defining the Classic Elite universe.
@@ -23,7 +22,6 @@ ICGB 13/10/99	; 21/07/15
 ian@ianbell.me
 www.ianbellelite.com
   ---------------------------------------------------------------------- */
-
 
 /* Note that this program is "quick-hack" text parser-driven version
 of Elite with no combat or missions.
@@ -44,7 +42,7 @@ of Elite with no combat or missions.
 #include "elite_player_state.h"
 #include "elite_star_system.h"
 
-/* ================= * 
+/* ================= *
  * General functions *
  * ================= */
 
@@ -59,27 +57,33 @@ int main(void)
 	printf("\nWelcome to Text Elite 1.5.\n");
 
 	my_srand(12345);
-  initialize_player_state();
+	initialize_player_state();
 
 	// Initialize game time at the start of a new game or when loading
 	// For a new game:
-	game_time_initialize(); 
+	game_time_initialize();
 
-#define PARSER(S) { char buf[sizeof(S) > 0x10 ? 0x10 : sizeof(S)]; strncpy(buf,S, sizeof(buf)-1); buf[sizeof(buf)-1] = '\0'; parse_and_execute_command(buf); }   
+#define PARSER(S)                                      \
+	{                                                  \
+		char buf[sizeof(S) > 0x10 ? 0x10 : sizeof(S)]; \
+		strncpy(buf, S, sizeof(buf) - 1);              \
+		buf[sizeof(buf) - 1] = '\0';                   \
+		parse_and_execute_command(buf);                \
+	}
 
 	PARSER("help");
 
 #undef PARSER
-	for(;;)
+	for (;;)
 	{
 		char locBuffer[MAX_LEN];
 		get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
-		
+
 		// Periodically update all markets in the system as time passes
 		update_all_system_markets();
 
-		printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ", 
-		       locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);
+		printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ",
+			   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);
 		if (!fgets(getcommand, sizeof(getcommand) - 1, stdin))
 			break;
 		getcommand[sizeof(getcommand) - 1] = '\0';
@@ -90,4 +94,3 @@ int main(void)
 
 	exit(ExitStatus);
 }
-

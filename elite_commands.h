@@ -1771,7 +1771,7 @@ static inline void update_all_system_markets()
 // Compare markets across different stations in the system or with the planet market
 static inline bool do_compare_markets(char *commandArguments)
 {
-	(void)commandArguments; // Mark as unused
+	(void)commandArguments;								   // Mark as unused
 	if (!CurrentStarSystem || !CurrentStarSystem->planSys) // Added planSys check for safety
 	{
 		printf("\\nError: Star system data not available for market comparison.");
@@ -1819,7 +1819,8 @@ static inline bool do_compare_markets(char *commandArguments)
 		for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; ++i)
 		{
 			Planet *p = &CurrentStarSystem->planets[i];
-			if (!p) continue;
+			if (!p)
+				continue;
 			for (uint8_t j = 0; j < p->numStations; ++j)
 			{
 				if (p->stations[j] == currentStation)
@@ -1828,7 +1829,8 @@ static inline bool do_compare_markets(char *commandArguments)
 					break;
 				}
 			}
-			if (orbitingPlanet) break;
+			if (orbitingPlanet)
+				break;
 		}
 
 		if (orbitingPlanet)
@@ -1858,12 +1860,14 @@ static inline bool do_compare_markets(char *commandArguments)
 	for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++)
 	{
 		Planet *planet = &CurrentStarSystem->planets[i];
-		if (!planet) continue;
+		if (!planet)
+			continue;
 
 		for (uint8_t j = 0; j < planet->numStations; j++)
 		{
 			Station *station = planet->stations[j];
-			if (!station || !station->hasMarket) continue; // Skip stations without markets
+			if (!station || !station->hasMarket)
+				continue; // Skip stations without markets
 
 			// Skip comparing base station to itself if the base is a station
 			if (!isPlanetBase && PlayerNavState.currentLocation.station == station)
@@ -1874,10 +1878,10 @@ static inline bool do_compare_markets(char *commandArguments)
 			foundStationsToCompare = true;
 			// Update the "other" station's market to current time to ensure fair comparison
 			UpdateStationMarket(station, game_time_get_seconds(), planet, CurrentStarSystem->planSys);
-			
+
 			// Create a temporary market for comparison
 			MarketType otherMarket;
-			
+
 			// Use the current station's market
 			// This assumes UpdateStationMarket updates the station's market data directly
 			UseStationMarket(station, planet, CurrentStarSystem->planSys);
@@ -1890,13 +1894,14 @@ static inline bool do_compare_markets(char *commandArguments)
 			for (uint16_t k = 0; k <= LAST_TRADE; k++)
 			{
 				// Skip invalid commodities
-				if (Commodities[k].basePrice == 0) continue;
+				if (Commodities[k].basePrice == 0)
+					continue;
 
 				double basePrice = baseMarketToCompare.price[k]; // Changed Price to price
-				int baseQty = baseMarketToCompare.quantity[k]; // Changed Quantity to quantity
+				int baseQty = baseMarketToCompare.quantity[k];	 // Changed Quantity to quantity
 
 				double otherPrice = otherMarket.price[k]; // Changed Price to price
-				int otherQty = otherMarket.quantity[k]; // Changed Quantity to quantity
+				int otherQty = otherMarket.quantity[k];	  // Changed Quantity to quantity
 
 				printf("\n%-12s %-8.1f %-8.1f %-8.1f %-8d",
 					   tradnames[k],
@@ -1908,10 +1913,14 @@ static inline bool do_compare_markets(char *commandArguments)
 		}
 	}
 
-	if (!foundStationsToCompare) {
-		if (isPlanetBase) {
+	if (!foundStationsToCompare)
+	{
+		if (isPlanetBase)
+		{
 			printf("\n\nNo other stations in the system with markets to compare against %s.", baseLocationName);
-		} else {
+		}
+		else
+		{
 			printf("\n\nNo other stations in the system with markets to compare against your current station %s.", baseLocationName);
 			printf("\nOr you are at the only station with a market.");
 		}
@@ -1925,19 +1934,20 @@ static inline bool do_compare_markets(char *commandArguments)
 	{
 		printf("\n\nNote: Comparing all other stations in the system to your current station %s.", baseLocationName);
 	}
-	
+
 	// Restore the original local market
 	if (!isPlanetBase && PlayerNavState.currentLocation.station)
 	{
 		// Find planet for current station
 		Planet *currentPlanet = NULL;
 		Station *currentStation = PlayerNavState.currentLocation.station;
-		
+
 		for (uint8_t i = 0; i < CurrentStarSystem->numPlanets && !currentPlanet; i++)
 		{
 			Planet *p = &CurrentStarSystem->planets[i];
-			if (!p) continue;
-			
+			if (!p)
+				continue;
+
 			for (uint8_t j = 0; j < p->numStations; j++)
 			{
 				if (p->stations[j] == currentStation)
@@ -1947,13 +1957,13 @@ static inline bool do_compare_markets(char *commandArguments)
 				}
 			}
 		}
-		
+
 		if (currentPlanet)
 		{
 			UseStationMarket(currentStation, currentPlanet, CurrentStarSystem->planSys);
 		}
 	}
-	
+
 	return true;
 }
 

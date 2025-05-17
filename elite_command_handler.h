@@ -12,8 +12,8 @@ static char commands[NUM_COMMANDS][MAX_LEN] =
 		"cash", "mkt", "help", "hold",
 		"sneak", "local", "info", "galhyp",
 		"quit", "rand", "save", "load",
-		"system", "travel", "scan", "dock",
-		"compare", "land"};
+		"system", "travel", "dock",
+		"compare", "land", "scan"};
 
 // Array of function pointers to command functions
 static bool (*comfuncs[NUM_COMMANDS])(char *) =
@@ -22,8 +22,8 @@ static bool (*comfuncs[NUM_COMMANDS])(char *) =
 		do_cash, do_market_display, do_help, do_hold,
 		do_sneak, do_local_systems_display, do_planet_info_display, do_galactic_hyperspace,
 		do_quit, do_tweak_random_native, do_save, do_load,
-		do_system_info, do_travel, do_scan, do_dock,
-		do_compare_markets, do_land};
+		do_system_info, do_travel, do_dock,
+		do_compare_markets, do_land, do_system_info};
 
 // Function to parse and execute commands
 static inline bool parse_and_execute_command(char *commandString)

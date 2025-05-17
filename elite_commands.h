@@ -414,13 +414,19 @@ static inline bool do_help(char *commandArguments)
 			printf("\n  No fuel is required for this special jump.");
 			return true;
 		}
-
 		// Star system navigation commands
 		if (strcmp(command, "system") == 0 || strcmp(command, "sys") == 0)
 		{
-			printf("\nSYSTEM - Display detailed information about the current star system");
-			printf("\n  Shows information about the star, planets, stations, and your current location.");
-			printf("\n  No parameters required.");
+			printf("\nSYSTEM - Displays detailed information about the current star system, including celestial bodies, stations, points of interest, distances, and estimated travel times. Costs 1 minute of game time.\n");
+			return true;
+		}
+
+		if (strcmp(command, "scan") == 0)
+		{
+			printf("\nSCAN - Scan the current star system for points of interest");
+			printf("\n  Shows all celestial bodies, stations, their locations, and travel times.");
+			printf("\n  Identical to the 'system' command - use either one as preferred.");
+			printf("\n  Costs 1 minute of game time.");
 			return true;
 		}
 
@@ -437,15 +443,6 @@ static inline bool do_help(char *commandArguments)
 			printf("\n  Example: travel 1.3  - Travel to the third station orbiting the first planet");
 			printf("\n  Example: travel N    - Travel to the Nav Beacon");
 			printf("\n  Note: Travel consumes game time based on distance.");
-			return true;
-		}
-
-		if (strcmp(command, "scan") == 0)
-		{
-			printf("\nSCAN - Scan the current star system");
-			printf("\n  Shows distances to all celestial bodies from your current location.");
-			printf("\n  Also shows estimated travel times to each destination.");
-			printf("\n  No parameters required.");
 			return true;
 		}
 
@@ -684,11 +681,10 @@ static inline bool do_help(char *commandArguments)
 	printf("\n  galhyp                  - Jump to the next galaxy");
 	printf("\n  local                   - List systems within 7 light years");
 	printf("\n  info  <planetname>      - Display information about a system");
-
 	printf("\n\nSTAR SYSTEM NAVIGATION:");
 	printf("\n  system                  - Display detailed information about the current star system");
-	printf("\n  travel [destination]    - List destinations or travel within the system");
 	printf("\n  scan                    - Scan system for points of interest and travel times");
+	printf("\n  travel [destination]    - List destinations or travel within the system");
 	printf("\n  dock                    - Dock with a station if at a station location");
 
 	printf("\n\nCARGO AND MONEY:");
@@ -883,11 +879,10 @@ static inline bool do_load(char *commandArguments)
 // Star System Commands
 // =============================
 
-// Displays detailed information about the current star system
+// Displays detailed information about the current star system, including scan data
 static inline bool do_system_info(char *commandArguments)
 {
 	(void)(commandArguments); // Unused parameter
-
 	// Validate star system data
 	if (!CurrentStarSystem)
 	{
@@ -901,22 +896,22 @@ static inline bool do_system_info(char *commandArguments)
 		printf("\nError: Planet system data not available.");
 		return false;
 	}
-
 	// Get current location information
 	char locBuffer[MAX_LEN];
 	get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
-
+	
+	// Determine whether this was called via "system" or "scan" command
+	const char* commandName = "SYSTEM SCAN";
+	
 	// System header with basic information
-	printf("\n===================================================");
-	printf("\n             STAR SYSTEM: %s", CurrentStarSystem->planSys->name);
-	printf("\n===================================================");
+	printf("\n==== %s: %s ====", commandName, CurrentStarSystem->planSys->name);
+	printf("\nCurrent location: %s (%.2f AU from star)", locBuffer, PlayerNavState.distanceFromStar);
 
 	// Economic and political information
 	printf("\nEconomy: %s", EconNames[CurrentStarSystem->planSys->economy]);
 	printf("\nGovernment: %s", GovNames[CurrentStarSystem->planSys->govType]);
 	printf("\nTech Level: %d", CurrentStarSystem->planSys->techLev + 1);
 	printf("\nPopulation: %u Billion", (CurrentStarSystem->planSys->population) >> 3);
-
 	// Star information with spectral classification
 	const char *spectralClasses[] = {"O", "B", "A", "F", "G", "K", "M"};
 	printf("\n\nStar: %s", CurrentStarSystem->centralStar.name);
@@ -941,12 +936,12 @@ static inline bool do_system_info(char *commandArguments)
 			Planet *planet = &CurrentStarSystem->planets[i];
 			if (!planet)
 			{
-				printf("\n  %d. [Error: Invalid planet data]", i + 1);
+				printf("\\n  %d. [Error: Invalid planet data]", i + 1);
 				continue;
-			}
-
-			// Planet basic info
-			printf("\n  %d. %s (%.2f AU)", i + 1, planet->name, planet->orbitalDistance);
+			}			// Planet basic info
+			double distToPlanet = fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
+			uint32_t timeToPlanet = calculate_travel_time(PlayerNavState.distanceFromStar, planet->orbitalDistance);
+			printf("\n  %d. %s (%.2f AU from star, %.2f AU away, %u min travel)", i + 1, planet->name, planet->orbitalDistance, distToPlanet, timeToPlanet / 60);
 
 			// Planet type and physical characteristics
 			if (planet->type < 4)
@@ -957,9 +952,7 @@ static inline bool do_system_info(char *commandArguments)
 			{
 				printf("\n     Type: Unknown");
 			}
-			printf("\n     Radius: %.0f km", planet->radius);
-
-			// Station information for this planet
+			printf("\n     Radius: %.0f km", planet->radius);			// Station information for this planet
 			if (planet->numStations > 0)
 			{
 				printf("\n     Stations: %d", planet->numStations);
@@ -975,9 +968,13 @@ static inline bool do_system_info(char *commandArguments)
 					// Station type information
 					const char *stationTypes[] = {
 						"Orbital", "Coriolis", "Ocellus"};
+					
+					double stationDistAbsolute = planet->orbitalDistance + station->orbitalDistance;
+					double distToStation = fabs(PlayerNavState.distanceFromStar - stationDistAbsolute);
+					uint32_t timeToStation = calculate_travel_time(PlayerNavState.distanceFromStar, stationDistAbsolute);
 
-					printf("\n     %d.%d. %s (%.3f AU from planet)", i + 1, j + 1,
-						   station->name, station->orbitalDistance);
+					printf("\n     %d.%d. %s (%.3f AU from planet, %.2f AU away, %u min travel)", i + 1, j + 1,
+						   station->name, station->orbitalDistance, distToStation, timeToStation / 60);
 
 					// Display station type if valid
 					if (station->type < 3)
@@ -1006,8 +1003,7 @@ static inline bool do_system_info(char *commandArguments)
 				{
 					printf("\n     [No valid stations data]");
 				}
-			}
-			else
+			}			else
 			{
 				printf("\n     Stations: None");
 			}
@@ -1017,17 +1013,32 @@ static inline bool do_system_info(char *commandArguments)
 	{
 		printf("\n  (None)");
 	}
-
 	// Nav Beacon information
-	printf("\n\nNav Beacon: %.2f AU from star", CurrentStarSystem->navBeaconDistance);
+	double distToNavBeacon = fabs(PlayerNavState.distanceFromStar - CurrentStarSystem->navBeaconDistance);
+	uint32_t timeToNavBeacon = calculate_travel_time(PlayerNavState.distanceFromStar, CurrentStarSystem->navBeaconDistance);
+	printf("\n\nNav Beacon: %.2f AU from star (%.2f AU away, %u min travel)", CurrentStarSystem->navBeaconDistance, distToNavBeacon, timeToNavBeacon / 60);
+	printf("\n  Travel code: N");
 
 	// Current player location
 	printf("\n\nCurrent location: %s (%.2f AU from star)", locBuffer, PlayerNavState.distanceFromStar);
+	
+	// Star distance and travel time (from current location)
+	double distToStar = PlayerNavState.distanceFromStar;
+	uint32_t timeToStar = calculate_travel_time(PlayerNavState.distanceFromStar, 0.0);
+	printf("\nDistance to Star (%s): %.2f AU, %u min travel", CurrentStarSystem->centralStar.name, distToStar, timeToStar / 60);
+	printf("\n  Travel code: 0");
+	
+	// Add travel hint
+	printf("\n\n(Use 'travel <code>' to navigate to any location, e.g., 'travel 2.1' or 'travel N')");
 
 	// System time
 	char timeBuffer[MAX_LEN * 2];
 	game_time_get_formatted(timeBuffer, sizeof(timeBuffer));
 	printf("\n\nSystem Time: %s", timeBuffer);
+	
+	// Small time cost for performing a system scan (1 minute)
+	game_time_advance(60);
+	printf("\n\nSystem scan complete. Elapsed time: 1 minute.");
 
 	return true;
 }
@@ -1073,7 +1084,7 @@ static inline bool do_travel(char *commandArguments)
 				Station *station = planet->stations[j];
 				if (!station)
 				{
-					continue; // Skip invalid stations silently
+					continue; // Skip invalid stations
 				}
 				printf("\n     %d.%d. %s (%.2f AU)", i + 1, j + 1, station->name,
 					   planet->orbitalDistance + station->orbitalDistance);
@@ -1319,112 +1330,6 @@ static inline bool do_travel(char *commandArguments)
 		printf("\nFailed to travel to %s.", station->name);
 		return false;
 	}
-}
-
-// Scans the current system for points of interest
-static inline bool do_scan(char *commandArguments)
-{
-	(void)(commandArguments); // Unused parameter
-
-	// Check if star system data is available
-	if (!CurrentStarSystem)
-	{
-		printf("\nError: Star system data not available. System might not be properly initialized.");
-		return false;
-	}
-
-	char locBuffer[MAX_LEN];
-	get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
-
-	printf("\n==== SYSTEM SCAN: %s ====", CurrentStarSystem->planSys->name);
-	printf("\nCurrent location: %s (%.2f AU from star)", locBuffer, PlayerNavState.distanceFromStar);
-
-	// Display distances to all points of interest
-	printf("\n\nDistances to points of interest:");
-
-	// Star
-	double distToStar = PlayerNavState.distanceFromStar;
-	printf("\n  Star: %.2f AU", distToStar);
-
-	// Planets and stations
-	for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++)
-	{
-		Planet *planet = &CurrentStarSystem->planets[i];
-		if (!planet)
-		{
-			printf("\n  Planet %d: [Error: Invalid planet data]", i + 1);
-			continue;
-		}
-
-		double distToPlanet = fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
-		printf("\n  %s: %.2f AU", planet->name, distToPlanet);
-
-		bool hasValidStations = false;
-		for (uint8_t j = 0; j < planet->numStations; j++)
-		{
-			Station *station = planet->stations[j];
-			if (!station)
-				continue; // Skip invalid stations
-
-			hasValidStations = true;
-			double stationDist = planet->orbitalDistance + station->orbitalDistance;
-			double distToStation = fabs(PlayerNavState.distanceFromStar - stationDist);
-			printf("\n     %s: %.2f AU", station->name, distToStation);
-		}
-
-		if (planet->numStations > 0 && !hasValidStations)
-		{
-			printf("\n     [No valid stations]");
-		}
-	}
-
-	// Nav Beacon
-	double distToNavBeacon = fabs(PlayerNavState.distanceFromStar - CurrentStarSystem->navBeaconDistance);
-	printf("\n  Nav Beacon: %.2f AU", distToNavBeacon);
-
-	// Calculate travel times to each destination
-	printf("\n\nEstimated travel times:");
-
-	// Star
-	uint32_t timeToStar = calculate_travel_time(PlayerNavState.distanceFromStar, 0.0);
-	printf("\n  Star: %u minutes", timeToStar / 60);
-
-	// Planets and stations
-	for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++)
-	{
-		Planet *planet = &CurrentStarSystem->planets[i];
-		if (!planet)
-			continue;
-
-		uint32_t timeToPlanet = calculate_travel_time(PlayerNavState.distanceFromStar, planet->orbitalDistance);
-		printf("\n  %s: %u minutes", planet->name, timeToPlanet / 60);
-
-		for (uint8_t j = 0; j < planet->numStations; j++)
-		{
-			Station *station = planet->stations[j];
-			if (!station)
-				continue; // Skip invalid stations
-
-			double stationDist = planet->orbitalDistance + station->orbitalDistance;
-			uint32_t timeToStation = calculate_travel_time(PlayerNavState.distanceFromStar, stationDist);
-			printf("\n     %s: %u minutes", station->name, timeToStation / 60);
-		}
-	}
-
-	// Nav Beacon
-	uint32_t timeToNavBeacon = calculate_travel_time(PlayerNavState.distanceFromStar, CurrentStarSystem->navBeaconDistance);
-	printf("\n  Nav Beacon: %u minutes", timeToNavBeacon / 60);
-
-	// Display current game time
-	char timeBuffer[MAX_LEN * 2];
-	game_time_get_formatted(timeBuffer, sizeof(timeBuffer));
-	printf("\n\nGame Time: %s", timeBuffer);
-
-	// Small time cost for performing a scan (1 minute)
-	game_time_advance(60);
-	printf("\n\nScan complete. Elapsed time: 1 minute.");
-
-	return true;
 }
 
 // Docks with a station if at a station location

@@ -1,6 +1,9 @@
 #ifndef ELITE_STATE_H
 #define ELITE_STATE_H
 
+// Other game constants
+#define MAX_CARGO_ITEMS 50
+#define MAX_EQUIPMENT_SLOTS 10
 /**
  * ELITE STATE HEADER
  *
@@ -41,9 +44,12 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 #define COMMODITY_ARRAY_SIZE (ALIEN_ITEMS_IDX + 1) // Total size for commodity-related arrays
 
 // Other game constants
-#define NUM_COMMANDS 30  // Number of commands in the commands array
+#define MAX_CARGO_ITEMS 50
+#define MAX_EQUIPMENT_SLOTS 10
+#define NUM_COMMANDS 22  // Number of commands in the commands array
 #define GOV_MAX_COUNT 8  // Number of government types
 #define ECON_MAX_COUNT 8 // Number of economy types
+#define MAX_MISSIONS 10
 
 // Planet system constants
 #define NUM_FOR_LAVE 7 // Lave is 7th generated planet in galaxy one

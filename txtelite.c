@@ -50,7 +50,7 @@ of Elite with no combat or missions.
 
 // Definition of the global game time variable (in seconds)
 // This will be linked with the extern declaration in elite_state.h
-uint64_t GameTime_seconds = 0;
+uint64_t currentGameTimeSeconds = 0;
 
 int main(void)
 {
@@ -65,17 +65,6 @@ int main(void)
 	// For a new game:
 	game_time_initialize(); 
 
-	// Example of how to use the time functions (can be removed later):
-	printf("Initial game time: %llu seconds\n", game_time_get_seconds());
-	char time_buffer[100];
-	game_time_get_formatted(time_buffer, sizeof(time_buffer));
-	printf("Formatted time: %s\n", time_buffer);
-
-	game_time_advance(3600); // Advance by one hour
-	printf("Game time after 1 hour: %llu seconds\n", game_time_get_seconds());
-	game_time_get_formatted(time_buffer, sizeof(time_buffer));
-	printf("Formatted time: %s\n", time_buffer);
-
 #define PARSER(S) { char buf[sizeof(S) > 0x10 ? 0x10 : sizeof(S)]; strncpy(buf,S, sizeof(buf)-1); buf[sizeof(buf)-1] = '\0'; parse_and_execute_command(buf); }   
 
 	PARSER("help");
@@ -86,8 +75,11 @@ int main(void)
 		char locBuffer[MAX_LEN];
 		get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
 		
-		printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY > ", 
-		       locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f);
+		// Periodically update all markets in the system as time passes
+		update_all_system_markets();
+
+		printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ", 
+		       locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);
 		if (!fgets(getcommand, sizeof(getcommand) - 1, stdin))
 			break;
 		getcommand[sizeof(getcommand) - 1] = '\0';
@@ -98,6 +90,4 @@ int main(void)
 
 	exit(ExitStatus);
 }
-
-/**+end **/
 

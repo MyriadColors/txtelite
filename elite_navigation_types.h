@@ -1,8 +1,9 @@
 #ifndef ELITE_NAVIGATION_TYPES_H
 #define ELITE_NAVIGATION_TYPES_H
 
-// Enum for celestial body types 
-typedef enum {
+// Enum for celestial body types
+typedef enum
+{
     CELESTIAL_STAR,
     CELESTIAL_PLANET,
     CELESTIAL_STATION,
@@ -16,14 +17,16 @@ typedef struct Planet Planet;
 typedef struct Station Station;
 
 // Navigation helper structure for travel within system
-typedef struct {
-    CelestialType currentLocationType;  // Type of current location
-    union {
-        Star* star;
-        Planet* planet;
-        Station* station;
-    } currentLocation;                  // Pointer to current location
-    double distanceFromStar;            // Current distance from system's star in AU
+typedef struct NavigationState
+{
+    CelestialType currentLocationType; // Type of current location
+    union
+    {
+        Star *star;
+        Planet *planet;
+        Station *station;
+    } currentLocation;       // Pointer to current location
+    double distanceFromStar; // Current distance from system's star in AU
 } NavigationState;
 
 #endif // ELITE_NAVIGATION_TYPES_H

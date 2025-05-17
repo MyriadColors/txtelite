@@ -3,7 +3,7 @@
 
 /**
  * ELITE STATE HEADER
- * 
+ *
  * This file consolidates the global state, constants, and data structures
  * used throughout the Text Elite game. It combines the functionality previously
  * spread across elite_includes.h, elite_structs.h, and elite_globals.h.
@@ -17,8 +17,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <assert.h>  // For static_assert
-#include "elite_navigation_types.h" // For NavigationState
+#include <assert.h> // For static_assert
 
 // =====================================
 // Type Definitions
@@ -29,32 +28,32 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 // Game Constants
 // =====================================
 // Core Game Defines
-#define MAX_LEN 30                 // General string length
-#define GAL_SIZE 256               // Galaxy size
+#define MAX_LEN 30   // General string length
+#define GAL_SIZE 256 // Galaxy size
 #define TONNES_UNIT 0
 #define KILOGRAM_UNIT 1
 #define GRAM_UNIT 2
 
 // Commodity-related constants
-#define NUM_STANDARD_COMMODITIES 10 // Number of defined standard commodities (indices 0-9)
-#define LAST_TRADE 16              // Max index for normal trade goods display/loops (0-16)
-#define ALIEN_ITEMS_IDX 17         // Specific index for Alien Items, follows after LAST_TRADE items
+#define NUM_STANDARD_COMMODITIES 10                // Number of defined standard commodities (indices 0-9)
+#define LAST_TRADE 16                              // Max index for normal trade goods display/loops (0-16)
+#define ALIEN_ITEMS_IDX 17                         // Specific index for Alien Items, follows after LAST_TRADE items
 #define COMMODITY_ARRAY_SIZE (ALIEN_ITEMS_IDX + 1) // Total size for commodity-related arrays
 
 // Other game constants
-#define NUM_COMMANDS 28            // Number of commands in the commands array
-#define GOV_MAX_COUNT 8            // Number of government types
-#define ECON_MAX_COUNT 8           // Number of economy types
+#define NUM_COMMANDS 30  // Number of commands in the commands array
+#define GOV_MAX_COUNT 8  // Number of government types
+#define ECON_MAX_COUNT 8 // Number of economy types
 
 // Planet system constants
-#define NUM_FOR_LAVE 7             // Lave is 7th generated planet in galaxy one
+#define NUM_FOR_LAVE 7 // Lave is 7th generated planet in galaxy one
 #define NUM_FOR_ZAONCE 129
 #define NUM_FOR_DISO 147
 #define NUM_FOR_RIED 46
 
 // Game balance constants
-#define FUEL_COST 2                // Credits per 0.1 LY
-#define MAX_FUEL 70                // 7.0 LY maximum fuel capacity
+#define FUEL_COST 2 // Credits per 0.1 LY
+#define MAX_FUEL 70 // 7.0 LY maximum fuel capacity
 
 // Static assertions for critical sizes
 static_assert(GAL_SIZE == 256, "Galaxy size must be 256");
@@ -65,20 +64,24 @@ static_assert(GAL_SIZE == 256, "Galaxy size must be 256");
 // Forward declarations
 struct FastSeedType;
 struct StarSystem;
+struct NavigationState;
 
 // Struct definitions
-struct FastSeedType {
+struct FastSeedType
+{
     uint8_t a, b, c, d;
 };
 
-struct SeedType {
+struct SeedType
+{
     uint16_t a;
     uint16_t b;
     uint16_t c;
     uint16_t d;
 };
 
-struct PlanSys {
+struct PlanSys
+{
     uint16_t x;
     uint16_t y;
     uint16_t economy;
@@ -91,7 +94,8 @@ struct PlanSys {
     char name[12];
 };
 
-typedef struct {
+typedef struct
+{
     uint16_t basePrice;
     int16_t gradient;
     uint16_t baseQuant;
@@ -100,7 +104,8 @@ typedef struct {
     char name[20];
 } TradeGood;
 
-typedef struct {
+typedef struct
+{
     uint16_t quantity[COMMODITY_ARRAY_SIZE];
     uint16_t price[COMMODITY_ARRAY_SIZE];
 } MarketType;
@@ -134,8 +139,8 @@ extern int FuelCost;
 extern int MaxFuel;
 
 // Star System Navigation State
-extern struct StarSystem* CurrentStarSystem;
-extern NavigationState PlayerNavState;
+extern struct StarSystem *CurrentStarSystem;
+extern struct NavigationState PlayerNavState;
 
 // Names and descriptors
 extern char GovNames[GOV_MAX_COUNT][MAX_LEN];
@@ -143,7 +148,7 @@ extern char EconNames[ECON_MAX_COUNT][MAX_LEN];
 extern char tradnames[LAST_TRADE + 1][MAX_LEN];
 
 // Declaration of the global game time variable (in seconds)
-extern uint64_t GameTime_seconds;
+extern uint64_t currentGameTimeSeconds;
 
 // --- Game Time Functions ---
 
@@ -151,17 +156,20 @@ extern uint64_t GameTime_seconds;
  * Initializes the game time to zero.
  * Should be called when starting a new game.
  */
-static inline void game_time_initialize(void) {
-    GameTime_seconds = 0;
+static inline void game_time_initialize(void)
+{
+    currentGameTimeSeconds = 0;
 }
 
 /**
  * Advances the game time by a specified number of seconds.
  * @param seconds_to_add The number of seconds to add to the current game time.
  */
-static inline void game_time_advance(uint32_t seconds_to_add) {
-    if (seconds_to_add > 0) { // Basic check
-        GameTime_seconds += seconds_to_add;
+static inline void game_time_advance(uint32_t seconds_to_add)
+{
+    if (seconds_to_add > 0)
+    { // Basic check
+        currentGameTimeSeconds += seconds_to_add;
     }
 }
 
@@ -169,8 +177,9 @@ static inline void game_time_advance(uint32_t seconds_to_add) {
  * Gets the current total game time in seconds.
  * @return The current game time in seconds.
  */
-static inline uint64_t game_time_get_seconds(void) {
-    return GameTime_seconds;
+static inline uint64_t game_time_get_seconds(void)
+{
+    return currentGameTimeSeconds;
 }
 
 /**
@@ -179,18 +188,20 @@ static inline uint64_t game_time_get_seconds(void) {
  * @param buffer The character buffer to write the formatted time string to.
  * @param buffer_size The size of the buffer.
  */
-static inline void game_time_get_formatted(char* buffer, size_t buffer_size) {
-    if (buffer == NULL || buffer_size == 0) {
+static inline void game_time_get_formatted(char *buffer, size_t buffer_size)
+{
+    if (buffer == NULL || buffer_size == 0)
+    {
         return;
     }
 
-    uint64_t time_val = GameTime_seconds;
+    uint64_t time_val = currentGameTimeSeconds;
 
     const uint64_t secs_in_minute = 60;
     const uint64_t secs_in_hour = 60 * secs_in_minute;
     const uint64_t secs_in_day = 24 * secs_in_hour;
     // Using a simplified year for game purposes.
-    const uint64_t secs_in_year = 365 * secs_in_day; 
+    const uint64_t secs_in_year = 365 * secs_in_day;
 
     uint64_t years = time_val / secs_in_year;
     time_val %= secs_in_year;
@@ -207,7 +218,7 @@ static inline void game_time_get_formatted(char* buffer, size_t buffer_size) {
     uint64_t current_seconds = time_val;
 
     snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu",
-             (unsigned long long)years, (unsigned long long)days, 
+             (unsigned long long)years, (unsigned long long)days,
              (unsigned long long)hours, (unsigned long long)minutes, (unsigned long long)current_seconds);
 }
 
@@ -226,7 +237,7 @@ struct FastSeedType RndSeed;
 
 const uint16_t BASE_0 = 0x5A4A;
 const uint16_t BASE_1 = 0x0248;
-const uint16_t BASE_2 = 0xB753;  /* Base seed for galaxy 1 */
+const uint16_t BASE_2 = 0xB753; /* Base seed for galaxy 1 */
 
 uint16_t ShipHold[COMMODITY_ARRAY_SIZE];
 int CurrentPlanet;
@@ -241,20 +252,18 @@ int MaxFuel = 70;
 
 char GovNames[GOV_MAX_COUNT][MAX_LEN] = {
     "Anarchy", "Feudal", "Multi-gov", "Dictatorship",
-    "Communist", "Confederacy", "Democracy", "Corporate State"
-};
+    "Communist", "Confederacy", "Democracy", "Corporate State"};
 
 char EconNames[ECON_MAX_COUNT][MAX_LEN] = {
     "Rich Ind", "Average Ind", "Poor Ind", "Mainly Ind",
-    "Mainly Agri", "Rich Agri", "Average Agri", "Poor Agri"
-};
+    "Mainly Agri", "Rich Agri", "Average Agri", "Poor Agri"};
 
 char tradnames[LAST_TRADE + 1][MAX_LEN];
 
-uint64_t GameTime_seconds;
+uint64_t currentGameTimeSeconds;
 
 // Star System Navigation State
-struct StarSystem* CurrentStarSystem = NULL;
-NavigationState PlayerNavState;
+struct StarSystem *CurrentStarSystem = NULL;
+struct NavigationState PlayerNavState;
 
 #endif // ELITE_STATE_H

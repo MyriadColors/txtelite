@@ -1,17 +1,22 @@
 #ifndef ELITE_PLAYER_STATE_H
 #define ELITE_PLAYER_STATE_H
 
-#include "elite_state.h" // Unified header for constants, structures, and globals
-#include "elite_market.h" // For generate_market(), init_tradnames()
-#include "elite_galaxy.h" // For build_galaxy_data()
-#include "elite_utils.h"  // For minimum_value
-#include "elite_star_system.h" // For StarSystem, NavigationState
+#include "elite_navigation_types.h" // For NavigationState definition
+#include "elite_state.h"            // Unified header for constants, structures, and globals
+#include "elite_market.h"           // For generate_market(), init_tradnames()
+#include "elite_galaxy.h"           // For build_galaxy_data()
+#include "elite_utils.h"            // For minimum_value
+#include "elite_star_system.h"      // For StarSystem
 
 extern struct NavigationState PlayerNavState;
-extern struct StarSystem* CurrentStarSystem;
+extern struct StarSystem *CurrentStarSystem;
+
+// Forward declarations
+static inline void initialize_star_system_for_current_planet(void);
 
 // Initializes the player's state at the beginning of the game.
-static inline void initialize_player_state(void) {
+static inline void initialize_player_state(void)
+{
     // Set initial seed for Galaxy 1
     // SeedType has a, b, c, d members as defined in elite_structs.h
     Seed.a = BASE_0; // 0x5A4A
@@ -23,48 +28,52 @@ static inline void initialize_player_state(void) {
     GalaxyNum = 1;      // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed
-    build_galaxy_data(Seed);    // Set current planet to Lave (planet 7 in galaxy 1)
+    build_galaxy_data(Seed);      // Set current planet to Lave (planet 7 in galaxy 1)
     CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h
 
     // Populate LocalMarket for the starting planet. Fluctuation is 0 for initial state.
     // Galaxy[CurrentPlanet] is now valid after build_galaxy_data()
     LocalMarket = generate_market(0, Galaxy[CurrentPlanet]);
 
-    Fuel = MaxFuel;    // Start with maximum fuel (e.g., 7.0 LY)
-    Cash = 1000;       // Start with 100.0 credits (1000 internal units)
-    HoldSpace = 20;    // Start with 20t hold space    // Zero out the player's ship hold
+    Fuel = MaxFuel; // Start with maximum fuel (e.g., 7.0 LY)
+    Cash = 1000;    // Start with 100.0 credits (1000 internal units)
+    HoldSpace = 20; // Start with 20t hold space    // Zero out the player's ship hold
     // COMMODITY_ARRAY_SIZE is from elite_state.h
-    for (int i = 0; i < COMMODITY_ARRAY_SIZE; i++) {
+    for (int i = 0; i < COMMODITY_ARRAY_SIZE; i++)
+    {
         ShipHold[i] = 0;
     }
 
     // Initialize the tradenames array for command parsing
     init_tradnames();
-    
+
     // Initialize star system for the current planet
     initialize_star_system_for_current_planet();
 }
 
 // Initializes the star system for the current planet.
 // Call this when switching planets (e.g., after hyperspace jumps).
-static inline void initialize_star_system_for_current_planet(void) {
+static inline void initialize_star_system_for_current_planet(void)
+{
     // Clean up any existing star system
-    if (CurrentStarSystem != NULL) {
+    if (CurrentStarSystem != NULL)
+    {
         cleanup_star_system(CurrentStarSystem);
         free(CurrentStarSystem);
         CurrentStarSystem = NULL;
     }
-    
+
     // Allocate a new star system
-    CurrentStarSystem = (struct StarSystem*)malloc(sizeof(struct StarSystem));
-    if (CurrentStarSystem == NULL) {
+    CurrentStarSystem = (struct StarSystem *)malloc(sizeof(struct StarSystem));
+    if (CurrentStarSystem == NULL)
+    {
         printf("Error: Could not allocate memory for star system!\n");
         return;
     }
-    
+
     // Initialize the star system with the current planet's data
     initialize_star_system(CurrentStarSystem, &Galaxy[CurrentPlanet]);
-    
+
     // Initialize navigation state - default position at the main planet
     memset(&PlayerNavState, 0, sizeof(PlayerNavState));
     PlayerNavState.currentLocationType = CELESTIAL_PLANET;
@@ -77,13 +86,16 @@ static inline void initialize_star_system_for_current_planet(void) {
 // Relies on global Cash and FuelCost.
 // Parameter desiredAmount: How much fuel the player wants to buy (in 0.1 LY units)
 // Returns the actual amount that can be purchased (limited by cash)
-static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount) {
-    if (FuelCost <= 0) return 0; // Avoid division by zero if FuelCost is invalid
-    if (Cash <= 0) return 0;     // No cash, no fuel
+static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
+{
+    if (FuelCost <= 0)
+        return 0; // Avoid division by zero if FuelCost is invalid
+    if (Cash <= 0)
+        return 0; // No cash, no fuel
 
     // Calculate fuel units player can afford (1 unit = 0.1 LY)
     uint16_t affordable_fuel_units = (uint16_t)((double)Cash / FuelCost);
-    
+
     // Return the minimum of what's desired and what's affordable
     return (desiredAmount < affordable_fuel_units) ? desiredAmount : affordable_fuel_units;
 }

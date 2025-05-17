@@ -1,12 +1,13 @@
 #ifndef ELITE_NAVIGATION_H
 #define ELITE_NAVIGATION_H
 
-#include "elite_state.h" // Unified header for constants, structures, and globals
-#include "elite_utils.h" // For float_to_int_round, random_byte, string_begins_with
-#include "elite_market.h" // For generate_market
-#include "elite_galaxy.h" // For Galaxy array functions
-#include "elite_player_state.h" // For initialize_star_system_for_current_planet
-#include <math.h>         // For sqrt
+#include "elite_navigation_types.h" // For NavigationState definition
+#include "elite_state.h"            // Unified header for constants, structures, and globals
+#include "elite_utils.h"            // For float_to_int_round, random_byte, string_begins_with
+#include "elite_market.h"           // For generate_market
+#include "elite_galaxy.h"           // For Galaxy array functions
+#include "elite_player_state.h"     // For initialize_star_system_for_current_planet
+#include <math.h>                   // For sqrt
 
 // Calculates the distance between two planetary systems.
 // Depends on sqrt from math.h and float_to_int_round from elite_utils.h
@@ -26,7 +27,7 @@ static inline PlanetNum find_matching_system_name(char *searchName)
 {
     PlanetNum syscount;
     PlanetNum p = CurrentPlanet; // Global variable
-    uint16_t d = 0xFFFF; // Initialize with max uint16_t value
+    uint16_t d = 0xFFFF;         // Initialize with max uint16_t value
 
     for (syscount = 0; syscount < GAL_SIZE; ++syscount)
     {
@@ -53,7 +54,7 @@ static inline void execute_jump_to_planet(PlanetNum planetIndex)
     CurrentPlanet = planetIndex; // Global variable
     // Galaxy is a global variable, random_byte from elite_utils, generate_market from elite_market
     LocalMarket = generate_market(random_byte(), Galaxy[planetIndex]); // Global variable
-    
+
     // Update the star system and navigation state for the new planet
     initialize_star_system_for_current_planet();
 }

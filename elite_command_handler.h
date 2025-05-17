@@ -1,5 +1,4 @@
-#ifndef ELITE_COMMAND_HANDLER_H
-#define ELITE_COMMAND_HANDLER_H
+#pragma once
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include "elite_utils.h"
@@ -40,5 +39,3 @@ static inline bool parse_and_execute_command(char *commandString)
 	printf("\nBad command (%s)", c);
 	return false;
 }
-
-#endif // ELITE_COMMAND_HANDLER_H

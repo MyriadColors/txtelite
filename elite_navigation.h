@@ -1,5 +1,4 @@
-#ifndef ELITE_NAVIGATION_H
-#define ELITE_NAVIGATION_H
+#pragma once
 
 #include "elite_navigation_types.h" // For NavigationState definition
 #include "elite_state.h"            // Unified header for constants, structures, and globals
@@ -58,5 +57,3 @@ static inline void execute_jump_to_planet(PlanetNum planetIndex)
     // Update the star system and navigation state for the new planet
     initialize_star_system_for_current_planet();
 }
-
-#endif // ELITE_NAVIGATION_H

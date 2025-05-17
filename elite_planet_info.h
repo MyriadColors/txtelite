@@ -1,5 +1,4 @@
-#ifndef ELITE_PLANET_INFO_H
-#define ELITE_PLANET_INFO_H
+#pragma once
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
 
@@ -184,5 +183,3 @@ static inline void print_system_info(struct PlanSys planetSystemInfo, bool useCo
 		goat_soup("\x8F is \x97.", &planetSystemInfo);
 	}
 }
-
-#endif // ELITE_PLANET_INFO_H

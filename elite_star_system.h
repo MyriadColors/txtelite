@@ -1,5 +1,4 @@
-#ifndef ELITE_STAR_SYSTEM_H
-#define ELITE_STAR_SYSTEM_H
+#pragma once
 
 #include "elite_state.h"            // For PlanSys and other related structures
 #include "elite_navigation_types.h" // For NavigationState and CelestialType
@@ -1008,5 +1007,3 @@ static inline void UsePlanetaryMarket(Planet *planet, struct PlanSys *planSys)
     // Set the global LocalMarket to this planet's market
     LocalMarket = planet->planetaryMarket.market;
 }
-
-#endif // ELITE_STAR_SYSTEM_H

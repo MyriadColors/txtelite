@@ -1,5 +1,4 @@
-#ifndef ELITE_STATE_H
-#define ELITE_STATE_H
+#pragma once
 
 // Other game constants
 #define MAX_CARGO_ITEMS 50
@@ -271,5 +270,3 @@ uint64_t currentGameTimeSeconds;
 // Star System Navigation State
 struct StarSystem *CurrentStarSystem = NULL;
 struct NavigationState PlayerNavState;
-
-#endif // ELITE_STATE_H

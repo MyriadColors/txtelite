@@ -1,5 +1,4 @@
-#ifndef ELITE_GALAXY_H
-#define ELITE_GALAXY_H
+#pragma once
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include "elite_utils.h" // For tweak_seed, strip_char_from_string
@@ -116,5 +115,3 @@ static inline void build_galaxy_data(struct SeedType seed)
 	for (syscount = 0; syscount < GAL_SIZE; ++syscount)
 		Galaxy[syscount] = make_system(&Seed);
 }
-
-#endif // ELITE_GALAXY_H

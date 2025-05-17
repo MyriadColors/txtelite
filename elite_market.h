@@ -1,5 +1,4 @@
-#ifndef ELITE_MARKET_H
-#define ELITE_MARKET_H
+#pragma once
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include "elite_utils.h"  // For minimum_value
@@ -163,5 +162,3 @@ static inline uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount) {
     }
     return t;
 }
-
-#endif // ELITE_MARKET_H

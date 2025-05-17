@@ -1,5 +1,4 @@
-#ifndef ELITE_SAVE_H
-#define ELITE_SAVE_H
+#pragma once
 
 /**
  * ELITE SAVE HEADER
@@ -367,5 +366,3 @@ static inline void get_default_save_filename(char *buffer, size_t size)
     snprintf(buffer, size, "txtelite_save_%s_g%d.sav",
              Galaxy[CurrentPlanet].name, GalaxyNum);
 }
-
-#endif // ELITE_SAVE_H

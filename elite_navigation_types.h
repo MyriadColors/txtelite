@@ -1,5 +1,4 @@
-#ifndef ELITE_NAVIGATION_TYPES_H
-#define ELITE_NAVIGATION_TYPES_H
+#pragma once
 
 // Enum for celestial body types
 typedef enum
@@ -28,5 +27,3 @@ typedef struct NavigationState
     } currentLocation;       // Pointer to current location
     double distanceFromStar; // Current distance from system's star in AU
 } NavigationState;
-
-#endif // ELITE_NAVIGATION_TYPES_H

@@ -1,5 +1,4 @@
-#ifndef ELITE_PLAYER_STATE_H
-#define ELITE_PLAYER_STATE_H
+#pragma once
 
 #include "elite_navigation_types.h" // For NavigationState definition
 #include "elite_state.h"            // Unified header for constants, structures, and globals
@@ -99,5 +98,3 @@ static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
     // Return the minimum of what's desired and what's affordable
     return (desiredAmount < affordable_fuel_units) ? desiredAmount : affordable_fuel_units;
 }
-
-#endif // ELITE_PLAYER_STATE_H

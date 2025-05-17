@@ -1,5 +1,4 @@
-#ifndef ELITE_UTILS_H
-#define ELITE_UTILS_H
+#pragma once
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include <ctype.h>		 // For isspace, toupper functions
@@ -176,5 +175,3 @@ static inline void split_string_at_first_space(char *inputString, char *firstWor
 	}
 	inputString[j] = 0;
 }
-
-#endif // ELITE_UTILS_H

@@ -1,5 +1,4 @@
-#ifndef ELITE_COMMANDS_H
-#define ELITE_COMMANDS_H
+#pragma once
 
 // Include headers for necessary typedefs and forward declarations
 #include "elite_navigation_types.h" // For CelestialType and NavigationState
@@ -1871,5 +1870,3 @@ static inline bool do_compare_markets(char *commandArguments)
 
 	return true;
 }
-
-#endif // ELITE_COMMANDS_H

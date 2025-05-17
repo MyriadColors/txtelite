@@ -5,6 +5,7 @@
 #include "elite_utils.h" // For float_to_int_round, random_byte, string_begins_with
 #include "elite_market.h" // For generate_market
 #include "elite_galaxy.h" // For Galaxy array functions
+#include "elite_player_state.h" // For initialize_star_system_for_current_planet
 #include <math.h>         // For sqrt
 
 // Calculates the distance between two planetary systems.
@@ -44,6 +45,7 @@ static inline PlanetNum find_matching_system_name(char *searchName)
 
 // Executes a jump to the specified planetIndex.
 // Updates CurrentPlanet and LocalMarket globals.
+// Also updates CurrentStarSystem and PlayerNavState.
 // Depends on random_byte from elite_utils.h and generate_market from elite_market.h.
 // Relies on global variables: CurrentPlanet, LocalMarket, Galaxy from elite_state.h
 static inline void execute_jump_to_planet(PlanetNum planetIndex)
@@ -51,6 +53,9 @@ static inline void execute_jump_to_planet(PlanetNum planetIndex)
     CurrentPlanet = planetIndex; // Global variable
     // Galaxy is a global variable, random_byte from elite_utils, generate_market from elite_market
     LocalMarket = generate_market(random_byte(), Galaxy[planetIndex]); // Global variable
+    
+    // Update the star system and navigation state for the new planet
+    initialize_star_system_for_current_planet();
 }
 
 #endif // ELITE_NAVIGATION_H

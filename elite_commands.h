@@ -1,6 +1,10 @@
 #ifndef ELITE_COMMANDS_H
 #define ELITE_COMMANDS_H
 
+// Include star system definitions first to ensure types are available
+#include "elite_star_system.h" // For star system commands
+
+// Other includes
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include "elite_navigation.h" // For distance, find_matching_system_name, execute_jump_to_planet
 #include "elite_planet_info.h" // For print_system_info (and goat_soup)
@@ -8,9 +12,8 @@
 #include "elite_player_state.h" // For calculate_fuel_purchase
 #include "elite_save.h" // For save_game, load_game
 #include <stdlib.h> // For atoi, atof
-#include <math.h> // For floor
+#include <math.h> // For floor, fabs
 #include <string.h> // For string operations
-#include <math.h> // For floor
 #include <time.h> // For time functions
 #include <windows.h> // For Windows directory operations
 
@@ -274,25 +277,224 @@ static inline bool do_quit(char *commandArguments)
 
 static inline bool do_help(char *commandArguments)
 {
-	(void)(commandArguments);
-	printf("\nCommands are:");
-	printf("\n  buy   <good> <amount>   - Buy goods");
-	printf("\n  sell  <good> <amount>   - Sell goods");
-	printf("\n  fuel  <amount>          - Buy amount Light Years of fuel");
-	printf("\n  jump  <planetname>      - Jump to planet (uses fuel)");
-	printf("\n  sneak <planetname>      - Jump to planet (no fuel cost, debug)");
-	printf("\n  galhyp                  - Jump to the next galaxy");
-	printf("\n  info  <planetname>      - Display information about a system");
-	printf("\n  mkt                     - Show current market prices, fuel, and cash");
-	printf("\n  local                   - List systems within 7 light years");
-	printf("\n  cash  <+/-amount>       - Adjust cash (e.g., cash +100.0 or cash -50.5)");
-	printf("\n  hold  <amount>          - Set total cargo hold space in tonnes");
-	printf("\n  save  [description]     - Save the game with optional description");
-	printf("\n  load  [filename]        - List save games or load a specific save");
-	printf("\n  quit                    - Exit the game");
-	printf("\n  rand                    - Toggle RNG between native and portable (debug)");
-	printf("\n\nAbbreviations allowed (e.g., b fo 5 for Buy Food 5, m for mkt).\n");
-	return true;
+    // If specific help is requested for a command, show detailed help
+    if (commandArguments && strlen(commandArguments) > 0) {
+        char command[MAX_LEN];
+        strncpy(command, commandArguments, MAX_LEN - 1);
+        command[MAX_LEN - 1] = '\0';
+        
+        // Convert to lowercase for case-insensitive matching
+        for (char *p = command; *p; ++p) *p = tolower(*p);
+        
+        // Trading commands
+        if (strcmp(command, "buy") == 0 || strcmp(command, "b") == 0) {
+            printf("\nBUY <good> <amount> - Purchase goods from the market");
+            printf("\n  <good>   - Type of trade good (e.g., Food, Computers)");
+            printf("\n  <amount> - Quantity to buy (default: 1)");
+            printf("\n  Example: buy Food 5");
+            printf("\n  Note: You must be docked at a station with a market to buy goods.");
+            return true;
+        }
+        
+        if (strcmp(command, "sell") == 0 || strcmp(command, "s") == 0) {
+            printf("\nSELL <good> <amount> - Sell goods to the market");
+            printf("\n  <good>   - Type of trade good (e.g., Food, Computers)");
+            printf("\n  <amount> - Quantity to sell (default: 1)");
+            printf("\n  Example: sell Computers 3");
+            printf("\n  Note: You must be docked at a station with a market to sell goods.");
+            return true;
+        }
+        
+        // Navigation commands
+        if (strcmp(command, "jump") == 0 || strcmp(command, "j") == 0) {
+            printf("\nJUMP <planetname> - Jump to another star system");
+            printf("\n  <planetname> - Name of the destination system");
+            printf("\n  Example: jump Lave");
+            printf("\n  Note: Requires fuel equal to the distance in light years.");
+            printf("\n        Use 'local' to see systems within jump range.");
+            return true;
+        }
+        
+        if (strcmp(command, "local") == 0 || strcmp(command, "l") == 0) {
+            printf("\nLOCAL - List star systems within jump range");
+            printf("\n  Systems marked with * are within current fuel range.");
+            printf("\n  Systems marked with - are within maximum fuel capacity but require refueling.");
+            printf("\n  Distances are shown in light years (LY).");
+            return true;
+        }
+        
+        if (strcmp(command, "galhyp") == 0 || strcmp(command, "g") == 0) {
+            printf("\nGALHYP - Perform a galactic hyperspace jump");
+            printf("\n  Jumps to the next galaxy (1-8).");
+            printf("\n  No fuel is required for this special jump.");
+            return true;
+        }
+        
+        // Star system navigation commands
+        if (strcmp(command, "system") == 0 || strcmp(command, "sys") == 0) {
+            printf("\nSYSTEM - Display detailed information about the current star system");
+            printf("\n  Shows information about the star, planets, stations, and your current location.");
+            printf("\n  No parameters required.");
+            return true;
+        }
+        
+        if (strcmp(command, "travel") == 0 || strcmp(command, "t") == 0) {
+            printf("\nTRAVEL [destination] - Travel within the current star system");
+            printf("\n  Without parameters: Lists all available destinations.");
+            printf("\n  [destination]: The location to travel to, using the numbering system:");
+            printf("\n    0       - Travel to the central star");
+            printf("\n    1-8     - Travel to a planet (number depends on system)");
+            printf("\n    1.1-8.5 - Travel to a station (format: planet.station)");
+            printf("\n    N       - Travel to the Nav Beacon");
+            printf("\n  Example: travel 2    - Travel to the second planet");
+            printf("\n  Example: travel 1.3  - Travel to the third station orbiting the first planet");
+            printf("\n  Example: travel N    - Travel to the Nav Beacon");
+            printf("\n  Note: Travel consumes game time based on distance.");
+            return true;
+        }
+        
+        if (strcmp(command, "scan") == 0) {
+            printf("\nSCAN - Scan the current star system");
+            printf("\n  Shows distances to all celestial bodies from your current location.");
+            printf("\n  Also shows estimated travel times to each destination.");
+            printf("\n  No parameters required.");
+            return true;
+        }
+        
+        if (strcmp(command, "dock") == 0 || strcmp(command, "d") == 0) {
+            printf("\nDOCK - Dock with the current station");
+            printf("\n  Must be at a station location before docking.");
+            printf("\n  Use 'travel' to navigate to a station first.");
+            printf("\n  Docking provides access to market and other station services.");
+            printf("\n  No parameters required.");
+            return true;
+        }
+        
+        // Market commands
+        if (strcmp(command, "mkt") == 0 || strcmp(command, "m") == 0) {
+            printf("\nMKT - Display market information");
+            printf("\n  Shows current market prices, cash, fuel level, and cargo status.");
+            printf("\n  No parameters required.");
+            printf("\n  Note: Market prices vary between systems based on economy type.");
+            return true;
+        }
+        
+        if (strcmp(command, "fuel") == 0 || strcmp(command, "f") == 0) {
+            printf("\nFUEL <amount> - Purchase fuel");
+            printf("\n  <amount> - Amount of fuel to buy in light years");
+            printf("\n  Example: fuel 7");
+            printf("\n  Note: Your maximum fuel capacity is 7 light years.");
+            return true;
+        }
+        
+        // Cargo and Money commands
+        if (strcmp(command, "hold") == 0 || strcmp(command, "h") == 0) {
+            printf("\nHOLD <amount> - Set cargo hold capacity");
+            printf("\n  <amount> - Total cargo hold space in tonnes");
+            printf("\n  Example: hold 20");
+            printf("\n  Note: Cannot reduce hold space below current cargo volume.");
+            return true;
+        }
+        
+        if (strcmp(command, "cash") == 0 || strcmp(command, "c") == 0) {
+            printf("\nCASH <+/-amount> - Adjust cash balance");
+            printf("\n  <+/-amount> - Amount to add or subtract from cash balance");
+            printf("\n  Example: cash +100.0  - Add 100 credits");
+            printf("\n  Example: cash -50.5   - Subtract 50.5 credits");
+            printf("\n  Note: This is a debug command for testing purposes.");
+            return true;
+        }
+        
+        // Game management commands
+        if (strcmp(command, "save") == 0) {
+            printf("\nSAVE [description] - Save the current game state");
+            printf("\n  [description] - Optional description of the save (e.g., 'At Lave')");
+            printf("\n  Example: save Trading at Lave");
+            printf("\n  Note: Save files are timestamped and stored in the game directory.");
+            return true;
+        }
+        
+        if (strcmp(command, "load") == 0) {
+            printf("\nLOAD - List and load saved games");
+            printf("\n  Shows a list of available save files, sorted by most recent first.");
+            printf("\n  Enter the number of the save file to load when prompted.");
+            printf("\n  Note: Loading a save will discard your current game state.");
+            return true;
+        }
+        
+        if (strcmp(command, "quit") == 0 || strcmp(command, "q") == 0) {
+            printf("\nQUIT - Exit the game");
+            printf("\n  Exits the game without saving. Use 'save' first to preserve your progress.");
+            return true;
+        }
+        
+        // Debug commands
+        if (strcmp(command, "rand") == 0) {
+            printf("\nRAND - Toggle random number generator");
+            printf("\n  Switches between native and portable RNG implementations.");
+            printf("\n  This is a debug command for testing purposes.");
+            return true;
+        }
+        
+        if (strcmp(command, "sneak") == 0) {
+            printf("\nSNEAK <planetname> - Jump to another system without using fuel");
+            printf("\n  <planetname> - Name of the destination system");
+            printf("\n  Example: sneak Lave");
+            printf("\n  Note: This is a debug command for testing purposes.");
+            return true;
+        }
+        
+        if (strcmp(command, "info") == 0 || strcmp(command, "i") == 0) {
+            printf("\nINFO <planetname> - Display information about a system");
+            printf("\n  <planetname> - Name of the system to get information about");
+            printf("\n  Example: info Lave");
+            printf("\n  Shows economy, government, tech level, and other system details.");
+            return true;
+        }
+        
+        // If command not recognized, show general help
+        printf("\nUnknown command: %s", command);
+        printf("\nUse 'help' without parameters to see all available commands.");
+        return true;
+    }
+    
+    // Display general help categories
+    printf("\n=== TXTELITE COMMAND REFERENCE ===");
+    
+    printf("\n\nTRADING COMMANDS:");
+    printf("\n  buy   <good> <amount>   - Buy goods");
+    printf("\n  sell  <good> <amount>   - Sell goods");
+    printf("\n  mkt                     - Show current market prices, fuel, and cash");
+    
+    printf("\n\nINTERSTELLAR NAVIGATION:");
+    printf("\n  jump  <planetname>      - Jump to planet (uses fuel)");
+    printf("\n  fuel  <amount>          - Buy amount Light Years of fuel");
+    printf("\n  galhyp                  - Jump to the next galaxy");
+    printf("\n  local                   - List systems within 7 light years");
+    printf("\n  info  <planetname>      - Display information about a system");
+    
+    printf("\n\nSTAR SYSTEM NAVIGATION:");
+    printf("\n  system                  - Display detailed information about the current star system");
+    printf("\n  travel [destination]    - List destinations or travel within the system");
+    printf("\n  scan                    - Scan system for points of interest and travel times");
+    printf("\n  dock                    - Dock with a station if at a station location");
+    
+    printf("\n\nCARGO AND MONEY:");
+    printf("\n  hold  <amount>          - Set total cargo hold space in tonnes");
+    printf("\n  cash  <+/-amount>       - Adjust cash (e.g., cash +100.0 or cash -50.5)");
+    
+    printf("\n\nGAME MANAGEMENT:");
+    printf("\n  save  [description]     - Save the game with optional description");
+    printf("\n  load  [filename]        - List save games or load a specific save");
+    printf("\n  quit                    - Exit the game");
+    
+    printf("\n\nDEBUG COMMANDS:");
+    printf("\n  sneak <planetname>      - Jump to planet (no fuel cost, debug)");
+    printf("\n  rand                    - Toggle RNG between native and portable (debug)");
+    
+    printf("\n\nFor detailed help on any command, type 'help <command>'");
+    printf("\nAbbreviations allowed for most commands (e.g., b fo 5 for Buy Food 5, m for mkt).\n");
+    return true;
 }
 
 static inline bool do_save(char *commandArguments) 
@@ -445,4 +647,583 @@ static inline bool do_load(char *commandArguments)
     return false;
 }
 
+// =============================
+// Star System Commands
+// =============================
+
+// Displays detailed information about the current star system
+static inline bool do_system_info(char *commandArguments) {
+    (void)(commandArguments); // Unused parameter
+    
+    // Validate star system data
+    if (!CurrentStarSystem) {
+        printf("\nError: Star system data not available. System might not be properly initialized.");
+        return false;
+    }
+    
+    // Validate pointer to PlanSys data
+    if (!CurrentStarSystem->planSys) {
+        printf("\nError: Planet system data not available.");
+        return false;
+    }
+    
+    // Get current location information
+    char locBuffer[MAX_LEN];
+    get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
+    
+    // System header with basic information
+    printf("\n===================================================");
+    printf("\n             STAR SYSTEM: %s", CurrentStarSystem->planSys->name);
+    printf("\n===================================================");
+    
+    // Economic and political information
+    printf("\nEconomy: %s", EconNames[CurrentStarSystem->planSys->economy]);
+    printf("\nGovernment: %s", GovNames[CurrentStarSystem->planSys->govType]);
+    printf("\nTech Level: %d", CurrentStarSystem->planSys->techLev + 1);
+    printf("\nPopulation: %u Billion", (CurrentStarSystem->planSys->population) >> 3);
+    
+    // Star information with spectral classification
+    const char* spectralClasses[] = {"O", "B", "A", "F", "G", "K", "M"};
+    printf("\n\nStar: %s", CurrentStarSystem->centralStar.name);
+    if (CurrentStarSystem->centralStar.spectralClass < 7) {
+        printf("\n  Class: %s (%.1f solar masses, %.1f luminosity)", 
+               spectralClasses[CurrentStarSystem->centralStar.spectralClass],
+               CurrentStarSystem->centralStar.mass,
+               CurrentStarSystem->centralStar.luminosity);
+    }
+    
+    // Planets information
+    printf("\n\nPlanets: %d", CurrentStarSystem->numPlanets);
+    if (CurrentStarSystem->numPlanets > 0) {
+        // Planet type information for display
+        const char* planetTypes[] = {
+            "Rocky/Airless", "Terrestrial", "Gas Giant", "Ice Giant"
+        };
+        
+        for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++) {
+            Planet* planet = &CurrentStarSystem->planets[i];
+            if (!planet) {
+                printf("\n  %d. [Error: Invalid planet data]", i+1);
+                continue;
+            }
+            
+            // Planet basic info
+            printf("\n  %d. %s (%.2f AU)", i+1, planet->name, planet->orbitalDistance);
+            
+            // Planet type and physical characteristics
+            if (planet->type < 4) {
+                printf("\n     Type: %s", planetTypes[planet->type]);
+            } else {
+                printf("\n     Type: Unknown");
+            }
+            printf("\n     Radius: %.0f km", planet->radius);
+            
+            // Station information for this planet
+            if (planet->numStations > 0) {
+                printf("\n     Stations: %d", planet->numStations);
+                
+                bool hasValidStations = false;
+                for (uint8_t j = 0; j < planet->numStations; j++) {
+                    Station* station = planet->stations[j];
+                    if (!station) continue; // Skip NULL stations
+                    
+                    hasValidStations = true;
+                    // Station type information
+                    const char* stationTypes[] = {
+                        "Orbital", "Coriolis", "Ocellus"
+                    };
+                    
+                    printf("\n     %d.%d. %s (%.3f AU from planet)", i+1, j+1, 
+                           station->name, station->orbitalDistance);
+                    
+                    // Display station type if valid
+                    if (station->type < 3) {
+                        printf("\n          Type: %s", stationTypes[station->type]);
+                    }
+                    
+                    // List available services
+                    printf("\n          Services: ");
+                    if (station->hasMarket) printf("Market ");
+                    if (station->hasShipyard) printf("Shipyard ");
+                    if (station->hasMissions) printf("Missions ");
+                    if (station->hasDockingComputer) printf("DockingComputer ");
+                    if (!station->hasMarket && !station->hasShipyard && 
+                        !station->hasMissions && !station->hasDockingComputer) {
+                        printf("None");
+                    }
+                }
+                
+                if (!hasValidStations) {
+                    printf("\n     [No valid stations data]");
+                }
+            } else {
+                printf("\n     Stations: None");
+            }
+        }
+    } else {
+        printf("\n  (None)");
+    }
+    
+    // Nav Beacon information
+    printf("\n\nNav Beacon: %.2f AU from star", CurrentStarSystem->navBeaconDistance);
+    
+    // Current player location
+    printf("\n\nCurrent location: %s (%.2f AU from star)", locBuffer, PlayerNavState.distanceFromStar);
+    
+    // System time
+    char timeBuffer[MAX_LEN * 2];
+    game_time_get_formatted(timeBuffer, sizeof(timeBuffer));
+    printf("\n\nSystem Time: %s", timeBuffer);
+    
+    return true;
+}
+
+// Lists available destinations and allows travel within the system
+static inline bool do_travel(char *commandArguments) {
+    // Check if star system data is properly initialized
+    if (!CurrentStarSystem) {
+        printf("\nError: Star system data not available. System might not be properly initialized.");
+        return false;
+    }
+    
+    // Get current location information for display
+    char locBuffer[MAX_LEN];
+    get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
+    
+    // If no arguments provided, just list destinations
+    if (commandArguments == NULL || strlen(commandArguments) == 0 || 
+        strspn(commandArguments, " \t\n\r") == strlen(commandArguments)) {
+        
+        printf("\nCurrent location: %s (%.2f AU from star)", locBuffer, PlayerNavState.distanceFromStar);
+        printf("\n\nAvailable destinations:");
+        
+        // Star
+        printf("\n  0. %s (0.00 AU)", CurrentStarSystem->centralStar.name);
+        
+        // Planets and stations
+        for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++) {
+            Planet* planet = &CurrentStarSystem->planets[i];
+            if (!planet) {
+                printf("\n  %d. [Error: Invalid planet data]", i+1);
+                continue;
+            }
+            printf("\n  %d. %s (%.2f AU)", i+1, planet->name, planet->orbitalDistance);
+            
+            for (uint8_t j = 0; j < planet->numStations; j++) {
+                Station* station = planet->stations[j];
+                if (!station) {
+                    continue; // Skip invalid stations silently
+                }
+                printf("\n     %d.%d. %s (%.2f AU)", i+1, j+1, station->name, 
+                    planet->orbitalDistance + station->orbitalDistance);
+            }
+        }
+        
+        // Nav Beacon
+        printf("\n  N. Nav Beacon (%.2f AU)", CurrentStarSystem->navBeaconDistance);
+        
+        printf("\n\nUse 'travel <destination number>' to travel (e.g., 'travel 1' or 'travel 1.2' or 'travel N')");
+        return true;
+    }
+    
+    // Parse destination string, trimming whitespace
+    char destStr[MAX_LEN];
+    strncpy(destStr, commandArguments, sizeof(destStr) - 1);
+    destStr[sizeof(destStr) - 1] = '\0';
+    
+    // Trim leading and trailing whitespace
+    char* start = destStr;
+    char* end = destStr + strlen(destStr) - 1;
+    
+    while (*start && isspace((unsigned char)*start)) start++;
+    while (end > start && isspace((unsigned char)*end)) *end-- = '\0';
+    
+    if (start != destStr) {
+        memmove(destStr, start, strlen(start) + 1);
+    }
+    
+    // If destination string is empty after trimming
+    if (strlen(destStr) == 0) {
+        printf("\nNo destination specified. Use 'travel' to see available destinations.");
+        return false;
+    }
+    
+    // Check for Nav Beacon special case
+    if (destStr[0] == 'N' || destStr[0] == 'n') {
+        // Check if already at Nav Beacon
+        if (PlayerNavState.currentLocationType == CELESTIAL_NAV_BEACON) {
+            printf("\nAlready at Nav Beacon.");
+            return true;
+        }
+        
+        printf("\nTravelling to Nav Beacon...");
+        // Pass a dummy non-NULL pointer for consistency with the function signature
+        void* dummy = &CurrentStarSystem; // Using any valid address as a dummy
+        bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_NAV_BEACON, dummy);
+        if (result) {
+            printf("\nArrived at Nav Beacon (%.2f AU from star)", PlayerNavState.distanceFromStar);
+            return true;
+        } else {
+            printf("\nFailed to travel to Nav Beacon.");
+            return false;
+        }
+    }
+    
+    // Parse destination index(es) for planets and stations
+    int primaryIndex = -1;
+    int secondaryIndex = -1;
+    
+    // Check for format "1.2" (planet.station)
+    char* dotPos = strchr(destStr, '.');
+    if (dotPos) {
+        *dotPos = '\0'; // Split string at the dot
+        
+        // Validate that we have valid digits
+        for (char* p = destStr; *p; p++) {
+            if (!isdigit((unsigned char)*p)) {
+                printf("\nInvalid planet number: %s. Must be a number.", destStr);
+                return false;
+            }
+        }
+        
+        for (char* p = dotPos + 1; *p; p++) {
+            if (!isdigit((unsigned char)*p)) {
+                printf("\nInvalid station number: %s. Must be a number.", dotPos + 1);
+                return false;
+            }
+        }
+        
+        primaryIndex = atoi(destStr);
+        secondaryIndex = atoi(dotPos + 1);
+        
+        // Validate index ranges
+        if (primaryIndex <= 0) {
+            printf("\nInvalid planet number: %d. Must be a positive number.", primaryIndex);
+            return false;
+        }
+        
+        if (secondaryIndex <= 0) {
+            printf("\nInvalid station number: %d. Must be a positive number.", secondaryIndex);
+            return false;
+        }
+    } else {
+        // For just a planet or star, validate that we have valid digits or '0'
+        if (strcmp(destStr, "0") == 0) {
+            primaryIndex = 0;
+        } else {
+            for (char* p = destStr; *p; p++) {
+                if (!isdigit((unsigned char)*p)) {
+                    printf("\nInvalid destination number: %s. Must be a number or 'N' for Nav Beacon.", destStr);
+                    return false;
+                }
+            }
+            primaryIndex = atoi(destStr);
+            
+            if (primaryIndex < 0) {
+                printf("\nInvalid destination number: %d. Must be a non-negative number.", primaryIndex);
+                return false;
+            }
+        }
+    }
+    
+    // Special case for star (index 0)
+    if (primaryIndex == 0) {
+        // Check if already at star
+        if (PlayerNavState.currentLocationType == CELESTIAL_STAR) {
+            printf("\nAlready at %s.", CurrentStarSystem->centralStar.name);
+            return true;
+        }
+        
+        printf("\nTravelling to %s...", CurrentStarSystem->centralStar.name);
+        bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_STAR, 
+                                         &CurrentStarSystem->centralStar);
+        if (result) {
+            printf("\nArrived at %s (0.00 AU from star)", CurrentStarSystem->centralStar.name);
+            return true;
+        } else {
+            printf("\nFailed to travel to %s.", CurrentStarSystem->centralStar.name);
+            return false;
+        }
+    }
+    
+    // Adjust for 1-based indexing for planets
+    primaryIndex--;
+    
+    // Check if planet index is valid
+    if (primaryIndex < 0 || primaryIndex >= CurrentStarSystem->numPlanets) {
+        printf("\nInvalid destination. Planet number %d does not exist in this system.", primaryIndex + 1);
+        printf("\nThis system has %d planets. Use 'travel' to see available destinations.", 
+               CurrentStarSystem->numPlanets);
+        return false;
+    }
+    
+    Planet* planet = &CurrentStarSystem->planets[primaryIndex];
+    if (!planet) {
+        printf("\nError: Invalid planet data for planet %d.", primaryIndex + 1);
+        return false;
+    }
+    
+    // If no secondary index, travel to planet
+    if (secondaryIndex == -1) {
+        // Check if already at this planet
+        if (PlayerNavState.currentLocationType == CELESTIAL_PLANET && 
+            PlayerNavState.currentLocation.planet == planet) {
+            printf("\nAlready at %s.", planet->name);
+            return true;
+        }
+        
+        printf("\nTravelling to %s...", planet->name);
+        bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_PLANET, planet);
+        if (result) {
+            printf("\nArrived at %s (%.2f AU from star)", planet->name, PlayerNavState.distanceFromStar);
+            return true;
+        } else {
+            printf("\nFailed to travel to %s.", planet->name);
+            return false;
+        }
+    }
+    
+    // Adjust for 1-based indexing for stations
+    secondaryIndex--;
+    
+    // Check if station index is valid
+    if (secondaryIndex < 0 || secondaryIndex >= planet->numStations) {
+        printf("\nInvalid station. Planet %s has %d stations (numbered 1 to %d).", 
+               planet->name, planet->numStations, planet->numStations);
+        return false;
+    }
+    
+    Station* station = planet->stations[secondaryIndex];
+    if (!station) {
+        printf("\nError: Station data not available for station %d of planet %s.", 
+               secondaryIndex + 1, planet->name);
+        return false;
+    }
+    
+    // Check if already at this station
+    if (PlayerNavState.currentLocationType == CELESTIAL_STATION && 
+        PlayerNavState.currentLocation.station == station) {
+        printf("\nAlready at %s.", station->name);
+        return true;
+    }
+    
+    printf("\nTravelling to %s...", station->name);
+    bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_STATION, station);
+    if (result) {
+        printf("\nArrived at %s (%.2f AU from star)", station->name, PlayerNavState.distanceFromStar);
+        return true;
+    } else {
+        printf("\nFailed to travel to %s.", station->name);
+        return false;
+    }
+}
+
+// Scans the current system for points of interest
+static inline bool do_scan(char *commandArguments) {
+    (void)(commandArguments); // Unused parameter
+    
+    // Check if star system data is available
+    if (!CurrentStarSystem) {
+        printf("\nError: Star system data not available. System might not be properly initialized.");
+        return false;
+    }
+    
+    char locBuffer[MAX_LEN];
+    get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
+    
+    printf("\n==== SYSTEM SCAN: %s ====", CurrentStarSystem->planSys->name);
+    printf("\nCurrent location: %s (%.2f AU from star)", locBuffer, PlayerNavState.distanceFromStar);
+    
+    // Display distances to all points of interest
+    printf("\n\nDistances to points of interest:");
+    
+    // Star
+    double distToStar = PlayerNavState.distanceFromStar;
+    printf("\n  Star: %.2f AU", distToStar);
+    
+    // Planets and stations
+    for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++) {
+        Planet* planet = &CurrentStarSystem->planets[i];
+        if (!planet) {
+            printf("\n  Planet %d: [Error: Invalid planet data]", i+1);
+            continue;
+        }
+        
+        double distToPlanet = fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
+        printf("\n  %s: %.2f AU", planet->name, distToPlanet);
+        
+        bool hasValidStations = false;
+        for (uint8_t j = 0; j < planet->numStations; j++) {
+            Station* station = planet->stations[j];
+            if (!station) continue; // Skip invalid stations
+            
+            hasValidStations = true;
+            double stationDist = planet->orbitalDistance + station->orbitalDistance;
+            double distToStation = fabs(PlayerNavState.distanceFromStar - stationDist);
+            printf("\n     %s: %.2f AU", station->name, distToStation);
+        }
+        
+        if (planet->numStations > 0 && !hasValidStations) {
+            printf("\n     [No valid stations]");
+        }
+    }
+    
+    // Nav Beacon
+    double distToNavBeacon = fabs(PlayerNavState.distanceFromStar - CurrentStarSystem->navBeaconDistance);
+    printf("\n  Nav Beacon: %.2f AU", distToNavBeacon);
+    
+    // Calculate travel times to each destination
+    printf("\n\nEstimated travel times:");
+    
+    // Star
+    uint32_t timeToStar = calculate_travel_time(PlayerNavState.distanceFromStar, 0.0);
+    printf("\n  Star: %u minutes", timeToStar / 60);
+    
+    // Planets and stations
+    for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++) {
+        Planet* planet = &CurrentStarSystem->planets[i];
+        if (!planet) continue;
+        
+        uint32_t timeToPlanet = calculate_travel_time(PlayerNavState.distanceFromStar, planet->orbitalDistance);
+        printf("\n  %s: %u minutes", planet->name, timeToPlanet / 60);
+        
+        for (uint8_t j = 0; j < planet->numStations; j++) {
+            Station* station = planet->stations[j];
+            if (!station) continue; // Skip invalid stations
+            
+            double stationDist = planet->orbitalDistance + station->orbitalDistance;
+            uint32_t timeToStation = calculate_travel_time(PlayerNavState.distanceFromStar, stationDist);
+            printf("\n     %s: %u minutes", station->name, timeToStation / 60);
+        }
+    }
+    
+    // Nav Beacon
+    uint32_t timeToNavBeacon = calculate_travel_time(PlayerNavState.distanceFromStar, CurrentStarSystem->navBeaconDistance);
+    printf("\n  Nav Beacon: %u minutes", timeToNavBeacon / 60);
+    
+    // Display current game time
+    char timeBuffer[MAX_LEN * 2];
+    game_time_get_formatted(timeBuffer, sizeof(timeBuffer));
+    printf("\n\nGame Time: %s", timeBuffer);
+    
+    // Small time cost for performing a scan (1 minute)
+    game_time_advance(60);
+    printf("\n\nScan complete. Elapsed time: 1 minute.");
+    
+    return true;
+}
+
+// Docks with a station if at a station location
+static inline bool do_dock(char *commandArguments) {
+    (void)(commandArguments); // Unused parameter
+    
+    // Validate star system data
+    if (!CurrentStarSystem) {
+        printf("\nError: Star system data not available. System might not be properly initialized.");
+        return false;
+    }
+    
+    // Check the player's current location type
+    if (PlayerNavState.currentLocationType != CELESTIAL_STATION) {
+        // Provide a helpful message based on current location
+        char locBuffer[MAX_LEN];
+        get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
+        
+        printf("\nCannot dock: Not at a station. You are currently at %s.", locBuffer);
+        printf("\nUse 'travel' to navigate to a station first.");
+        
+        // List nearby stations as a convenience
+        bool stationsFound = false;
+        printf("\n\nNearby stations:");
+        
+        for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++) {
+            Planet* planet = &CurrentStarSystem->planets[i];
+            if (!planet) continue;
+            
+            for (uint8_t j = 0; j < planet->numStations; j++) {
+                Station* station = planet->stations[j];
+                if (!station) continue;
+                
+                double stationDist = planet->orbitalDistance + station->orbitalDistance;
+                double distToStation = fabs(PlayerNavState.distanceFromStar - stationDist);
+                
+                // Show stations within 1 AU as "nearby"
+                if (distToStation <= 1.0) {
+                    printf("\n  %s (%.2f AU away) - Use 'travel %d.%d' to reach", 
+                           station->name, distToStation, i+1, j+1);
+                    stationsFound = true;
+                }
+            }
+        }
+        
+        if (!stationsFound) {
+            printf("\n  No stations within 1 AU. Use 'scan' to find all stations in the system.");
+        }
+        
+        return false;
+    }
+    
+    // Validate station data
+    Station* station = PlayerNavState.currentLocation.station;
+    if (!station) {
+        printf("\nError: Station data not available. Cannot complete docking procedure.");
+        return false;
+    }
+    
+    // Find the parent planet for better location context
+    Planet* parentPlanet = NULL;
+    for (uint8_t i = 0; i < CurrentStarSystem->numPlanets && !parentPlanet; i++) {
+        Planet* planet = &CurrentStarSystem->planets[i];
+        if (!planet) continue;
+        
+        for (uint8_t j = 0; j < planet->numStations; j++) {
+            if (planet->stations[j] == station) {
+                parentPlanet = planet;
+                break;
+            }
+        }
+    }
+    
+    // Docking procedure and feedback
+    printf("\nDocking at %s...", station->name);
+    
+    // Small time delay for docking
+    game_time_advance(60); // 1 minute
+    
+    printf("\nDocked successfully. Welcome to %s!", station->name);
+    
+    // If we have parent planet info, display it
+    if (parentPlanet) {
+        printf("\nLocation: Orbiting %s", parentPlanet->name);
+    }
+    
+    // Display available services
+    printf("\n\nAvailable services:");
+    if (station->hasMarket) {
+        printf("\n- Market (use 'mkt', 'buy', 'sell' commands)");
+    }
+    if (station->hasShipyard) {
+        printf("\n- Shipyard (equipment upgrades available)");
+    }
+    if (station->hasMissions) {
+        printf("\n- Mission Board (missions available)");
+    }
+    if (station->hasDockingComputer) {
+        printf("\n- Docking Computer Installation");
+    }
+    
+    // If no services are available
+    if (!station->hasMarket && !station->hasShipyard && 
+        !station->hasMissions && !station->hasDockingComputer) {
+        printf("\n- No services available at this station");
+    }
+    
+    // Additional contextual information
+    printf("\n\nLocal system time: ");
+    char timeBuffer[MAX_LEN * 2];
+    game_time_get_formatted(timeBuffer, sizeof(timeBuffer));
+    printf("%s", timeBuffer);
+    
+    return true;
+}
 #endif // ELITE_COMMANDS_H

@@ -1,10 +1,18 @@
 #ifndef ELITE_PLAYER_STATE_H
 #define ELITE_PLAYER_STATE_H
 
+#include "elite_navigation_types.h" // For NavigationState and CelestialType
+#include "elite_star_system.h" // For StarSystem, Star, Planet, and Station definitions
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include "elite_market.h" // For generate_market(), init_tradnames()
 #include "elite_galaxy.h" // For build_galaxy_data()
 #include "elite_utils.h"  // For minimum_value
+
+extern NavigationState PlayerNavState;
+extern StarSystem* CurrentStarSystem;
+
+// Forward declaration for the function used in initialize_player_state
+static inline void initialize_star_system_for_current_planet(void);
 
 // Initializes the player's state at the beginning of the game.
 static inline void initialize_player_state(void) {
@@ -36,6 +44,34 @@ static inline void initialize_player_state(void) {
 
     // Initialize the tradenames array for command parsing
     init_tradnames();
+    
+    // Initialize star system for the current planet
+    initialize_star_system_for_current_planet();
+}
+
+// Initializes the star system for the current planet.
+// Call this when switching planets (e.g., after hyperspace jumps).
+static inline void initialize_star_system_for_current_planet(void) {
+    // Clean up any existing star system
+    if (CurrentStarSystem != NULL) {
+        cleanup_star_system(CurrentStarSystem);
+        free(CurrentStarSystem);
+        CurrentStarSystem = NULL;
+    }
+      // Allocate a new star system
+    CurrentStarSystem = (StarSystem*)malloc(sizeof(StarSystem));
+    if (CurrentStarSystem == NULL) {
+        printf("Error: Could not allocate memory for star system!\n");
+        return;
+    }
+    
+    // Initialize the star system with the current planet's data
+    initialize_star_system(CurrentStarSystem, &Galaxy[CurrentPlanet]);
+      // Initialize navigation state - default position at the main planet
+    memset(&PlayerNavState, 0, sizeof(NavigationState));
+    PlayerNavState.currentLocationType = CELESTIAL_PLANET;
+    PlayerNavState.currentLocation.planet = get_planet_by_index(CurrentStarSystem, 0);
+    PlayerNavState.distanceFromStar = PlayerNavState.currentLocation.planet->orbitalDistance;
 }
 
 // Calculates how much fuel can be bought with the available cash.

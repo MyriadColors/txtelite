@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>  // For static_assert
+#include "elite_navigation_types.h" // For NavigationState
 
 // =====================================
 // Type Definitions
@@ -41,7 +42,7 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 #define COMMODITY_ARRAY_SIZE (ALIEN_ITEMS_IDX + 1) // Total size for commodity-related arrays
 
 // Other game constants
-#define NUM_COMMANDS 24            // Number of commands in the commands array
+#define NUM_COMMANDS 28            // Number of commands in the commands array
 #define GOV_MAX_COUNT 8            // Number of government types
 #define ECON_MAX_COUNT 8           // Number of economy types
 
@@ -63,6 +64,7 @@ static_assert(GAL_SIZE == 256, "Galaxy size must be 256");
 // =====================================
 // Forward declarations
 struct FastSeedType;
+struct StarSystem;
 
 // Struct definitions
 struct FastSeedType {
@@ -131,10 +133,83 @@ extern uint16_t HoldSpace;
 extern int FuelCost;
 extern int MaxFuel;
 
+// Star System Navigation State
+extern struct StarSystem* CurrentStarSystem;
+extern NavigationState PlayerNavState;
+
 // Names and descriptors
 extern char GovNames[GOV_MAX_COUNT][MAX_LEN];
 extern char EconNames[ECON_MAX_COUNT][MAX_LEN];
 extern char tradnames[LAST_TRADE + 1][MAX_LEN];
+
+// Declaration of the global game time variable (in seconds)
+extern uint64_t GameTime_seconds;
+
+// --- Game Time Functions ---
+
+/**
+ * Initializes the game time to zero.
+ * Should be called when starting a new game.
+ */
+static inline void game_time_initialize(void) {
+    GameTime_seconds = 0;
+}
+
+/**
+ * Advances the game time by a specified number of seconds.
+ * @param seconds_to_add The number of seconds to add to the current game time.
+ */
+static inline void game_time_advance(uint32_t seconds_to_add) {
+    if (seconds_to_add > 0) { // Basic check
+        GameTime_seconds += seconds_to_add;
+    }
+}
+
+/**
+ * Gets the current total game time in seconds.
+ * @return The current game time in seconds.
+ */
+static inline uint64_t game_time_get_seconds(void) {
+    return GameTime_seconds;
+}
+
+/**
+ * Formats the current game time into a human-readable string.
+ * Format: "Year: Y, Day: D, HH:MM:SS"
+ * @param buffer The character buffer to write the formatted time string to.
+ * @param buffer_size The size of the buffer.
+ */
+static inline void game_time_get_formatted(char* buffer, size_t buffer_size) {
+    if (buffer == NULL || buffer_size == 0) {
+        return;
+    }
+
+    uint64_t time_val = GameTime_seconds;
+
+    const uint64_t secs_in_minute = 60;
+    const uint64_t secs_in_hour = 60 * secs_in_minute;
+    const uint64_t secs_in_day = 24 * secs_in_hour;
+    // Using a simplified year for game purposes.
+    const uint64_t secs_in_year = 365 * secs_in_day; 
+
+    uint64_t years = time_val / secs_in_year;
+    time_val %= secs_in_year;
+
+    uint64_t days = time_val / secs_in_day;
+    time_val %= secs_in_day;
+
+    uint64_t hours = time_val / secs_in_hour;
+    time_val %= secs_in_hour;
+
+    uint64_t minutes = time_val / secs_in_minute;
+    time_val %= secs_in_minute;
+
+    uint64_t current_seconds = time_val;
+
+    snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu",
+             (unsigned long long)years, (unsigned long long)days, 
+             (unsigned long long)hours, (unsigned long long)minutes, (unsigned long long)current_seconds);
+}
 
 // =====================================
 // Global Variable Definitions
@@ -175,5 +250,11 @@ char EconNames[ECON_MAX_COUNT][MAX_LEN] = {
 };
 
 char tradnames[LAST_TRADE + 1][MAX_LEN];
+
+uint64_t GameTime_seconds;
+
+// Star System Navigation State
+struct StarSystem* CurrentStarSystem = NULL;
+NavigationState PlayerNavState;
 
 #endif // ELITE_STATE_H

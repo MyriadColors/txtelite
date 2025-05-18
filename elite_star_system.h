@@ -569,13 +569,12 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
         fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
         return false;
     }    // Calculate travel time
-    uint32_t travelTime = calculate_travel_time(startDistance, endDistance);
-
-    // Calculate energy requirement for travel
+    uint32_t travelTime = calculate_travel_time(startDistance, endDistance);    // Calculate energy requirement for travel
     double distanceDelta = fabs(endDistance - startDistance);
     double energyRequired = calculate_travel_energy_requirement(distanceDelta);
+    double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
     
-    // Check if player ship has enough energy
+    // Check if player ship has enough energy and fuel
     extern struct PlayerShip *PlayerShipPtr;
     if (PlayerShipPtr != NULL)
     {
@@ -588,9 +587,27 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
             return false;
         }
         
+        // Check if there's enough fuel
+        if (PlayerShipPtr->attributes.fuelLiters < fuelRequired)
+        {
+            fprintf(stderr, "Error: Insufficient fuel for travel.\n");
+            printf("\nTravel aborted: Insufficient fuel.\n");
+            printf("Required: %.3f liters, Available: %.1f liters\n", fuelRequired, PlayerShipPtr->attributes.fuelLiters);
+            return false;
+        }
+        
         // Consume energy
         PlayerShipPtr->attributes.energyBanks -= energyRequired;
-        printf("\nTravel energy consumed: %.1f units\n", energyRequired);
+        
+        // Consume fuel
+        PlayerShipPtr->attributes.fuelLiters -= fuelRequired;
+        
+        // Update global Fuel variable (in 0.1 LY units)
+        extern uint16_t Fuel;
+        Fuel = (uint16_t)(PlayerShipPtr->attributes.fuelLiters / 10.0);
+        
+        printf("\nTravel energy consumed: %.1f units", energyRequired);
+        printf("\nTravel fuel consumed: %.3f liters (%.5f LY)", fuelRequired, fuelRequired / 100.0);
     }
 
     // Update game time

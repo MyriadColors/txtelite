@@ -35,3 +35,11 @@ static inline double calculate_travel_energy_requirement(double distanceInAU)
     // This is an example formula that can be adjusted for game balance
     return distanceInAU * 10.0;
 }
+
+// Calculates fuel requirement for in-system travel based on distance
+static inline double calculate_travel_fuel_requirement(double distanceInAU)
+{
+    // Base fuel requirement: 0.025 liters per AU
+    // This is much less than hyperspace travel which consumes ~10 liters per 0.1 LY
+    return distanceInAU * 0.025;
+}

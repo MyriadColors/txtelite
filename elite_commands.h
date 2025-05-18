@@ -98,8 +98,14 @@ static inline bool do_jump(char *commandArguments)
 			printf("\nHyperspace stress caused minor hull damage (-%d)", damageTaken);
 		}
 	}
-
 	Fuel -= d;
+	
+	// Make sure ship's fuel value is consistent with global Fuel if ship exists
+	if (PlayerShipPtr != NULL) {
+		// Sync the ship's fuel with the global value (exact match)
+		PlayerShipPtr->attributes.fuelLiters = Fuel * 10.0f;
+	}
+	
 	execute_jump_to_planet(dest);
 	print_system_info(Galaxy[CurrentPlanet], false);
 	return true;
@@ -516,9 +522,9 @@ static inline bool do_help(char *commandArguments)
 			printf("\n    N       - Travel to the Nav Beacon");
 			printf("\n  Example: travel 2    - Travel to the second planet");
 			printf("\n  Example: travel 1.3  - Travel to the third station orbiting the first planet");
-			printf("\n  Example: travel N    - Travel to the Nav Beacon");
-			printf("\n  Note: Travel consumes game time based on distance and energy based on distance.");
+			printf("\n  Example: travel N    - Travel to the Nav Beacon");			printf("\n  Note: Travel consumes game time based on distance and energy based on distance.");
 			printf("\n        Energy requirements are calculated at a rate of 1 energy unit per 0.1 AU.");
+			printf("\n        Fuel is also consumed at a rate of 0.025 liters per AU.");
 			return true;
 		}
 		if (strcmp(command, "dock") == 0 || strcmp(command, "d") == 0)
@@ -1031,9 +1037,10 @@ static inline bool do_system_info(char *commandArguments)
 			double distToPlanet = fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
 			uint32_t timeToPlanet = calculate_travel_time(PlayerNavState.distanceFromStar, planet->orbitalDistance);
 			double energyToPlanet = calculate_travel_energy_requirement(distToPlanet);
-			printf("\n  %d. %s (%.2f AU from star, %.2f AU away, %u min travel, %.1f energy required)", 
+			double fuelToPlanet = calculate_travel_fuel_requirement(distToPlanet);
+			printf("\n  %d. %s (%.2f AU from star, %.2f AU away, %u min travel, %.1f energy, %.3f fuel L required)", 
 			       i + 1, planet->name, planet->orbitalDistance, 
-			       distToPlanet, timeToPlanet / 60, energyToPlanet);
+			       distToPlanet, timeToPlanet / 60, energyToPlanet, fuelToPlanet);
 
 			// Planet type and physical characteristics
 			if (planet->type < 4)
@@ -1059,15 +1066,15 @@ static inline bool do_system_info(char *commandArguments)
 					hasValidStations = true;
 					// Station type information
 					const char *stationTypes[] = {
-						"Orbital", "Coriolis", "Ocellus"};
-							double stationDistAbsolute = planet->orbitalDistance + station->orbitalDistance;
+						"Orbital", "Coriolis", "Ocellus"};							double stationDistAbsolute = planet->orbitalDistance + station->orbitalDistance;
 					double distToStation = fabs(PlayerNavState.distanceFromStar - stationDistAbsolute);
 					uint32_t timeToStation = calculate_travel_time(PlayerNavState.distanceFromStar, stationDistAbsolute);
 					double energyToStation = calculate_travel_energy_requirement(distToStation);
+					double fuelToStation = calculate_travel_fuel_requirement(distToStation);
 
-					printf("\n     %d.%d. %s (%.3f AU from planet, %.2f AU away, %u min travel, %.1f energy required)", 
+					printf("\n     %d.%d. %s (%.3f AU from planet, %.2f AU away, %u min travel, %.1f energy required, %.3f fuel L required)", 
                                            i + 1, j + 1, station->name, station->orbitalDistance, 
-                                           distToStation, timeToStation / 60, energyToStation);
+                                           distToStation, timeToStation / 60, energyToStation, fuelToStation);
 
 					// Display station type if valid
 					if (station->type < 3)
@@ -1105,13 +1112,14 @@ static inline bool do_system_info(char *commandArguments)
 	else
 	{
 		printf("\n  (None)");
-	}	// Nav Beacon information
+	}		// Nav Beacon information
 	double distToNavBeacon = fabs(PlayerNavState.distanceFromStar - CurrentStarSystem->navBeaconDistance);
 	uint32_t timeToNavBeacon = calculate_travel_time(PlayerNavState.distanceFromStar, CurrentStarSystem->navBeaconDistance);
 	double energyToNavBeacon = calculate_travel_energy_requirement(distToNavBeacon);
-	printf("\n\nNav Beacon: %.2f AU from star (%.2f AU away, %u min travel, %.1f energy required)", 
+	double fuelToNavBeacon = calculate_travel_fuel_requirement(distToNavBeacon);
+	printf("\n\nNav Beacon: %.2f AU from star (%.2f AU away, %u min travel, %.1f energy required, %.3f fuel L required)", 
 	       CurrentStarSystem->navBeaconDistance, distToNavBeacon, 
-	       timeToNavBeacon / 60, energyToNavBeacon);
+	       timeToNavBeacon / 60, energyToNavBeacon, fuelToNavBeacon);
 	printf("\n  Travel code: N");
 
 	// Current player location
@@ -1120,9 +1128,10 @@ static inline bool do_system_info(char *commandArguments)
 	double distToStar = PlayerNavState.distanceFromStar;
 	uint32_t timeToStar = calculate_travel_time(PlayerNavState.distanceFromStar, 0.0);
 	double energyToStar = calculate_travel_energy_requirement(distToStar);
-	printf("\nDistance to Star (%s): %.2f AU, %u min travel, %.1f energy required", 
+	double fuelToStar = calculate_travel_fuel_requirement(distToStar);
+	printf("\nDistance to Star (%s): %.2f AU, %u min travel, %.1f energy required, %.3f fuel L required", 
 	       CurrentStarSystem->centralStar.name, 
-	       distToStar, timeToStar / 60, energyToStar);
+	       distToStar, timeToStar / 60, energyToStar, fuelToStar);
 	printf("\n  Travel code: 0");
 	
 	// Add travel hint
@@ -1229,12 +1238,12 @@ static inline bool do_travel(char *commandArguments)
 			printf("\nAlready at Nav Beacon.");
 			return true;
 		}
-
 		// Calculate energy requirement
 		double distanceDelta = fabs(PlayerNavState.distanceFromStar - CurrentStarSystem->navBeaconDistance);
 		double energyRequired = calculate_travel_energy_requirement(distanceDelta);
+		double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 		
-		printf("\nTravelling to Nav Beacon... (Energy required: %.1f units)", energyRequired);
+		printf("\nTravelling to Nav Beacon... (Energy required: %.1f units, Fuel required: %.3f liters)", energyRequired, fuelRequired);
 		
 		// Pass a dummy non-NULL pointer for consistency with the function signature
 		void *dummy = &CurrentStarSystem; // Using any valid address as a dummy
@@ -1331,12 +1340,12 @@ static inline bool do_travel(char *commandArguments)
 			printf("\nAlready at %s.", CurrentStarSystem->centralStar.name);
 			return true;
 		}
-
 		// Calculate energy requirement
 		double distanceDelta = PlayerNavState.distanceFromStar; // Distance to star is just current distance
 		double energyRequired = calculate_travel_energy_requirement(distanceDelta);
+		double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-		printf("\nTravelling to %s... (Energy required: %.1f units)", CurrentStarSystem->centralStar.name, energyRequired);
+		printf("\nTravelling to %s... (Energy required: %.1f units, Fuel required: %.3f liters)", CurrentStarSystem->centralStar.name, energyRequired, fuelRequired);
 		bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_STAR,
 										  &CurrentStarSystem->centralStar);
 		if (result)
@@ -1379,12 +1388,12 @@ static inline bool do_travel(char *commandArguments)
 			printf("\nAlready at %s.", planet->name);
 			return true;
 		}
-
 		// Calculate energy requirement
 		double distanceDelta = fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
 		double energyRequired = calculate_travel_energy_requirement(distanceDelta);
+		double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-		printf("\nTravelling to %s... (Energy required: %.1f units)", planet->name, energyRequired);
+		printf("\nTravelling to %s... (Energy required: %.1f units, Fuel required: %.3f liters)", planet->name, energyRequired, fuelRequired);
 		bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_PLANET, planet);
 		if (result)
 		{
@@ -1423,13 +1432,13 @@ static inline bool do_travel(char *commandArguments)
 		printf("\nAlready at %s.", station->name);
 		return true;
 	}
-
 	// Calculate energy requirement
 	double stationDistance = planet->orbitalDistance + station->orbitalDistance;
 	double distanceDelta = fabs(PlayerNavState.distanceFromStar - stationDistance);
 	double energyRequired = calculate_travel_energy_requirement(distanceDelta);
+	double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-	printf("\nTravelling to %s... (Energy required: %.1f units)", station->name, energyRequired);
+	printf("\nTravelling to %s... (Energy required: %.1f units, Fuel required: %.3f liters)", station->name, energyRequired, fuelRequired);
 	bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_STATION, station);
 	if (result)
 	{
@@ -1992,6 +2001,9 @@ static inline bool do_ship_status(char *commandArguments)
         printf("\nError: Ship data is not available.");
         return false;
     }
+    
+    // Note: We don't synchronize fuel here as the ship's fuel value should be more precise
+    // and is the source of truth after travel operations
 
     // Display basic ship information
     printf("\n=== Ship Status: %s (%s) ===", 
@@ -2083,6 +2095,10 @@ static inline bool do_ship_details(char *commandArguments)
         printf("\nError: Ship data is not available.");
         return false;
     }
+    
+    // Synchronize ship fuel with global state before displaying details
+    extern uint16_t Fuel;
+    PlayerShipPtr->attributes.fuelLiters = Fuel * 10.0; // Convert game units to liters
 
     // Call the detailed ship status display function from elite_ship_types.h
     DisplayShipStatus(PlayerShipPtr);

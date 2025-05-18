@@ -2,7 +2,7 @@ txtelite
 main.exe
 .vscode
 *.sav
-implementation_plan.md
 design.md
 .github
-ship_system_design.md
+*.md
+!readme.md

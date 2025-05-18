@@ -2,7 +2,9 @@
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include "elite_utils.h"  // For minimum_value
+#include "elite_ship_types.h" // For PlayerShip structure
 #include <math.h>         // For floor (used in execute_buy_order)
+#include <string.h>       // For string operations (strcpy, strncpy)
 
 // This macro was originally with the Commodities array definition
 #define POLITICALLY_CORRECT 0
@@ -161,4 +163,61 @@ static inline uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount) {
         }
     }
     return t;
+}
+
+/**
+ * Synchronizes cargo between the global ShipHold array and the PlayerShip cargo system.
+ * This ensures that both systems have consistent cargo information.
+ * 
+ * @param playerShip Pointer to the PlayerShip structure to synchronize with
+ * @return true if synchronization was successful, false otherwise
+ */
+static inline bool SynchronizeCargoSystems(struct PlayerShip* playerShip) {    if (playerShip == NULL) {
+        return false;
+    }
+    
+    // Clear current cargo in the PlayerShip structure
+    for (int i = 0; i < MAX_CARGO_SLOTS; ++i) {
+        playerShip->cargo[i].quantity = 0;
+        strcpy(playerShip->cargo[i].name, "Empty");
+        playerShip->cargo[i].purchasePrice = 0;
+    }
+    
+    // Reset current cargo tons
+    playerShip->attributes.currentCargoTons = 0;
+    
+    // Transfer cargo from ShipHold to PlayerShip
+    for (uint16_t i = 0; i <= LAST_TRADE; ++i) {
+        if (ShipHold[i] > 0) {
+            // Find empty slot in PlayerShip
+            int emptySlot = -1;
+            for (int j = 0; j < MAX_CARGO_SLOTS; ++j) {
+                if (playerShip->cargo[j].quantity == 0) {
+                    emptySlot = j;
+                    break;
+                }
+            }
+            
+            if (emptySlot >= 0) {
+                // Copy the cargo into the player ship
+                strncpy(playerShip->cargo[emptySlot].name, tradnames[i], MAX_SHIP_NAME_LENGTH - 1);
+                playerShip->cargo[emptySlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+                playerShip->cargo[emptySlot].quantity = ShipHold[i];
+                
+                // For simplicity, use the current market price as the purchase price
+                playerShip->cargo[emptySlot].purchasePrice = LocalMarket.price[i] / 10; // Convert from internal to display units
+                
+                // Update current cargo tons if it's measured in tons
+                if (Commodities[i].units == TONNES_UNIT) {
+                    playerShip->attributes.currentCargoTons += ShipHold[i];
+                }
+            } else {
+                // This should not happen if MAX_CARGO_SLOTS is large enough
+                printf("Warning: Not enough cargo slots to synchronize cargo.\n");
+                return false;
+            }
+        }
+    }
+    
+    return true;
 }

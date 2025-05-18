@@ -227,6 +227,11 @@ static inline bool do_sell(char *commandArguments)
 	else
 	{
 		printf("\nSelling %i%s of %s", t, UnitNames[Commodities[i].units], tradnames[i]);
+		
+	// Synchronize the cargo systems after selling
+		if (PlayerShipPtr != NULL) {
+			SynchronizeCargoSystems(PlayerShipPtr);
+		}
 	}
 	return true;
 }
@@ -259,6 +264,10 @@ static inline bool do_buy(char *commandArguments)
 	else
 	{
 		printf("\nBuying %i%s of %s", t, UnitNames[Commodities[i].units], tradnames[i]);
+				// Synchronize the cargo systems after buying
+		if (PlayerShipPtr != NULL) {
+			SynchronizeCargoSystems(PlayerShipPtr);
+		}
 	}
 	return true;
 }

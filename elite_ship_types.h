@@ -1,28 +1,50 @@
 #pragma once
 
-// include elite_ship_upgrades.h at the end for upgrade functionality
-// #include "elite_ship_upgrades.h" // Moved to end of file to avoid circular dependencies
 #include <stddef.h>  // For NULL
 #include <stdint.h>  // For uint16_t, int32_t
 #include <stdbool.h> // For bool
 #include <string.h>  // For string functions
 #include <stdio.h>   // For printf
 
-// TODO: Keep this file in sync with elite_ship_equipment.h and elite_ship_cargo.h
-
-// --- Constants ---
-// Cobra Mk III Base Values
-const int COBRA_MK3_BASE_HULL_STRENGTH = 100;       // Example value
-const double COBRA_MK3_BASE_ENERGY_BANKS = 100.0;   // Example value
-const double COBRA_MK3_BASE_SHIELD_STRENGTH = 50.0; // Example value, assuming combined for now
-const double COBRA_MK3_MAX_FUEL_LY = 7.0;
-const int COBRA_MK3_BASE_CARGO_CAPACITY_TONS = 20;
-const int COBRA_MK3_INITIAL_MISSILE_PYLONS = 0;
+// Forward declaration 
+typedef struct ShipType ShipType;
 
 // --- Constants for Equipment Types ---
 #define MAX_SHIP_NAME_LENGTH 64
 #define MAX_EQUIPMENT_SLOTS 10 // Max possible equipment slots
 #define MAX_CARGO_SLOTS 50     // Max types of cargo a ship can hold
+
+// Backward compatibility constants for Cobra Mk III
+// These will be used in places where the code still references the old constants
+#define COBRA_MK3_BASE_HULL_STRENGTH 100
+#define COBRA_MK3_BASE_ENERGY_BANKS 100.0
+#define COBRA_MK3_BASE_SHIELD_STRENGTH 50.0
+#define COBRA_MK3_MAX_FUEL_LY 7.0
+#define COBRA_MK3_BASE_CARGO_CAPACITY_TONS 20
+
+/**
+ * Structure defining a ship type with its base specifications
+ */
+typedef struct ShipType
+{
+    char className[MAX_SHIP_NAME_LENGTH];       // e.g., "Cobra Mk III"
+    int baseHullStrength;                       // Base hull strength
+    double baseEnergyBanks;                     // Base energy capacity
+    double baseShieldStrengthFront;             // Base front shield strength
+    double baseShieldStrengthAft;               // Base aft shield strength
+    double maxFuelLY;                           // Maximum fuel capacity in LY
+    int baseCargoCapacityTons;                  // Base cargo capacity in tons
+    int initialMissilePylons;                   // Initial missile pylons
+    double baseCost;                            // Base cost in credits
+    int baseSpeed;                              // Base speed
+    int baseManeuverability;                    // Base maneuverability (higher is better)
+    int defaultWeaponSlots;                     // Number of default weapon slots
+    int defaultDefensiveSlots;                  // Number of default defensive slots
+    int defaultUtilitySlots;                    // Number of default utility slots
+    bool hasStandardHyperdrive;                 // Whether ship has a standard hyperdrive
+    bool hasStandardShields;                    // Whether ship has standard shields
+    bool includesPulseLaser;                    // Whether ship comes with a pulse laser
+} ShipType;
 
 // --- Enumerations ---
 
@@ -116,6 +138,200 @@ typedef struct CargoItem
     // Future: legality, volatility
 } CargoItem;
 
+// Maximum number of ship types that can be registered
+#define MAX_SHIP_TYPES 32
+
+/**
+ * Ship registry to store all available ship types
+ */
+typedef struct ShipRegistry
+{
+    ShipType shipTypes[MAX_SHIP_TYPES];       // Array to store all ship types
+    int registeredShipCount;                  // Number of registered ship types
+} ShipRegistry;
+
+// The global ship registry
+static ShipRegistry shipRegistry = { .registeredShipCount = 0 };
+
+/**
+ * Register a new ship type in the registry
+ * 
+ * @param className Name of the ship class
+ * @param baseHullStrength Base hull strength
+ * @param baseEnergyBanks Base energy capacity
+ * @param baseShieldStrengthFront Base front shield strength
+ * @param baseShieldStrengthAft Base aft shield strength
+ * @param maxFuelLY Maximum fuel capacity in LY
+ * @param baseCargoCapacityTons Base cargo capacity in tons
+ * @param initialMissilePylons Initial missile pylons
+ * @param baseCost Base cost in credits
+ * @param baseSpeed Base speed
+ * @param baseManeuverability Base maneuverability (higher is better)
+ * @param defaultWeaponSlots Number of default weapon slots
+ * @param defaultDefensiveSlots Number of default defensive slots
+ * @param defaultUtilitySlots Number of default utility slots
+ * @param hasStandardHyperdrive Whether ship has a standard hyperdrive
+ * @param hasStandardShields Whether ship has standard shields
+ * @param includesPulseLaser Whether ship comes with a pulse laser
+ * 
+ * @return Pointer to the registered ship type, or NULL if registration failed
+ */
+static inline const ShipType* RegisterShipType(
+    const char* className,
+    int baseHullStrength,
+    double baseEnergyBanks,
+    double baseShieldStrengthFront,
+    double baseShieldStrengthAft,
+    double maxFuelLY,
+    int baseCargoCapacityTons,
+    int initialMissilePylons,
+    double baseCost,
+    int baseSpeed,
+    int baseManeuverability,
+    int defaultWeaponSlots,
+    int defaultDefensiveSlots,
+    int defaultUtilitySlots,
+    bool hasStandardHyperdrive,
+    bool hasStandardShields,
+    bool includesPulseLaser)
+{
+    // Check if we have space for a new ship type
+    if (shipRegistry.registeredShipCount >= MAX_SHIP_TYPES)
+    {
+        printf("Error: Cannot register more ship types. Maximum limit reached.\n");
+        return NULL;
+    }
+
+    // Get a reference to the new ship type slot
+    ShipType* newShipType = &shipRegistry.shipTypes[shipRegistry.registeredShipCount];
+    
+    // Fill in the details
+    strncpy(newShipType->className, className, MAX_SHIP_NAME_LENGTH - 1);
+    newShipType->className[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    newShipType->baseHullStrength = baseHullStrength;
+    newShipType->baseEnergyBanks = baseEnergyBanks;
+    newShipType->baseShieldStrengthFront = baseShieldStrengthFront;
+    newShipType->baseShieldStrengthAft = baseShieldStrengthAft;
+    newShipType->maxFuelLY = maxFuelLY;
+    newShipType->baseCargoCapacityTons = baseCargoCapacityTons;
+    newShipType->initialMissilePylons = initialMissilePylons;
+    newShipType->baseCost = baseCost;
+    newShipType->baseSpeed = baseSpeed;
+    newShipType->baseManeuverability = baseManeuverability;
+    newShipType->defaultWeaponSlots = defaultWeaponSlots;
+    newShipType->defaultDefensiveSlots = defaultDefensiveSlots;
+    newShipType->defaultUtilitySlots = defaultUtilitySlots;
+    newShipType->hasStandardHyperdrive = hasStandardHyperdrive;
+    newShipType->hasStandardShields = hasStandardShields;
+    newShipType->includesPulseLaser = includesPulseLaser;
+
+    // Increment the counter
+    shipRegistry.registeredShipCount++;
+    
+    // Return a pointer to the newly registered ship type
+    return newShipType;
+}
+
+/**
+ * Initialize the ship registry with predefined ship types
+ */
+static inline void InitializeShipRegistry(void)
+{
+    // Only initialize if the registry is empty
+    if (shipRegistry.registeredShipCount > 0)
+    {
+        return;
+    }
+    
+    // Register Cobra Mk III
+    RegisterShipType(
+        "Cobra Mk III",           // className
+        100,                      // baseHullStrength
+        100.0,                    // baseEnergyBanks
+        50.0,                     // baseShieldStrengthFront
+        50.0,                     // baseShieldStrengthAft
+        7.0,                      // maxFuelLY
+        20,                       // baseCargoCapacityTons
+        0,                        // initialMissilePylons
+        10000.0,                  // baseCost
+        30,                       // baseSpeed
+        4,                        // baseManeuverability
+        1,                        // defaultWeaponSlots
+        1,                        // defaultDefensiveSlots
+        2,                        // defaultUtilitySlots
+        true,                     // hasStandardHyperdrive
+        true,                     // hasStandardShields
+        true                      // includesPulseLaser
+    );
+    
+    // Register Viper
+    RegisterShipType(
+        "Viper",                  // className
+        80,                       // baseHullStrength
+        80.0,                     // baseEnergyBanks
+        40.0,                     // baseShieldStrengthFront
+        40.0,                     // baseShieldStrengthAft
+        5.0,                      // maxFuelLY
+        10,                       // baseCargoCapacityTons
+        2,                        // initialMissilePylons
+        8000.0,                   // baseCost
+        40,                       // baseSpeed
+        6,                        // baseManeuverability
+        2,                        // defaultWeaponSlots
+        1,                        // defaultDefensiveSlots
+        1,                        // defaultUtilitySlots
+        true,                     // hasStandardHyperdrive
+        true,                     // hasStandardShields
+        true                      // includesPulseLaser
+    );
+    
+    // Register Asp Mk II
+    RegisterShipType(
+        "Asp Mk II",              // className
+        120,                      // baseHullStrength
+        120.0,                    // baseEnergyBanks
+        60.0,                     // baseShieldStrengthFront
+        60.0,                     // baseShieldStrengthAft
+        8.0,                      // maxFuelLY
+        30,                       // baseCargoCapacityTons
+        1,                        // initialMissilePylons
+        15000.0,                  // baseCost
+        25,                       // baseSpeed
+        3,                        // baseManeuverability
+        2,                        // defaultWeaponSlots
+        2,                        // defaultDefensiveSlots
+        2,                        // defaultUtilitySlots
+        true,                     // hasStandardHyperdrive
+        true,                     // hasStandardShields
+        true                      // includesPulseLaser
+    );
+}
+
+/**
+ * Get a pointer to a ship type by its class name
+ * 
+ * @param className The class name of the ship type to find
+ * @return Pointer to the ShipType, or NULL if not found
+ */
+static inline const ShipType* GetShipTypeByName(const char* className)
+{
+    if (className == NULL)
+    {
+        return NULL;
+    }
+    
+    // Search through the registry for a matching ship type
+    for (int i = 0; i < shipRegistry.registeredShipCount; i++)
+    {
+        if (strcmp(className, shipRegistry.shipTypes[i].className) == 0)
+        {
+            return &shipRegistry.shipTypes[i];
+        }
+    }
+    
+    return NULL;
+}
+
 // Forward declaration for MAX_EQUIPMENT_INVENTORY
 #ifndef MAX_EQUIPMENT_INVENTORY
 #define MAX_EQUIPMENT_INVENTORY 30
@@ -125,47 +341,72 @@ typedef struct PlayerShip
 {
     char shipName[MAX_SHIP_NAME_LENGTH];
     char shipClassName[MAX_SHIP_NAME_LENGTH]; // e.g., "Cobra Mk III"
+    const ShipType* shipType;                 // Pointer to the ship type definition
     ShipCoreAttributes attributes;
     ShipEquipmentItem equipment[MAX_EQUIPMENT_SLOTS];      // Currently equipped items
     ShipEquipmentItem equipmentInventory[MAX_EQUIPMENT_INVENTORY]; // Inventory of stored equipment
     CargoItem cargo[MAX_CARGO_SLOTS];
-    // Removed: int credits; Player's money is managed globally (e.g., as 'Cash')
 } PlayerShip;
 
 // --- Function Prototypes (Implementations will be in this header as per standard) ---
 
-// Initializes a PlayerShip to Cobra Mk III default specifications.
-inline void InitializeCobraMkIII(PlayerShip *playerShip)
+// Initializes a PlayerShip with the given ship type
+// 
+// @param playerShip Pointer to the PlayerShip structure to initialize
+// @param shipType Pointer to the ShipType to use
+// @param customName Custom name for the ship (or NULL to use default)
+// @return true if successful, false otherwise
+inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipType, const char *customName)
 {
-    if (playerShip == NULL)
+    if (playerShip == NULL || shipType == NULL)
     {
-        return;
+        return false;
     }
 
-    strncpy(playerShip->shipName, "My Cobra", MAX_SHIP_NAME_LENGTH - 1);
+    // Set ship name
+    if (customName != NULL)
+    {
+        strncpy(playerShip->shipName, customName, MAX_SHIP_NAME_LENGTH - 1);
+    }
+    else
+    {
+        // Default name: "My " + class name
+        char defaultName[MAX_SHIP_NAME_LENGTH] = "My ";
+        strncat(defaultName, shipType->className, MAX_SHIP_NAME_LENGTH - 4);
+        strncpy(playerShip->shipName, defaultName, MAX_SHIP_NAME_LENGTH - 1);
+    }
     playerShip->shipName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-    strncpy(playerShip->shipClassName, "Cobra Mk III", MAX_SHIP_NAME_LENGTH - 1);    playerShip->shipClassName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    
+    // Set ship class name
+    strncpy(playerShip->shipClassName, shipType->className, MAX_SHIP_NAME_LENGTH - 1);    
+    playerShip->shipClassName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    
+    // Set the ship type pointer
+    playerShip->shipType = shipType;
 
-    playerShip->attributes.hullStrength = COBRA_MK3_BASE_HULL_STRENGTH;
-    playerShip->attributes.energyBanks = COBRA_MK3_BASE_ENERGY_BANKS;
-    playerShip->attributes.maxEnergyBanks = COBRA_MK3_BASE_ENERGY_BANKS;
-    // Assuming shields are combined for now, split later if needed by design
-    playerShip->attributes.shieldStrengthFront = COBRA_MK3_BASE_SHIELD_STRENGTH;
-    playerShip->attributes.shieldStrengthAft = COBRA_MK3_BASE_SHIELD_STRENGTH;
-    // Fuel in Liters, assuming 1 LY = 100 Liters for example.
-    // This needs a proper conversion factor based on game balance.
-    // For now, let's say max fuel is 700.0 liters if 1LY = 100L
-    playerShip->attributes.fuelLiters = COBRA_MK3_MAX_FUEL_LY * 100.0;
-    playerShip->attributes.cargoCapacityTons = COBRA_MK3_BASE_CARGO_CAPACITY_TONS;
+    // Initialize core attributes based on ship type
+    playerShip->attributes.hullStrength = shipType->baseHullStrength;
+    playerShip->attributes.energyBanks = shipType->baseEnergyBanks;
+    playerShip->attributes.maxEnergyBanks = shipType->baseEnergyBanks;
+    playerShip->attributes.shieldStrengthFront = shipType->baseShieldStrengthFront;
+    playerShip->attributes.shieldStrengthAft = shipType->baseShieldStrengthAft;
+    playerShip->attributes.fuelLiters = shipType->maxFuelLY * 100.0; // Assuming 100 liters per LY
+    playerShip->attributes.cargoCapacityTons = shipType->baseCargoCapacityTons;
     playerShip->attributes.currentCargoTons = 0;
-    playerShip->attributes.missilePylons = COBRA_MK3_INITIAL_MISSILE_PYLONS;
+    playerShip->attributes.missilePylons = shipType->initialMissilePylons;
     playerShip->attributes.missilesLoadedHoming = 0;
-    playerShip->attributes.missilesLoadedDumbfire = 0;    // Initialize equipment slots to empty
+    playerShip->attributes.missilesLoadedDumbfire = 0;
+    
+    // Initialize equipment slots to empty
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
         playerShip->equipment[i].isActive = 0;
         playerShip->equipment[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
         playerShip->equipment[i].energyDraw = 0.0;
+        playerShip->equipment[i].damageOutput = 0.0;
+        memset(playerShip->equipment[i].name, 0, MAX_SHIP_NAME_LENGTH);
+        strncpy(playerShip->equipment[i].name, "Empty", MAX_SHIP_NAME_LENGTH - 1);
+        playerShip->equipment[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
     }
     
     // Initialize inventory slots to empty
@@ -175,12 +416,7 @@ inline void InitializeCobraMkIII(PlayerShip *playerShip)
         strcpy(playerShip->equipmentInventory[i].name, "Empty");
         playerShip->equipmentInventory[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
         playerShip->equipmentInventory[i].energyDraw = 0.0;
-        playerShip->equipment[i].damageOutput = 0.0;
-        memset(playerShip->equipment[i].name, 0, MAX_SHIP_NAME_LENGTH);
-        strncpy(playerShip->equipment[i].name, "Empty", MAX_SHIP_NAME_LENGTH - 1);
-        playerShip->equipment[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-        // Initialize other fields if necessary, like setting slotType to a default/none
-        // For now, slotType is only actively set when equipment is added.
+        playerShip->equipmentInventory[i].damageOutput = 0.0;
     }
 
     // Initialize cargo slots to empty
@@ -191,14 +427,9 @@ inline void InitializeCobraMkIII(PlayerShip *playerShip)
         playerShip->cargo[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
     }
 
-    // Removed setting of hasPulseLaser, hasBasicShields, etc. flags.
-    // These are now determined dynamically or are inherent to the ship class.
-
-    // Equip standard Pulse Laser for Cobra Mk III
-    // This directly manipulates the equipment array as before.
-    // A dedicated AddEquipmentToShip function will be used later for more complex scenarios.
-    if (MAX_EQUIPMENT_SLOTS > 0)
-    { // Cobra Mk III comes with a pulse laser
+    // Add pulse laser if the ship type includes one
+    if (shipType->includesPulseLaser && MAX_EQUIPMENT_SLOTS > 0)
+    {
         strncpy(playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name, "Pulse Laser", MAX_SHIP_NAME_LENGTH - 1);
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
@@ -207,6 +438,30 @@ inline void InitializeCobraMkIII(PlayerShip *playerShip)
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].energyDraw = 10.0;  // Example
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].damageOutput = 5.0; // Example
     }
+    
+    return true;
+}
+
+// Initializes a PlayerShip to Cobra Mk III default specifications.
+inline void InitializeCobraMkIII(PlayerShip *playerShip)
+{
+    if (playerShip == NULL)
+    {
+        return;
+    }
+    
+    // Ensure the ship registry is initialized
+    InitializeShipRegistry();
+    
+    // Get the Cobra Mk III ship type from the registry
+    const ShipType* cobraMkIII = GetShipTypeByName("Cobra Mk III");
+    if (cobraMkIII == NULL)
+    {
+        printf("Error: Could not find Cobra Mk III ship type in registry.\n");
+        return;
+    }
+    
+    InitializeShip(playerShip, cobraMkIII, NULL);
 }
 
 // Displays the current status of the player's ship.
@@ -219,8 +474,8 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
     }
 
     printf("\n--- %s (%s) Status ---\n", playerShip->shipName, playerShip->shipClassName);
-    printf("Hull Strength: %d / %d\n", playerShip->attributes.hullStrength, COBRA_MK3_BASE_HULL_STRENGTH); // Assuming base is max for now
-    printf("Energy Banks: %.2f / %.2f\n", playerShip->attributes.energyBanks, COBRA_MK3_BASE_ENERGY_BANKS);
+    printf("Hull Strength: %d / %d\n", playerShip->attributes.hullStrength, playerShip->shipType->baseHullStrength);
+    printf("Energy Banks: %.2f / %.2f\n", playerShip->attributes.energyBanks, playerShip->shipType->baseEnergyBanks);
     printf("Shields (F/A): %.2f / %.2f\n", playerShip->attributes.shieldStrengthFront, playerShip->attributes.shieldStrengthAft);
     // Convert Liters to LY for display, assuming 1 LY = 100 Liters (example factor)
     printf("Fuel: %.2f LY (%.0f Liters)\n", playerShip->attributes.fuelLiters / 100.0, playerShip->attributes.fuelLiters);
@@ -265,9 +520,7 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
     if (!hasEquipment)
     {
         printf("No active equipment.\n");
-    }
-
-    // Display standard equipment flags for clarity based on design doc
+    }    // Display standard equipment flags for clarity based on design doc
     // This section is now dynamic based on equipment array and ship class
     printf("\n--- Key Systems & Upgrades ---\n");
 
@@ -277,10 +530,10 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
     if (isCobraMkIII)
     {
         printf("- Basic Shields System\n"); // Cobra Mk III always has shields
-        printf("- Standard Hyperspace Drive (%.1f LY Max)\n", COBRA_MK3_MAX_FUEL_LY);
+        printf("- Standard Hyperspace Drive (%.1f LY Max)\n", playerShip->shipType->maxFuelLY);
         // Standard Cargo Bay is reflected in attributes.cargoCapacityTons
-        printf("- Standard Cargo Bay (%dT)\n", COBRA_MK3_BASE_CARGO_CAPACITY_TONS);
-    } // Check for specific equipment types in their typical slots or any slot if generic
+        printf("- Standard Cargo Bay (%dT)\n", playerShip->shipType->baseCargoCapacityTons);
+    }// Check for specific equipment types in their typical slots or any slot if generic
     bool ecmFound = false;
     bool escapePodFound = false;
     bool fuelScoopsFound = false;
@@ -464,7 +717,7 @@ inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuel
     }
 
     // Check if we're already at maximum fuel
-    const float maxFuelLY = COBRA_MK3_MAX_FUEL_LY;                    // This is ship-specific (7.0 LY for Cobra Mk III)
+    const float maxFuelLY = playerShip->shipType->maxFuelLY;
     float currentFuelLY = playerShip->attributes.fuelLiters / 100.0f; // Convert liters to LY assuming 100L = 1LY
 
     if (currentFuelLY >= maxFuelLY)
@@ -986,14 +1239,14 @@ inline int RepairHull(PlayerShip *playerShip, int repairAmount, int costPerPoint
     }
 
     // Check if hull is already at maximum
-    if (playerShip->attributes.hullStrength >= COBRA_MK3_BASE_HULL_STRENGTH)
+    if (playerShip->attributes.hullStrength >= playerShip->shipType->baseHullStrength)
     {
         printf("Hull already at maximum strength.\n");
         return 0;
     }
 
     // Calculate how much more hull strength can be repaired
-    int maxRepair = COBRA_MK3_BASE_HULL_STRENGTH - playerShip->attributes.hullStrength;
+    int maxRepair = playerShip->shipType->baseHullStrength - playerShip->attributes.hullStrength;
 
     // Limit repair amount
     int effectiveRepair = (repairAmount > maxRepair) ? maxRepair : repairAmount;
@@ -1049,14 +1302,14 @@ inline double RechargeEnergy(PlayerShip *playerShip, double rechargeAmount, bool
     }
 
     // Check current energy levels
-    double energyNeeded = COBRA_MK3_BASE_ENERGY_BANKS - playerShip->attributes.energyBanks;
+    double energyNeeded = playerShip->shipType->baseEnergyBanks - playerShip->attributes.energyBanks;
     double shieldFrontNeeded = 0.0;
     double shieldAftNeeded = 0.0;
 
     if (rechargeShields)
     {
-        shieldFrontNeeded = COBRA_MK3_BASE_SHIELD_STRENGTH - playerShip->attributes.shieldStrengthFront;
-        shieldAftNeeded = COBRA_MK3_BASE_SHIELD_STRENGTH - playerShip->attributes.shieldStrengthAft;
+        shieldFrontNeeded = playerShip->shipType->baseShieldStrengthFront - playerShip->attributes.shieldStrengthFront;
+        shieldAftNeeded = playerShip->shipType->baseShieldStrengthAft - playerShip->attributes.shieldStrengthAft;
     }
 
     // Calculate total energy needed

@@ -49,8 +49,20 @@ static struct DescChoice descList[] =
 		/* A4 */ {{"hockey", "cricket", "karate", "polo", "tennis"}},
 };
 
-// Helper random number generator for goat_soup
-// Uses RndSeed from elite_state.h
+/**
+ * @brief Generates a random number using a linear congruential generator (LCG) algorithm.
+ * 
+ * This function implements a custom random number generator with the following characteristics:
+ * - Uses a global RndSeed structure with members a, b, c, and d
+ * - Performs bitwise operations and modular arithmetic to generate pseudo-random values
+ * - The algorithm maintains internal state between calls via the RndSeed structure
+ * - All operations are constrained to 8-bit values (0-255 range)
+ * 
+ * @return An 8-bit random number in the range [0-255]
+ * 
+ * @note This is a deterministic PRNG that will produce the same sequence 
+ *       of numbers for the same initial seed values.
+ */
 static inline int gen_rnd_number(void)
 {
 	int a, x;
@@ -69,10 +81,26 @@ static inline int gen_rnd_number(void)
 	return a;
 }
 
-// Generates planetary descriptions
-// Uses gen_rnd_number(), descList, pairs0
-// Uses planetSystem->name
-// Uses printf, tolower, strlen from standard libraries
+/**
+ * @brief Processes a template string and generates descriptive text for a planet.
+ * 
+ * This function implements the "Goat Soup" algorithm from Elite, which generates
+ * descriptive text by processing template strings with special codes:
+ * - ASCII characters (< 0x80) are printed directly
+ * - Codes between 0x81-0xA4 select random text options from descList
+ * - Special codes 0xB0-0xB2 insert planet-specific content:
+ *   - 0xB0: Planet name (first letter capital, rest lowercase)
+ *   - 0xB1: Planet name in adjective form (e.g., "Martian")
+ *   - 0xB2: Random name generated using character pairs
+ *
+ * The function recursively processes templates, allowing for nested text generation.
+ * 
+ * @param sourceString The template string to process
+ * @param planetSystem Pointer to the planet system data structure
+ * 
+ * @note There may be a potential bug in the 0xB2 case (random name generation)
+ *       where the random index could potentially access out-of-bounds memory.
+ */
 static inline void goat_soup(const char *sourceString, struct PlanSys *planetSystem)
 {
 	for (;;)
@@ -149,11 +177,36 @@ static inline void goat_soup(const char *sourceString, struct PlanSys *planetSys
 	}
 }
 
-// Prints system information
-// Uses EconNames, GovNames from elite_state.h
-// Uses goat_soup()
-// Uses RndSeed (global, set before calling goat_soup)
-// Uses printf from std libs
+/**
+ * @brief Prints information about a planetary system, either in a compressed or detailed format.
+ * 
+ * This function outputs details about a planetary system, including its name, position,
+ * economy type, government type, technology level, productivity, radius, and population.
+ * The format of the output depends on the `useCompressedOutput` parameter.
+ * 
+ * In compressed mode, it displays a single line with:
+ * - System name
+ * - Technology level (1-based)
+ * - Economy type
+ * - Government type
+ * 
+ * In detailed mode, it shows:
+ * - System name
+ * - Galactic position (x,y)
+ * - Economy type (index and name)
+ * - Government type (index and name)
+ * - Technology level (1-based)
+ * - Productivity (turnover)
+ * - System radius
+ * - Population (in billions)
+ * - A descriptive sentence generated using the goat_soup function
+ * 
+ * @param planetSystemInfo The planetary system information structure to be displayed
+ * @param useCompressedOutput If true, outputs in single-line format; if false, outputs in detailed format
+ * 
+ * @note Relies on global arrays EconNames and GovNames from elite_globals.h
+ * @note When using detailed format, modifies the global RndSeed variable for goat_soup generation
+ */
 static inline void print_system_info(struct PlanSys planetSystemInfo, bool useCompressedOutput)
 {
 	if (useCompressedOutput)

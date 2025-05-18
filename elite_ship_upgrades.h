@@ -408,7 +408,7 @@ inline bool ConfigureExplorerLoadout(PlayerShip* playerShip) {
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 10, 0, false); // Some hull reinforcement
     
     // Fill fuel tanks to maximum
-    playerShip->attributes.fuelLiters = COBRA_MK3_MAX_FUEL_LY * 100.0; // Assuming 100L = 1LY
+    playerShip->attributes.fuelLiters = playerShip->shipType->maxFuelLY * 100.0; // Assuming 100L = 1LY
     
     if (success) {
         printf("Explorer loadout successfully configured.\n");

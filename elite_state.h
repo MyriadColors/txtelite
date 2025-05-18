@@ -45,7 +45,7 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 // Other game constants
 #define MAX_CARGO_ITEMS 50
 #define MAX_EQUIPMENT_SLOTS 10
-#define NUM_COMMANDS 29  // Number of commands in the commands array
+#define NUM_COMMANDS 32  // Number of commands in the commands array
 #define GOV_MAX_COUNT 8  // Number of government types
 #define ECON_MAX_COUNT 8 // Number of economy types
 #define MAX_MISSIONS 10
@@ -125,7 +125,7 @@ extern bool NativeRand;
 
 // Galaxy and seed data
 extern struct PlanSys Galaxy[GAL_SIZE];
-extern struct SeedType Seed;
+extern struct SeedType SEED;
 extern struct FastSeedType RndSeed;
 
 // Base seeds for galaxy generation
@@ -238,7 +238,7 @@ int ExitStatus = EXIT_SUCCESS;
 bool NativeRand;
 
 struct PlanSys Galaxy[GAL_SIZE];
-struct SeedType Seed;
+struct SeedType SEED;
 struct FastSeedType RndSeed;
 
 const uint16_t BASE_0 = 0x5A4A;
@@ -274,6 +274,11 @@ struct NavigationState PlayerNavState;
 
 // Player Ship
 struct PlayerShip *PlayerShipPtr = NULL;
+
+// Current System Information
+char CurrentSystemName[20] = "Lave"; // Default starting system
+int CurrentSystemEconomy = 0;        // Default economy type
+int PlayerLocationType = 0;          // 0 = in space, 10 = docked at station
 
 // Combat state
 bool InCombat = false;

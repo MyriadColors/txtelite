@@ -61,11 +61,20 @@ typedef struct
 } SaveGameState;
 
 /**
- * Saves the current game state to a file.
- *
- * @param filename The name of the file to save to.
- * @param description Optional description of the save (can be NULL).
- * @return True if the save was successful, false otherwise.
+ * @brief Saves the current game state to a file
+ * 
+ * This function writes the current game state to a binary file, including:
+ * - A header with signature, version, timestamp, and description
+ * - Complete game state including seed, position, inventory, market data, and navigation state
+ * 
+ * If no description is provided, a default one is generated based on the current timestamp
+ * and planet name. The function handles finding and saving indices for the current planet
+ * and station to allow proper reconstruction when loading.
+ * 
+ * @param filename The path to the save file to be created
+ * @param description Optional custom description for the save (pass NULL for automatic description)
+ * 
+ * @return true if the save operation succeeded, false if any error occurred
  */
 static inline bool save_game(const char *filename, const char *description)
 {
@@ -108,7 +117,7 @@ static inline bool save_game(const char *filename, const char *description)
     SaveGameState state;
     memset(&state, 0, sizeof(state));
     // Copy current game state into save structure
-    state.seed = Seed;
+    state.seed = SEED;
     state.rndSeed = RndSeed;
     state.galaxyNum = GalaxyNum;
     state.currentPlanet = CurrentPlanet;
@@ -172,10 +181,23 @@ static inline bool save_game(const char *filename, const char *description)
 }
 
 /**
- * Loads a game state from a file.
+ * @brief Loads game state from a saved file
  *
- * @param filename The name of the file to load from.
- * @return True if the load was successful, false otherwise.
+ * This function loads a previously saved game state from a file, including all critical
+ * game variables like player position, inventory, cash, fuel, and navigation state.
+ * It performs several validation steps to ensure the save file is compatible.
+ *
+ * The function follows this process:
+ * 1. Opens the specified file for reading
+ * 2. Reads and validates the save file header (signature and version)
+ * 3. Reads the game state data
+ * 4. Applies the loaded state to the current game
+ * 5. Rebuilds necessary game data structures
+ * 6. Reconstructs object pointers based on saved indices
+ * 7. Displays information about the loaded save
+ *
+ * @param filename Path to the save file to load
+ * @return true if the game was successfully loaded, false if any error occurred
  */
 static inline bool load_game(const char *filename)
 {
@@ -223,12 +245,12 @@ static inline bool load_game(const char *filename)
 
     fclose(file);
     // Apply loaded state to game
-    Seed = state.seed;
+    SEED = state.seed;
     RndSeed = state.rndSeed;
     GalaxyNum = state.galaxyNum;
 
     // Rebuild galaxy data if needed
-    build_galaxy_data(Seed);
+    build_galaxy_data(SEED);
 
     CurrentPlanet = state.currentPlanet;
     Cash = state.cash;
@@ -312,10 +334,21 @@ static inline bool load_game(const char *filename)
 }
 
 /**
- * Displays information about a save file without loading it.
+ * @brief Displays information about a saved game file.
  *
- * @param filename The name of the file to examine.
- * @return True if the information was successfully retrieved, false otherwise.
+ * This function opens a saved game file, verifies its format by checking the signature,
+ * and displays information including the version, creation timestamp, and description.
+ * 
+ * The function performs the following steps:
+ * 1. Opens the specified file for reading in binary mode
+ * 2. Reads the save header
+ * 3. Verifies the signature matches the expected format
+ * 4. Formats and displays the save information
+ *
+ * @param filename Path to the save file to display information about
+ * @return true if the save information was successfully displayed, false if an error occurred
+ *
+ * @note The function handles its own error messages, printing them to stdout
  */
 static inline bool show_save_info(const char *filename)
 {

@@ -4,12 +4,16 @@
 #include <string.h> // For string functions
 #include <stdio.h>  // For printf
 
+
 /**
- * Find a cargo slot in the ship for a specific commodity
- * 
- * @param playerShip Pointer to the PlayerShip structure
- * @param cargoName Name of the cargo/commodity to look for
- * @return Index of the cargo slot if found, -1 if not found
+ * @brief Finds the index of a cargo slot containing a specified cargo item in the player's ship.
+ *
+ * This function searches through the player's ship cargo slots to find a slot
+ * where the cargo name matches the specified name and the quantity is greater than zero.
+ *
+ * @param playerShip Pointer to the PlayerShip structure to search within.
+ * @param cargoName Name of the cargo item to search for.
+ * @return The index of the cargo slot if found; -1 if not found or if input is invalid.
  */
 inline int FindCargoSlot(const PlayerShip* playerShip, const char* cargoName) {
     if (playerShip == NULL || cargoName == NULL) {
@@ -25,11 +29,15 @@ inline int FindCargoSlot(const PlayerShip* playerShip, const char* cargoName) {
     return -1; // Not found
 }
 
+
 /**
- * Find the first empty cargo slot in the ship
- * 
- * @param playerShip Pointer to the PlayerShip structure
- * @return Index of the first empty cargo slot if available, -1 if all slots are filled
+ * @brief Finds the index of the first empty cargo slot in the player's ship.
+ *
+ * This function iterates through the cargo slots of the given PlayerShip and returns
+ * the index of the first slot where the quantity is zero, indicating an empty slot.
+ *
+ * @param playerShip Pointer to the PlayerShip structure to search for an empty cargo slot.
+ * @return The index of the first empty cargo slot, or -1 if no empty slot is found or if playerShip is NULL.
  */
 inline int FindEmptyCargoSlot(const PlayerShip* playerShip) {
     if (playerShip == NULL) {

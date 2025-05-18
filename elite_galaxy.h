@@ -110,8 +110,7 @@ static inline struct PlanSys make_system(struct SeedType *initialSeed) // initia
 static inline void build_galaxy_data(struct SeedType seed)
 {
 	uint16_t syscount;
-	Seed = seed; /* Use the seed passed as parameter */
-	/* Put galaxy data into array of structures */
+	SEED = seed;
 	for (syscount = 0; syscount < GAL_SIZE; ++syscount)
-		Galaxy[syscount] = make_system(&Seed);
+		Galaxy[syscount] = make_system(&SEED);
 }

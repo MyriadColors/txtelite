@@ -60,9 +60,6 @@ int main(void)
 
 	my_srand(12345);
 	initialize_player_state();
-
-	// Initialize game time at the start of a new game or when loading
-	// For a new game:
 	game_time_initialize();
 
 #define PARSER(S)                                      \
@@ -107,11 +104,10 @@ int main(void)
 		}
 
 		// Enhanced status display with ship information
-		if (PlayerShipPtr != NULL) {
-			// Calculate hull percentage
-			int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / COBRA_MK3_BASE_HULL_STRENGTH;
+		if (PlayerShipPtr != NULL) {			// Calculate hull percentage
+			int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / PlayerShipPtr->shipType->baseHullStrength;
 			// Calculate energy percentage
-			int energyPercentage = (int)((PlayerShipPtr->attributes.energyBanks * 100) / PlayerShipPtr->attributes.maxEnergyBanks);			// Prepare equipment status string
+			int energyPercentage = (int)((PlayerShipPtr->attributes.energyBanks * 100) / PlayerShipPtr->attributes.maxEnergyBanks);// Prepare equipment status string
 			char equipmentStatus[MAX_LEN] = "";
 			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ECM_SYSTEM)) strcat(equipmentStatus, "ECM ");
 			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_FUEL_SCOOP)) strcat(equipmentStatus, "FuelScoop ");

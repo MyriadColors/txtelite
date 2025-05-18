@@ -13,6 +13,7 @@
 #include "elite_save.h"			// For save_game, load_game
 #include "elite_ship_types.h"   // For ship status display functions
 #include "elite_ship_inventory.h" // For inventory management functions
+#include "elite_ship_trading.h" // For ship trading commands
 #include <stdlib.h>				// For atoi, atof
 #include <math.h>				// For floor, fabs
 #include <string.h>				// For string operations
@@ -285,8 +286,7 @@ static inline bool do_fuel(char *commandArguments)
 		// Also update the ship's fuel levels
 		if (PlayerShipPtr != NULL) {
 			// Convert game units to liters (1 fuel unit = 0.1 LY = 10 liters)
-			float fuelLiters = f * 10.0f;
-			float maxFuelLiters = COBRA_MK3_MAX_FUEL_LY * 100.0f;
+			float fuelLiters = f * 10.0f;                        float maxFuelLiters = PlayerShipPtr->shipType->maxFuelLY * 100.0f;
 			
 			PlayerShipPtr->attributes.fuelLiters = 
 				(PlayerShipPtr->attributes.fuelLiters + fuelLiters > maxFuelLiters) ? 
@@ -567,9 +567,42 @@ static inline bool do_help(char *commandArguments)
 			printf("\nLAND - Land on a planet surface");
 			printf("\n  Allows you to land on a planet when your ship is at a planet location.");
 			printf("\n  You must be at a planet before landing.");
-			printf("\n  Use 'travel' to navigate to a planet first.");
-			printf("\n  Landing provides access to the planet's market and services.");
+			printf("\n  Use 'travel' to navigate to a planet first.");			printf("\n  Landing provides access to the planet's market and services.");
 			printf("\n  No parameters required.");
+			return true;
+		}
+
+		// Ship trading commands
+		if (strcmp(command, "shipyard") == 0)
+		{
+			printf("\nSHIPYARD - View ships available for purchase");
+			printf("\n  Shows a list of ships available at the current station.");
+			printf("\n  Displays hull strength, energy, cargo capacity, and price.");
+			printf("\n  Includes your current ship's trade-in value.");
+			printf("\n  You must be docked at a station to use this command.");
+			printf("\n  No parameters required.");			return true;
+		}
+
+		if (strcmp(command, "compareship") == 0)
+		{
+			printf("\nCOMPARESHIP <shipname> - Compare your ship with another ship type");
+			printf("\n  Displays a side-by-side comparison of ship specifications.");
+			printf("\n  Shows differences in hull, energy, shields, cargo, etc.");
+			printf("\n  Usage: compareship <shipname> (e.g., 'compareship Viper')");
+			printf("\n  Works anywhere, docking not required.");
+			return true;
+		}
+		if (strcmp(command, "buyship") == 0)
+		{
+			printf("\nBUYSHIP <ID or shipname> [notrade] - Purchase a new ship");
+			printf("\n  Buys a new ship from the current station's shipyard.");
+			printf("\n  <ID> - The ship ID number shown in the shipyard list");
+			printf("\n  <shipname> - The name of the ship (for backward compatibility)");
+			printf("\n  By default, trades in your current ship for a credit.");
+			printf("\n  Use 'notrade' flag to buy without trading in (e.g., 'buyship 1 notrade').");
+			printf("\n  Equipment and cargo are transferred when possible.");
+			printf("\n  You must be docked at a station to use this command.");
+			printf("\n  Examples: 'buyship 1' or 'buyship \"Cobra Mk III\"'");
 			return true;
 		}
 
@@ -832,15 +865,15 @@ static inline bool do_help(char *commandArguments)
 	printf("\n  land                    - Land on a planet if at a planet location");
 	printf("\n\nCARGO AND MONEY:");
 	printf("\n  hold  <amount>          - Set total cargo hold space in tonnes");
-	printf("\n  cash  <+/-amount>       - Adjust cash (e.g., cash +100.0 or cash -50.5)");
-	printf("\n\nSHIP MANAGEMENT:");
+	printf("\n  cash  <+/-amount>       - Adjust cash (e.g., cash +100.0 or cash -50.5)");	printf("\n\nSHIP MANAGEMENT:");
 	printf("\n  ship                    - Display basic ship status information");
 	printf("\n  shipinfo                - Display detailed ship information");
 	printf("\n  repair                  - Repair ship's hull damage (when docked)");
 	printf("\n  equip [item]            - Purchase and install ship equipment (ECM, fuel scoop, etc.)");
-	printf("\n  inv                     - Display stored equipment items in your ship's inventory");
-	printf("\n  store <slot_number>     - Remove equipment from a slot and store it in inventory");
-	printf("\n  use <inv_idx> <slot>    - Install equipment from inventory into a ship slot");
+	printf("\n  inv                     - Display stored equipment items in your ship's inventory");	printf("\n  store <slot_number>     - Remove equipment from a slot and store it in inventory");	printf("\n  use <inv_idx> <slot>    - Install equipment from inventory into a ship slot");
+	printf("\n  shipyard                - View ships available for purchase at the station");
+	printf("\n  compareship <shipname>  - Compare your ship with another ship type");
+	printf("\n  buyship <ID or shipname> - Purchase a new ship (ID from shipyard list)");
 
 	printf("\n\nGAME MANAGEMENT:");
 	printf("\n  save  [description]     - Save the game with optional description");
@@ -1119,10 +1152,10 @@ static inline bool do_system_info(char *commandArguments)
 					if (!station)
 						continue; // Skip NULL stations
 
-					hasValidStations = true;
-					// Station type information
+					hasValidStations = true;					// Station type information
 					const char *stationTypes[] = {
-						"Orbital", "Coriolis", "Ocellus"};							double stationDistAbsolute = planet->orbitalDistance + station->orbitalDistance;
+						"Orbital", "Coriolis", "Ocellus"};
+					double stationDistAbsolute = planet->orbitalDistance + station->orbitalDistance;
 					double distToStation = fabs(PlayerNavState.distanceFromStar - stationDistAbsolute);
 					uint32_t timeToStation = calculate_travel_time(PlayerNavState.distanceFromStar, stationDistAbsolute);
 					double energyToStation = calculate_travel_energy_requirement(distToStation);
@@ -1591,12 +1624,15 @@ static inline bool do_dock(char *commandArguments)
 				break;
 			}
 		}
-	}
-	// Docking procedure and feedback
+	}	// Docking procedure and feedback
 	printf("\nDocking at %s...", station->name);
 
 	// Small time delay for docking
 	game_time_advance(60); // 1 minute
+
+	// Update the global docking status variable
+	extern int PlayerLocationType;
+	PlayerLocationType = 10;  // 10 = docked at station
 
 	printf("\nDocked successfully. Welcome to %s!", station->name);
 
@@ -1822,6 +1858,7 @@ static inline bool do_land(char *commandArguments)
 static inline void update_all_system_markets()
 {
 	// Check if star system data is properly initialized
+
 	if (!CurrentStarSystem)
 	{
 		return;
@@ -2068,7 +2105,7 @@ static inline bool do_ship_status(char *commandArguments)
            PlayerShipPtr->shipClassName);
 
     // Display hull and energy
-    int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / COBRA_MK3_BASE_HULL_STRENGTH;
+    int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / PlayerShipPtr->shipType->baseHullStrength;
     printf("\nHull Integrity: %d%%", hullPercentage);
     printf("\nEnergy Banks: %.1f / %.1f", 
            PlayerShipPtr->attributes.energyBanks,
@@ -2116,14 +2153,14 @@ static inline bool do_repair(char *commandArguments)
     }
     
     // Check if repair is needed
-    if (PlayerShipPtr->attributes.hullStrength >= COBRA_MK3_BASE_HULL_STRENGTH)
+    if (PlayerShipPtr->attributes.hullStrength >= PlayerShipPtr->shipType->baseHullStrength)
     {
         printf("\nYour ship doesn't need any repairs.");
         return true;
     }
     
     // Calculate repair cost - 10 credits per unit of hull damage
-    int damageAmount = COBRA_MK3_BASE_HULL_STRENGTH - PlayerShipPtr->attributes.hullStrength;
+    int damageAmount = PlayerShipPtr->shipType->baseHullStrength - PlayerShipPtr->attributes.hullStrength;
     int repairCost = damageAmount * 10;
     
     // Check if player can afford repairs
@@ -2135,7 +2172,7 @@ static inline bool do_repair(char *commandArguments)
     
     // Perform the repair
     Cash -= repairCost * 10; // Convert to internal units
-    PlayerShipPtr->attributes.hullStrength = COBRA_MK3_BASE_HULL_STRENGTH;
+    PlayerShipPtr->attributes.hullStrength = PlayerShipPtr->shipType->baseHullStrength;
     
     printf("\nShip repaired for %.1f credits. Hull integrity restored to 100%%.", (float)repairCost);
     return true;
@@ -2554,4 +2591,17 @@ static inline bool do_equip_from_inventory(char *commandArguments)
     
     // Try to equip the item from inventory
     return EquipFromInventory(PlayerShipPtr, invIndex, slotNumber);
+}
+
+// Ship trading commands
+bool do_shipyard(char* args) {
+    return ShipyardCommand(args);
+}
+
+bool do_compareship(char* args) {
+    return CompareShipCommand(args);
+}
+
+bool do_buyship(char* args) {
+    return BuyShipCommand(args);
 }

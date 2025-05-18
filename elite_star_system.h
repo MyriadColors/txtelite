@@ -623,10 +623,12 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
 
     case CELESTIAL_PLANET:
         navState->currentLocation.planet = (Planet *)targetBody;
-        break;
-
-    case CELESTIAL_STATION:
+        break;    case CELESTIAL_STATION:
         navState->currentLocation.station = (Station *)targetBody;
+        
+        // Update global location type to indicate we're at a station but not yet docked
+        extern int PlayerLocationType;
+        PlayerLocationType = 0;  // We're at the station but not docked yet
         break;
 
     case CELESTIAL_NAV_BEACON:

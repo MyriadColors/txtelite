@@ -31,16 +31,18 @@ of Elite with no combat or missions.
 #include <math.h>
 #include <ctype.h>
 
-#include "elite_state.h"
-#include "elite_utils.h"
-#include "elite_galaxy.h"
-#include "elite_market.h"
-#include "elite_navigation.h"
-#include "elite_planet_info.h"
-#include "elite_commands.h"
-#include "elite_command_handler.h"
-#include "elite_player_state.h"
-#include "elite_star_system.h"
+#include "elite_state.h"		// Unified header for constants, structures, and globals
+#include "elite_utils.h"		// For string handling and other utilities
+#include "elite_galaxy.h"		// For galaxy generation
+#include "elite_market.h"		// For market calculations
+#include "elite_navigation.h"	// For distance and jump calculations
+#include "elite_planet_info.h"	// For planet info printing
+#include "elite_commands.h"		// For game commands
+#include "elite_command_handler.h"	// For command parsing
+#include "elite_player_state.h"	// For player state initialization
+#include "elite_star_system.h"	// For star system data
+#include "elite_ship_upgrades.h" // For equipment access
+#include "elite_equipment_constants.h" // For equipment indices
 
 /* ================= *
  * General functions *
@@ -109,11 +111,24 @@ int main(void)
 			// Calculate hull percentage
 			int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / COBRA_MK3_BASE_HULL_STRENGTH;
 			// Calculate energy percentage
-			int energyPercentage = (int)((PlayerShipPtr->attributes.energyBanks * 100) / PlayerShipPtr->attributes.maxEnergyBanks);
-			
-			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | Energy: %d%% | Time: %llu seconds > ",
+			int energyPercentage = (int)((PlayerShipPtr->attributes.energyBanks * 100) / PlayerShipPtr->attributes.maxEnergyBanks);			// Prepare equipment status string
+			char equipmentStatus[MAX_LEN] = "";
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ECM_SYSTEM)) strcat(equipmentStatus, "ECM ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_FUEL_SCOOP)) strcat(equipmentStatus, "FuelScoop ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ENERGY_BOMB)) strcat(equipmentStatus, "E-Bomb ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_DOCKING_COMPUTER)) strcat(equipmentStatus, "DockCmp ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MINING_LASER)) strcat(equipmentStatus, "Mining ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_BEAM_LASER)) strcat(equipmentStatus, "Beam ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MILITARY_LASER)) strcat(equipmentStatus, "Military ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) strcat(equipmentStatus, "Scanner ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ESCAPE_POD)) strcat(equipmentStatus, "EscPod ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_GALACTIC_HYPERSPACE)) strcat(equipmentStatus, "GalHyp ");
+			if (strlen(equipmentStatus) == 0) strcpy(equipmentStatus, "None");
+
+
+			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | Energy: %d%% | Equip: %s| Time: %llu seconds > ",
 				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, 
-				   hullPercentage, energyPercentage, currentGameTimeSeconds);
+				   hullPercentage, energyPercentage, equipmentStatus, currentGameTimeSeconds);
 		} else {
 			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ",
 				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);

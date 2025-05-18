@@ -12,6 +12,7 @@
 #include "elite_player_state.h" // For calculate_fuel_purchase, display_ship_status_brief
 #include "elite_save.h"			// For save_game, load_game
 #include "elite_ship_types.h"   // For ship status display functions
+#include "elite_ship_inventory.h" // For inventory management functions
 #include <stdlib.h>				// For atoi, atof
 #include <math.h>				// For floor, fabs
 #include <string.h>				// For string operations
@@ -437,6 +438,30 @@ static inline bool do_help(char *commandArguments)
 			printf("\n  Cost is 10 credits per hull point repaired");
 			printf("\n  Note: You must be docked at a station to repair your ship");
 			return true;
+		}		else if (strcmp(command, "equip") == 0)
+		{
+			printf("\nEQUIP [equipment] - Purchase and install ship equipment");
+			printf("\n  Without parameters: Lists all available equipment");
+			printf("\n  [equipment]: The specific equipment item to purchase");
+			printf("\n  Available equipment types:");
+			printf("\n    ecm      - Electronic Counter Measures (600 CR)");
+			printf("\n    fuelscoop - Fuel Scoop for collecting fuel from stars (525 CR)");
+			printf("\n    dockcomp - Docking Computer for automated docking (1500 CR)");
+			printf("\n    escape   - Escape Pod for emergency escape (1000 CR)");
+			printf("\n    energy   - Extra Energy Unit for more energy capacity (1500 CR)");
+			printf("\n    ebomb    - Energy Bomb for emergency defense (2500 CR)");
+			printf("\n    cargo    - Cargo Bay Extension for +4 tons capacity (400 CR)");
+			printf("\n    pulse    - Pulse Laser for basic combat (400 CR)");
+			printf("\n    beam     - Beam Laser for improved combat (1000 CR)");
+			printf("\n    military - Military Laser for maximum firepower (2500 CR)");
+			printf("\n    mining   - Mining Laser for resource extraction (800 CR)");
+			printf("\n    scanner  - Scanner Upgrade for improved detection (700 CR)");
+			printf("\n    missile  - Homing Missile for one-shot attacks (300 CR)");
+			printf("\n    galactic - Galactic Hyperspace Drive for long jumps (5000 CR)");
+			printf("\n  Example: equip beam");
+			printf("\n  Note: You must be docked at a station to purchase equipment");
+			printf("\n        Equipment availability depends on the system's tech level");
+			return true;
 		}
 		else if (strcmp(command, "fuel") == 0 || strcmp(command, "f") == 0)
 		{
@@ -753,6 +778,34 @@ static inline bool do_help(char *commandArguments)
 			return true;
 		}
 
+		// Equipment and inventory commands
+		if (strcmp(command, "inv") == 0)
+		{
+			printf("\nINV - Display equipment inventory");
+			printf("\n  Shows all equipment items stored in your ship's inventory.");
+			printf("\n  Each item is shown with its inventory slot index for use with the 'use' command.");
+			return true;
+		}
+
+		if (strcmp(command, "store") == 0)
+		{
+			printf("\nSTORE <slot_number> - Remove equipment and store in inventory");
+			printf("\n  <slot_number> - The equipment slot to remove equipment from");
+			printf("\n  Example: store 0");
+			printf("\n  Note: Use 'shipinfo' to see your equipment slots and what's installed in them.");
+			return true;
+		}
+
+		if (strcmp(command, "use") == 0)
+		{
+			printf("\nUSE <inventory_index> <slot_number> - Equip item from inventory");
+			printf("\n  <inventory_index> - The inventory slot containing the equipment to use");
+			printf("\n  <slot_number> - The equipment slot to install the equipment into");
+			printf("\n  Example: use 2 1");
+			printf("\n  Note: Equipment can only be installed in compatible slots.");
+			printf("\n        Use 'inv' to see your inventory and 'shipinfo' to see slots.");
+			return true;
+		}
 		// If command not recognized, show general help
 		printf("\nUnknown command: %s", command);
 		printf("\nUse 'help' without parameters to see all available commands.");
@@ -780,11 +833,14 @@ static inline bool do_help(char *commandArguments)
 	printf("\n\nCARGO AND MONEY:");
 	printf("\n  hold  <amount>          - Set total cargo hold space in tonnes");
 	printf("\n  cash  <+/-amount>       - Adjust cash (e.g., cash +100.0 or cash -50.5)");
-	
 	printf("\n\nSHIP MANAGEMENT:");
 	printf("\n  ship                    - Display basic ship status information");
 	printf("\n  shipinfo                - Display detailed ship information");
 	printf("\n  repair                  - Repair ship's hull damage (when docked)");
+	printf("\n  equip [item]            - Purchase and install ship equipment (ECM, fuel scoop, etc.)");
+	printf("\n  inv                     - Display stored equipment items in your ship's inventory");
+	printf("\n  store <slot_number>     - Remove equipment from a slot and store it in inventory");
+	printf("\n  use <inv_idx> <slot>    - Install equipment from inventory into a ship slot");
 
 	printf("\n\nGAME MANAGEMENT:");
 	printf("\n  save  [description]     - Save the game with optional description");
@@ -1771,6 +1827,7 @@ static inline void update_all_system_markets()
 		return;
 	}
 
+
 	// Get current game time
 	uint64_t currentTime = game_time_get_seconds();
 
@@ -2026,24 +2083,22 @@ static inline bool do_ship_status(char *commandArguments)
     printf("\nCargo Capacity: %d/%d tons", 
            PlayerShipPtr->attributes.currentCargoTons,
            PlayerShipPtr->attributes.cargoCapacityTons);
-    
-    // Display equipment
+      // Display equipment
     printf("\n\n=== Equipment ===");
     bool hasEquipment = false;
-    
-    // Check all equipment slots for weapons, defensive systems, and utility systems
+      // Check all equipment slots for active equipment
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++) {
-        if (PlayerShipPtr->equipment[i].isActive) {
-            if (!hasEquipment) {
-                hasEquipment = true;
-            }
+        if (PlayerShipPtr->equipment[i].isActive && 
+            strlen(PlayerShipPtr->equipment[i].name) > 0 &&
+            strcmp(PlayerShipPtr->equipment[i].name, "Empty") != 0) {
             
+            hasEquipment = true;
             printf("\n  - %s", PlayerShipPtr->equipment[i].name);
         }
     }
     
     if (!hasEquipment) {
-        printf("\nNo active equipment.");
+        printf("\n  No active equipment.");
     }
     
     printf("\n");
@@ -2103,4 +2158,400 @@ static inline bool do_ship_details(char *commandArguments)
     // Call the detailed ship status display function from elite_ship_types.h
     DisplayShipStatus(PlayerShipPtr);
     return true;
+}
+
+/**
+ * Command to purchase and install equipment on the player's ship.
+ * Usage: equip <equipment_name>
+ * Available equipment depends on the current system's tech level.
+ */
+static inline bool do_purchase_equipment(char *commandArguments)
+{
+    if (PlayerShipPtr == NULL)
+    {
+        printf("\nError: Ship data not available.");
+        return false;
+    }
+    
+    // Check if we are docked at a station
+    if (PlayerNavState.currentLocationType != CELESTIAL_STATION)
+    {
+        printf("\nYou must be docked at a station to purchase equipment.");
+        return false;
+    }
+    
+    // Check if an equipment name was provided
+    if (commandArguments == NULL || commandArguments[0] == '\0')
+    {
+        printf("\nUsage: equip <equipment_name>");
+        printf("\n\nAvailable Equipment:");
+        printf("\n- ecm          - Electronic Counter Measures (600 CR)");
+        printf("\n- fuelscoop    - Fuel Scoop (525 CR)");
+        printf("\n- dockcomp     - Docking Computer (1500 CR)");
+        printf("\n- escape       - Escape Pod (1000 CR)");
+        printf("\n- energy       - Extra Energy Unit (1500 CR)");
+        printf("\n- cargo        - Cargo Bay Extension (400 CR)");
+        printf("\n- pulse        - Pulse Laser (400 CR)");
+        printf("\n- beam         - Beam Laser (1000 CR)");
+        printf("\n- military     - Military Laser (2500 CR)");
+        printf("\n- mining       - Mining Laser (800 CR)");        printf("\n- scanner      - Scanner Upgrade (700 CR)");
+        printf("\n- missile      - Homing Missile (300 CR)");
+        printf("\n- galactic     - Galactic Hyperspace Drive (5000 CR)");
+        printf("\n  Example: equip beam");
+        printf("\n  Note: You must be docked at a station to purchase equipment");
+        printf("\n        Equipment availability depends on the system's tech level");
+        return true;
+    }
+    
+    // Normalize input to lowercase for case-insensitive matching
+    char equipName[MAX_LEN];
+    strncpy(equipName, commandArguments, MAX_LEN - 1);
+    equipName[MAX_LEN - 1] = '\0';
+    
+    // Convert to lowercase
+    for (char *p = equipName; *p; ++p)
+    {
+        *p = tolower(*p);
+    }
+    
+    // External state variables    extern int32_t Cash;
+    extern struct PlanSys Galaxy[];
+    extern int CurrentPlanet; // Using int as defined in elite_state.h
+    
+    // Get current system tech level (0-based index)
+    int techLevel = Galaxy[CurrentPlanet].techLev;
+    
+    // Prepare equipment parameters for purchase
+    EquipmentTypeSpecifics equipType;
+    EquipmentSlotType slotType = EQUIPMENT_SLOT_TYPE_NONE;
+    const char* formalName = NULL;
+    int cost = 0;
+    int requiredTechLevel = 0;
+    double energyDraw = 0.0;
+    double damageOutput = 0.0;
+    
+    // Match equipment name to available options
+    if (strcmp(equipName, "ecm") == 0)
+    {
+        equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
+        slotType = EQUIPMENT_SLOT_TYPE_DEFENSIVE_1;
+        formalName = "ECM System";
+        cost = COST_ECM;
+        requiredTechLevel = 2;
+        energyDraw = 5.0;
+    }
+    else if (strcmp(equipName, "fuelscoop") == 0)
+    {
+        equipType.utilityType = UTILITY_SYSTEM_TYPE_FUEL_SCOOPS;
+        slotType = UTILITY_SYSTEM_1;
+        formalName = "Fuel Scoop";
+        cost = COST_FUEL_SCOOPS;
+        requiredTechLevel = 3;
+        energyDraw = 3.0;
+    }
+    else if (strcmp(equipName, "dockcomp") == 0)
+    {
+        equipType.utilityType = UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER;
+        slotType = UTILITY_SYSTEM_2;
+        formalName = "Docking Computer";
+        cost = COST_DOCKING_COMPUTER;
+        requiredTechLevel = 5;
+        energyDraw = 2.0;
+    }
+    else if (strcmp(equipName, "escape") == 0)
+    {
+        equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
+        slotType = UTILITY_SYSTEM_3;
+        formalName = "Escape Pod";
+        cost = COST_ESCAPE_POD;
+        requiredTechLevel = 5;
+        energyDraw = 0.0;
+    }
+    else if (strcmp(equipName, "energy") == 0)
+    {
+        equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT;
+        slotType = EQUIPMENT_SLOT_TYPE_DEFENSIVE_2;
+        formalName = "Extra Energy Unit";
+        cost = COST_EXTRA_ENERGY_UNIT;
+        requiredTechLevel = 4;
+        energyDraw = 0.0;
+        // Apply the upgrade directly
+        if (PurchaseEquipment(PlayerShipPtr, formalName, slotType, equipType, cost, requiredTechLevel, energyDraw, damageOutput))
+        {
+            // Also increase max energy banks
+            PlayerShipPtr->attributes.maxEnergyBanks += EXTRA_ENERGY_UNIT_CAPACITY;
+            return true;
+        }
+        return false;
+    }
+    else if (strcmp(equipName, "cargo") == 0)
+    {
+        equipType.utilityType = UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION;
+        slotType = UTILITY_SYSTEM_4;
+        formalName = "Cargo Bay Extension";
+        cost = COST_CARGO_BAY_EXTENSION;
+        requiredTechLevel = 1;
+        energyDraw = 0.0;
+        // Apply the cargo upgrade directly
+        if (Cash < cost)
+        {
+            printf("\nInsufficient credits to purchase Cargo Bay Extension. Required: %d, Available: %.1f", 
+                   cost, (float)Cash / 10.0f);
+            return false;
+        }
+        
+        if (techLevel < requiredTechLevel)
+        {
+            printf("\nCargo Bay Extensions not available at this tech level. Required: %d, Current: %d", 
+                   requiredTechLevel + 1, techLevel + 1);
+            return false;
+        }
+          // Directly apply the upgrade
+        Cash -= cost;
+        extern uint16_t HoldSpace;
+        HoldSpace += CARGO_BAY_EXTENSION_CAPACITY;
+        PlayerShipPtr->attributes.cargoCapacityTons += CARGO_BAY_EXTENSION_CAPACITY;
+        
+        // Update equipment mapping
+        MapEquipmentIndices(PlayerShipPtr);
+        
+        printf("\nCargo Bay Extension installed. New capacity: %d tonnes.", 
+               PlayerShipPtr->attributes.cargoCapacityTons);
+        return true;
+    }
+    else if (strcmp(equipName, "pulse") == 0)
+    {
+        equipType.weaponType = WEAPON_TYPE_PULSE_LASER;
+        slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
+        formalName = "Pulse Laser";
+        cost = COST_PULSE_LASER;
+        requiredTechLevel = 1;
+        energyDraw = 10.0;
+        damageOutput = 5.0;
+    }
+    else if (strcmp(equipName, "beam") == 0)
+    {
+        equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
+        slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
+        formalName = "Beam Laser";
+        cost = COST_BEAM_LASER;
+        requiredTechLevel = 3;
+        energyDraw = 12.0;
+        damageOutput = 7.5;
+    }
+    else if (strcmp(equipName, "military") == 0)
+    {
+        equipType.weaponType = WEAPON_TYPE_MILITARY_LASER;
+        slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
+        formalName = "Military Laser";
+        cost = COST_MILITARY_LASER;
+        requiredTechLevel = 6;
+        energyDraw = 15.0;
+        damageOutput = 10.0;
+    }
+    else if (strcmp(equipName, "mining") == 0)
+    {
+        equipType.weaponType = WEAPON_TYPE_MINING_LASER;
+        slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
+        formalName = "Mining Laser";
+        cost = COST_MINING_LASER;
+        requiredTechLevel = 2;
+        energyDraw = 12.0;
+        damageOutput = 3.0;
+    }
+    else if (strcmp(equipName, "scanner") == 0)
+    {
+        equipType.utilityType = UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE;
+        slotType = UTILITY_SYSTEM_3;
+        formalName = "Advanced Scanner";
+        cost = COST_SCANNER_UPGRADE;
+        requiredTechLevel = 4;
+        energyDraw = 4.0;
+    }
+    else if (strcmp(equipName, "missile") == 0)
+    {
+        // For missiles, we just add to the count
+        if (PlayerShipPtr->attributes.missilesLoadedHoming >= 
+            PlayerShipPtr->attributes.missilePylons * MISSILE_PYLON_CAPACITY)
+        {
+            printf("\nCannot purchase more missiles. All pylons are full.");
+            return false;
+        }
+        
+        if (Cash < COST_MISSILE_HOMING * 10)
+        {
+            printf("\nInsufficient credits to purchase missile. Required: %d, Available: %.1f", 
+                   COST_MISSILE_HOMING, (float)Cash / 10.0f);
+            return false;
+        }
+        
+        Cash -= COST_MISSILE_HOMING * 10;
+        PlayerShipPtr->attributes.missilesLoadedHoming++;
+        
+        printf("\nMissile purchased. Current missile count: %d/%d", 
+               PlayerShipPtr->attributes.missilesLoadedHoming,
+               PlayerShipPtr->attributes.missilePylons * MISSILE_PYLON_CAPACITY);
+        return true;
+    }
+    else if (strcmp(equipName, "galactic") == 0)
+    {
+        equipType.utilityType = UTILITY_SYSTEM_TYPE_GALACTIC_HYPERSPACE_DRIVE;
+        slotType = UTILITY_SYSTEM_4;
+        formalName = "Galactic Hyperspace Drive";
+        cost = COST_GALACTIC_HYPERSPACE;
+        requiredTechLevel = 9;
+        energyDraw = 20.0;
+    }
+    else
+    {
+        printf("\nUnknown equipment: %s", equipName);
+        printf("\nUse 'equip' without parameters to see available equipment.");
+        return false;
+    }
+    
+    // Attempt to purchase the selected equipment
+    bool result = PurchaseEquipment(
+        PlayerShipPtr, 
+        formalName, 
+        slotType, 
+        equipType, 
+        cost, 
+        requiredTechLevel,
+        energyDraw, 
+        damageOutput
+    );
+    
+    return result;
+}
+
+/**
+ * Displays the equipment inventory of the player's ship.
+ * 
+ * @param commandArguments Arguments provided to the command (unused)
+ * @return true if the command was processed successfully
+ */
+static inline bool do_inventory_display(char *commandArguments)
+{
+    (void)commandArguments; // Mark as unused
+    
+    if (PlayerShipPtr == NULL)
+    {
+        printf("\nError: Ship data not available.");
+        return false;
+    }
+    
+    ListEquipmentInventory(PlayerShipPtr);
+    return true;
+}
+
+/**
+ * Stores equipment from a specified slot into the inventory.
+ * 
+ * @param commandArguments Arguments provided to the command (slot number)
+ * @return true if the equipment was stored successfully
+ */
+static inline bool do_store_equipment(char *commandArguments)
+{
+    if (PlayerShipPtr == NULL)
+    {
+        printf("\nError: Ship data not available.");
+        return false;
+    }
+    
+    // Check if we're in combat
+    if (InCombat)
+    {
+        printf("\nCannot modify ship configuration during combat.");
+        return false;
+    }
+    
+    // Check if a slot number was provided
+    if (commandArguments == NULL || commandArguments[0] == '\0')
+    {
+        printf("\nUsage: store <slot_number>");
+        printf("\n\nAvailable Equipment Slots:");
+        PrintEquipmentSlots(PlayerShipPtr);
+        return false;
+    }
+    
+    // Parse the slot number
+    int slotNumber = atoi(commandArguments);
+    
+    // Check if the slot number is valid
+    if (slotNumber < 0 || slotNumber >= MAX_EQUIPMENT_SLOTS)
+    {
+        printf("\nInvalid slot number. Valid range: 0-%d", MAX_EQUIPMENT_SLOTS - 1);
+        return false;
+    }
+    
+    // Try to store the equipment
+    return RemoveEquipmentToInventory(PlayerShipPtr, slotNumber);
+}
+
+/**
+ * Equips an item from inventory into a specified slot.
+ * 
+ * @param commandArguments Arguments provided to the command (inventory_index slot_number)
+ * @return true if the equipment was equipped successfully
+ */
+static inline bool do_equip_from_inventory(char *commandArguments)
+{
+    if (PlayerShipPtr == NULL)
+    {
+        printf("\nError: Ship data not available.");
+        return false;
+    }
+    
+    // Check if we're in combat
+    if (InCombat)
+    {
+        printf("\nCannot modify ship configuration during combat.");
+        return false;
+    }
+      // Check if arguments were provided
+    if (commandArguments == NULL || commandArguments[0] == '\0')
+    {
+        printf("\nUsage: use <inventory_index> <slot_number>\n");
+        printf("Example: use 0 1  (equips item from inventory slot 0 to equipment slot 1)\n");
+        printf("\nUse 'inv' command to view your inventory and 'shipinfo' to see available slots.\n");
+        return false;
+    }      // Parse the arguments - we need two numbers: inventory index and slot number
+    char arg1[MAX_LEN];
+    char arg2[MAX_LEN]; 
+    int invIndex = -1;
+    int slotNumber = -1;
+    
+    // Extract the arguments
+    char *token = strtok(commandArguments, " \t");
+    if (token != NULL) {
+        strncpy(arg1, token, MAX_LEN - 1);
+        arg1[MAX_LEN - 1] = '\0';
+        invIndex = atoi(arg1);
+        
+        token = strtok(NULL, " \t");
+        if (token != NULL) {
+            strncpy(arg2, token, MAX_LEN - 1);
+            arg2[MAX_LEN - 1] = '\0';
+            slotNumber = atoi(arg2);
+        } else {
+            printf("\nUsage: use <inventory_index> <slot_number>\n");
+            printf("Example: use 0 1  (equips item from inventory slot 0 to equipment slot 1)\n");
+            printf("\nUse 'inv' command to view your inventory and 'shipinfo' to see available slots.\n");
+            return false;
+        }
+    }    // Check if both arguments were provided and are valid
+    if (invIndex < 0 || invIndex >= MAX_EQUIPMENT_INVENTORY)
+    {
+        printf("\nInvalid inventory index. Valid range: 0-%d\n", MAX_EQUIPMENT_INVENTORY - 1);
+        return false;
+    }
+    
+    if (slotNumber < 0 || slotNumber >= MAX_EQUIPMENT_SLOTS)
+    {
+        printf("\nInvalid slot number. Valid range: 0-%d\n", MAX_EQUIPMENT_SLOTS - 1);
+        return false;
+    }
+    
+    // Try to equip the item from inventory
+    return EquipFromInventory(PlayerShipPtr, invIndex, slotNumber);
 }

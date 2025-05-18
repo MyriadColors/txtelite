@@ -7,6 +7,7 @@
 #include "elite_utils.h"            // For minimum_value
 #include "elite_star_system.h"      // For StarSystem
 #include "elite_ship_types.h"       // For PlayerShip structure and functions
+#include "elite_equipment_constants.h" // For equipment mapping functions
 
 extern struct NavigationState PlayerNavState;
 extern struct StarSystem *CurrentStarSystem;
@@ -64,6 +65,9 @@ static inline void initialize_player_state(void)
     
     // Synchronize cargo capacity with HoldSpace
     PlayerShipPtr->attributes.cargoCapacityTons = HoldSpace;
+    
+    // Map equipment indices for quick status checks
+    MapEquipmentIndices(PlayerShipPtr);
 
     // Initialize star system for the current planet
     initialize_star_system_for_current_planet();

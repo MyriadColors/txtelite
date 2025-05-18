@@ -116,12 +116,18 @@ typedef struct CargoItem
     // Future: legality, volatility
 } CargoItem;
 
+// Forward declaration for MAX_EQUIPMENT_INVENTORY
+#ifndef MAX_EQUIPMENT_INVENTORY
+#define MAX_EQUIPMENT_INVENTORY 30
+#endif
+
 typedef struct PlayerShip
 {
     char shipName[MAX_SHIP_NAME_LENGTH];
     char shipClassName[MAX_SHIP_NAME_LENGTH]; // e.g., "Cobra Mk III"
     ShipCoreAttributes attributes;
-    ShipEquipmentItem equipment[MAX_EQUIPMENT_SLOTS];
+    ShipEquipmentItem equipment[MAX_EQUIPMENT_SLOTS];      // Currently equipped items
+    ShipEquipmentItem equipmentInventory[MAX_EQUIPMENT_INVENTORY]; // Inventory of stored equipment
     CargoItem cargo[MAX_CARGO_SLOTS];
     // Removed: int credits; Player's money is managed globally (e.g., as 'Cash')
 } PlayerShip;
@@ -154,11 +160,23 @@ inline void InitializeCobraMkIII(PlayerShip *playerShip)
     playerShip->attributes.currentCargoTons = 0;
     playerShip->attributes.missilePylons = COBRA_MK3_INITIAL_MISSILE_PYLONS;
     playerShip->attributes.missilesLoadedHoming = 0;
-    playerShip->attributes.missilesLoadedDumbfire = 0;
-    // Initialize equipment slots to empty
+    playerShip->attributes.missilesLoadedDumbfire = 0;    // Initialize equipment slots to empty
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
         playerShip->equipment[i].isActive = 0;
+        playerShip->equipment[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
+        playerShip->equipment[i].energyDraw = 0.0;
+    }
+    
+    // Initialize inventory slots to empty
+    for (int i = 0; i < MAX_EQUIPMENT_INVENTORY; ++i)
+    {
+        playerShip->equipmentInventory[i].isActive = 0;
+        strcpy(playerShip->equipmentInventory[i].name, "Empty");
+        playerShip->equipmentInventory[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
+        playerShip->equipmentInventory[i].energyDraw = 0.0;
+        playerShip->equipment[i].damageOutput = 0.0;
+        memset(playerShip->equipment[i].name, 0, MAX_SHIP_NAME_LENGTH);
         strncpy(playerShip->equipment[i].name, "Empty", MAX_SHIP_NAME_LENGTH - 1);
         playerShip->equipment[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
         // Initialize other fields if necessary, like setting slotType to a default/none
@@ -211,35 +229,37 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
            playerShip->attributes.missilePylons,
            playerShip->attributes.missilesLoadedHoming,
            playerShip->attributes.missilesLoadedDumbfire);
-    // Removed: printf("Credits: %dcr\n", playerShip->credits);
-
-    printf("\n--- Equipment ---\n");
+    // Removed: printf("Credits: %dcr\n", playerShip->credits);    printf("\n--- Equipment ---\n");
     int hasEquipment = 0;
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
+      for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
-        if (playerShip->equipment[i].isActive)
+        if (playerShip->equipment[i].isActive && 
+            strlen(playerShip->equipment[i].name) > 0 &&
+            strcmp(playerShip->equipment[i].name, "Empty") != 0)
         {
             hasEquipment = 1;
-            printf("- %s (Slot: %d, Type: ", playerShip->equipment[i].name, playerShip->equipment[i].slotType);
-            switch (playerShip->equipment[i].slotType)
-            {
-            case EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON:
-            case EQUIPMENT_SLOT_TYPE_AFT_WEAPON:
-                printf("Weapon - %d)\n", playerShip->equipment[i].typeSpecific.weaponType);
-                break;
-            case EQUIPMENT_SLOT_TYPE_DEFENSIVE_1:
-            case EQUIPMENT_SLOT_TYPE_DEFENSIVE_2:
-                printf("Defensive - %d)\n", playerShip->equipment[i].typeSpecific.defensiveType);
-                break;
-            case UTILITY_SYSTEM_1:
-            case UTILITY_SYSTEM_2:
-            case UTILITY_SYSTEM_3:
-            case UTILITY_SYSTEM_4:
-                printf("Utility - %d)\n", playerShip->equipment[i].typeSpecific.utilityType);
-                break;
-            default:
-                printf("Unknown)\n");
+            printf("- %s", playerShip->equipment[i].name);
+            
+            // Only print slot info if it's useful
+            if (playerShip->equipment[i].slotType != EQUIPMENT_SLOT_TYPE_NONE) {
+                printf(" (Slot: %d", playerShip->equipment[i].slotType);
+                
+                // Print the type info based on slot type
+                if (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON ||
+                    playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
+                    printf(", Type: Weapon - %d", playerShip->equipment[i].typeSpecific.weaponType);
+                }
+                else if (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
+                         playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
+                    printf(", Type: Defensive - %d", playerShip->equipment[i].typeSpecific.defensiveType);
+                }
+                else if (playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+                         playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4) {
+                    printf(", Type: Utility - %d", playerShip->equipment[i].typeSpecific.utilityType);
+                }
+                printf(")");
             }
+            printf("\n");
         }
     }
     if (!hasEquipment)
@@ -381,12 +401,14 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
                    playerShip->cargo[i].quantity,
                    playerShip->cargo[i].purchasePrice);
         }
-    }
-    if (!hasCargo)
+    }    if (!hasCargo)
     {
         printf("Cargo hold is empty.\n");
     }
     printf("---------------------------\n");
+    
+    // Add a note about the inventory system
+    printf("\nEquipment inventory commands: 'inv', 'store <slot>', 'use <inv_idx> <slot>'\n");
 }
 
 // Include cargo management system
@@ -1132,79 +1154,46 @@ inline bool AddEquipment(PlayerShip *playerShip,
     if (playerShip == NULL || equipmentName == NULL)
     {
         return false;
-    }
-
-    // Check if the slot is valid and available (or if we are replacing existing)
-    // For simplicity, this example assumes we find the first 'empty' slot of the correct type
-    // or a specific slot index if slotType is a direct index.
-    // A more robust system would handle specific slot indices or types more clearly.
-
-    int targetSlotIndex = -1;
-
-    // This logic needs to be more robust. For now, let's assume slotType directly maps
-    // to an index for simplicity in this example, or we find the first compatible empty slot.
-    // If slotType is meant to be an enum like EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
-    // we need to map it to an actual index in playerShip->equipment.
-
-    // Simplified: Find the first available slot that matches the broad category implied by specificType
-    // This is a placeholder for more sophisticated slot management.
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
+    }    // Check if the slot is valid and available (or if we are replacing existing)
+    // The slotType directly corresponds to the array index in the equipment array
+    
+    // Make sure the slot is within bounds
+    if (slotType < 0 || slotType >= MAX_EQUIPMENT_SLOTS)
     {
-        // This is a very basic check. A real system would have dedicated slots for weapon/defensive/utility
-        // or check if playerShip->equipment[i].slotType is compatible with the new equipment.
-        if (!playerShip->equipment[i].isActive)
-        {
-            // Check if the slotType enum value corresponds to the type of equipment being added.
-            // This is a conceptual check; the actual mapping of enum to equipment type needs to be defined.
-            bool slotMatchesType = false;
-            if ((specificType.weaponType != WEAPON_TYPE_NONE) &&
-                (slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON || slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON))
-            {
-                slotMatchesType = true;
-            }
-            else if ((specificType.defensiveType != DEFENSIVE_SYSTEM_TYPE_NONE) &&
-                     (slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 || slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2))
-            {
-                slotMatchesType = true;
-            }
-            else if ((specificType.utilityType != UTILITY_SYSTEM_TYPE_NONE) &&
-                     (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4))
-            { // Assuming utility slots are contiguous
-                slotMatchesType = true;
-            }
-
-            if (slotMatchesType)
-            {
-                targetSlotIndex = i; // Found a suitable empty slot
-                break;
-            }
-        }
-    }
-
-    // If a specific slot was intended (e.g. slotType was an index or a specific enum like EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON)
-    // and that slot is occupied, we might allow replacement or return false.
-    // For now, if no empty compatible slot is found, return false.
-    if (targetSlotIndex == -1)
-    {
-        // If the provided slotType is a direct index and it's occupied, handle replacement or error
-        // This part needs to be fleshed out based on how slotType is used.
-        // For now, if slotType is an enum that maps to an index (e.g. FORWARD_WEAPON = 0)
-        // and that slot is busy, we could overwrite or fail.
-        // Let's assume for now we only add to empty, compatible slots found by the loop above.
-        printf("No suitable empty slot found or specified slot is incompatible/occupied.\n");
+        printf("Error: Invalid equipment slot type %d.\n", slotType);
         return false;
-    }
+    }    // Check if the slot is already occupied
+    if (playerShip->equipment[slotType].isActive)
+    {
+        // Forward declaration of the inventory function
+        extern bool RemoveEquipmentToInventory(PlayerShip* playerShip, EquipmentSlotType slotType);
+        
+        // Store the name of the equipment being replaced for better messaging
+        char oldEquipName[MAX_SHIP_NAME_LENGTH];
+        strncpy(oldEquipName, playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH - 1);
+        oldEquipName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+          // Try to store the existing equipment in inventory before replacing it
+        if (RemoveEquipmentToInventory(playerShip, slotType)) {
+            // Successfully moved existing equipment to inventory - message is already printed by RemoveEquipmentToInventory
+        } else {
+            // Failed to store in inventory - likely full or special case
+            printf("Warning: Replacing existing equipment '%s' in slot %d without storing it (inventory may be full).\n", 
+                   oldEquipName, slotType);
+            
+            // Reset the slot manually since RemoveEquipmentToInventory failed
+            playerShip->equipment[slotType].isActive = 0;
+            strcpy(playerShip->equipment[slotType].name, "Empty");
+        }
+    }// Add the equipment directly to the specified slot
+    strncpy(playerShip->equipment[slotType].name, equipmentName, MAX_SHIP_NAME_LENGTH - 1);
+    playerShip->equipment[slotType].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    playerShip->equipment[slotType].slotType = slotType;         // Store the intended slot type
+    playerShip->equipment[slotType].typeSpecific = specificType; // Use the new named union
+    playerShip->equipment[slotType].isActive = 1;
+    playerShip->equipment[slotType].energyDraw = energyDraw;
+    playerShip->equipment[slotType].damageOutput = damageOutput;
 
-    // Add the equipment
-    strncpy(playerShip->equipment[targetSlotIndex].name, equipmentName, MAX_SHIP_NAME_LENGTH - 1);
-    playerShip->equipment[targetSlotIndex].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-    playerShip->equipment[targetSlotIndex].slotType = slotType;         // Store the intended slot type
-    playerShip->equipment[targetSlotIndex].typeSpecific = specificType; // Use the new named union
-    playerShip->equipment[targetSlotIndex].isActive = 1;
-    playerShip->equipment[targetSlotIndex].energyDraw = energyDraw;
-    playerShip->equipment[targetSlotIndex].damageOutput = damageOutput;
-
-    printf("%s added to slot %d.\n", equipmentName, targetSlotIndex);
+    printf("%s added to slot %d.\n", equipmentName, slotType);
     return true;
 }
 

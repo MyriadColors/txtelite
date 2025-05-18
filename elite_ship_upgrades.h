@@ -19,7 +19,8 @@ extern bool AddEquipment(PlayerShip* playerShip, EquipmentSlotType slotType,
                        const char* equipmentName, EquipmentTypeSpecifics specificType,
                        double energyDraw, double damageOutput);
 
-#include "elite_state.h"      // For global state variables
+#include "elite_state.h"           // For global state variables
+#include "elite_equipment_constants.h" // For equipment indices
 
 // === Constants for equipment costs and upgrade values ===
 // Basic equipment costs (credits)
@@ -569,12 +570,15 @@ inline bool PurchaseEquipment(PlayerShip* playerShip,
         specificType, 
         energyDraw, 
         damageOutput
-    );
-    
-    if (equipmentAdded) {
+    );    if (equipmentAdded) {
         // Deduct cost
         Cash -= cost;
         printf("Successfully purchased %s for %d credits.\n", equipmentName, cost);
+        
+        // Update equipment mapping for quick access
+        #include "elite_equipment_constants.h"
+        MapEquipmentIndices(playerShip);
+        
         return true;
     } else {
         printf("Failed to install %s. Make sure the slot is empty.\n", equipmentName);

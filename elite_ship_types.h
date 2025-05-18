@@ -83,6 +83,7 @@ typedef struct ShipCoreAttributes
 {
     int hullStrength;
     double energyBanks;
+    double maxEnergyBanks;
     double shieldStrengthFront;
     double shieldStrengthAft;
     double fuelLiters; // Internal representation, can be converted to LY
@@ -137,11 +138,11 @@ inline void InitializeCobraMkIII(PlayerShip *playerShip)
 
     strncpy(playerShip->shipName, "My Cobra", MAX_SHIP_NAME_LENGTH - 1);
     playerShip->shipName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-    strncpy(playerShip->shipClassName, "Cobra Mk III", MAX_SHIP_NAME_LENGTH - 1);
-    playerShip->shipClassName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    strncpy(playerShip->shipClassName, "Cobra Mk III", MAX_SHIP_NAME_LENGTH - 1);    playerShip->shipClassName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
 
     playerShip->attributes.hullStrength = COBRA_MK3_BASE_HULL_STRENGTH;
     playerShip->attributes.energyBanks = COBRA_MK3_BASE_ENERGY_BANKS;
+    playerShip->attributes.maxEnergyBanks = COBRA_MK3_BASE_ENERGY_BANKS;
     // Assuming shields are combined for now, split later if needed by design
     playerShip->attributes.shieldStrengthFront = COBRA_MK3_BASE_SHIELD_STRENGTH;
     playerShip->attributes.shieldStrengthAft = COBRA_MK3_BASE_SHIELD_STRENGTH;
@@ -288,8 +289,8 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
                 }
             } // Rear-mounted Laser
             if (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON &&
-                (playerShip->equipment[i].typeSpecific.weaponType >= WEAPON_TYPE_PULSE_LASER &&
-                     playerShip->equipment[i].typeSpecific.weaponType <= WEAPON_TYPE_MINING_LASER ||
+                ((playerShip->equipment[i].typeSpecific.weaponType >= WEAPON_TYPE_PULSE_LASER &&
+                     playerShip->equipment[i].typeSpecific.weaponType <= WEAPON_TYPE_MINING_LASER) ||
                  playerShip->equipment[i].typeSpecific.weaponType == WEAPON_TYPE_REAR_LASER))
             {
                 if (!rearLaserFound)
@@ -389,10 +390,37 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
 }
 
 // Include cargo management system
-#include "elite_ship_cargo.h"
+// #include "elite_ship_cargo.h"
 
 // Include ship upgrade functionality
 #include "elite_ship_upgrades.h"
+
+/**
+ * Checks if the ship has fuel scoops installed
+ *
+ * @param playerShip Pointer to the PlayerShip structure
+ * @return true if the ship has fuel scoops, false otherwise
+ */
+inline bool HasFuelScoops(const PlayerShip *playerShip)
+{
+    if (playerShip == NULL)
+    {
+        return false;
+    }
+    
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
+    {
+        if (playerShip->equipment[i].isActive &&
+            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+            playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
+            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
 
 /**
  * Refuels the player's ship, either by paying cash at a station or using fuel scoops.
@@ -427,8 +455,7 @@ inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuel
     float availableSpace = maxFuelLY - currentFuelLY;
 
     // Limit requested amount to available space
-    float effectiveRequestLY = (fuelAmountLY > availableSpace) ? availableSpace : fuelAmountLY;
-    // Handle fuel scooping if requested
+    float effectiveRequestLY = (fuelAmountLY > availableSpace) ? availableSpace : fuelAmountLY;    // Handle fuel scooping if requested
     if (useFuelScoops)
     {
         // Check if the ship has fuel scoops installed
@@ -855,27 +882,6 @@ inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlot
     return 0.0;
 }
 
-inline bool HasFuelScoops(const PlayerShip *playerShip)
-{
-    if (playerShip == NULL)
-    {
-        return false;
-    }
-
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
-        if (playerShip->equipment[i].isActive &&
-            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
-            playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
-            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 // Function to check if a specific type of equipment is installed
 /**
  * Checks if the ship has a specific type of equipment installed.
@@ -1102,213 +1108,6 @@ inline double RechargeEnergy(PlayerShip *playerShip, double rechargeAmount, bool
 
     printf("Recharged %.1f energy units for %.0f credits.\n", effectiveRecharge, totalCost);
     return effectiveRecharge;
-}
-
-/**
- * Adds cargo to the player's ship.
- *
- * @param playerShip Pointer to the PlayerShip structure
- * @param cargoName Name of the cargo item
- * @param quantity Quantity to add
- * @param purchasePrice Price per unit (for player reference)
- * @param externalSync If true, update global ShipHold array
- *
- * @return The actual quantity added (may be less than requested if cargo hold is full)
- */
-inline int AddCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int purchasePrice, bool externalSync)
-{
-    if (playerShip == NULL || cargoName == NULL || quantity <= 0)
-    {
-        return 0;
-    }
-
-    // Check available cargo space
-    int availableSpace = playerShip->attributes.cargoCapacityTons - playerShip->attributes.currentCargoTons;
-
-    if (availableSpace <= 0)
-    {
-        printf("Error: Cargo hold is full.\n");
-        return 0;
-    }
-
-    // Limit quantity to available space
-    int effectiveQuantity = (quantity > availableSpace) ? availableSpace : quantity;
-
-    // First check if this cargo type already exists in the hold
-    int existingIndex = -1;
-    for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
-    {
-        if (playerShip->cargo[i].quantity > 0 &&
-            strcmp(playerShip->cargo[i].name, cargoName) == 0)
-        {
-            existingIndex = i;
-            break;
-        }
-    }
-
-    // If existing, update quantity
-    if (existingIndex >= 0)
-    {
-        playerShip->cargo[existingIndex].quantity += effectiveQuantity;
-        // Update purchase price as a weighted average
-        int oldTotal = playerShip->cargo[existingIndex].quantity - effectiveQuantity;
-        int oldValue = oldTotal * playerShip->cargo[existingIndex].purchasePrice;
-        int newValue = effectiveQuantity * purchasePrice;
-        playerShip->cargo[existingIndex].purchasePrice = (oldValue + newValue) / playerShip->cargo[existingIndex].quantity;
-    }
-    // Otherwise find an empty slot
-    else
-    {
-        int emptyIndex = -1;
-        for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
-        {
-            if (playerShip->cargo[i].quantity == 0)
-            {
-                emptyIndex = i;
-                break;
-            }
-        }
-
-        if (emptyIndex < 0)
-        {
-            printf("Error: No empty cargo slots available (maximum %d different items).\n", MAX_CARGO_SLOTS);
-            return 0;
-        }
-
-        // Add to empty slot
-        strncpy(playerShip->cargo[emptyIndex].name, cargoName, MAX_SHIP_NAME_LENGTH - 1);
-        playerShip->cargo[emptyIndex].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-        playerShip->cargo[emptyIndex].quantity = effectiveQuantity;
-        playerShip->cargo[emptyIndex].purchasePrice = purchasePrice;
-    }
-
-    // Update current cargo weight
-    playerShip->attributes.currentCargoTons += effectiveQuantity;
-
-    // Sync with global state if requested
-    if (externalSync)
-    {
-        extern uint16_t ShipHold[];
-        extern uint16_t HoldSpace;
-
-// Use a simplified approach for now - in the future, a more robust
-// mapping between the PlayerShip cargo and global cargo would be needed
-// This is just a placeholder that assumes cargo names match tradenames
-#define LAST_TRADE_INDEX 16
-#define COMMODITY_ARRAY_SIZE_VALUE 18
-
-        // Find the commodity index by name matching
-        // Note: This is not ideal and should be replaced with a proper mapping
-        extern char tradnames[][30]; // MAX_LEN is defined as 30 in elite_state.h
-
-        int commodityIndex = -1;
-        for (int i = 0; i <= LAST_TRADE_INDEX; ++i)
-        {
-            if (strcmp(cargoName, tradnames[i]) == 0)
-            {
-                commodityIndex = i;
-                break;
-            }
-        }
-
-        if (commodityIndex >= 0 && commodityIndex < COMMODITY_ARRAY_SIZE_VALUE)
-        {
-            ShipHold[commodityIndex] += effectiveQuantity;
-            HoldSpace -= effectiveQuantity;
-        }
-    }
-
-    printf("Added %d %s to cargo hold.\n", effectiveQuantity, cargoName);
-    return effectiveQuantity;
-}
-
-/**
- * Removes cargo from the player's ship.
- *
- * @param playerShip Pointer to the PlayerShip structure
- * @param cargoName Name of the cargo item
- * @param quantity Quantity to remove
- * @param externalSync If true, update global ShipHold array
- *
- * @return The actual quantity removed
- */
-inline int RemoveCargo(PlayerShip *playerShip, const char *cargoName, int quantity, bool externalSync)
-{
-    if (playerShip == NULL || cargoName == NULL || quantity <= 0)
-    {
-        return 0;
-    }
-
-    // Find the cargo item
-    int cargoIndex = -1;
-    for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
-    {
-        if (playerShip->cargo[i].quantity > 0 &&
-            strcmp(playerShip->cargo[i].name, cargoName) == 0)
-        {
-            cargoIndex = i;
-            break;
-        }
-    }
-
-    if (cargoIndex < 0)
-    {
-        printf("Error: No %s found in cargo hold.\n", cargoName);
-        return 0;
-    }
-
-    // Calculate amount to remove
-    int effectiveQuantity = (quantity > playerShip->cargo[cargoIndex].quantity) ? playerShip->cargo[cargoIndex].quantity : quantity;
-
-    // Update cargo slot
-    playerShip->cargo[cargoIndex].quantity -= effectiveQuantity;
-
-    // If fully removed, clear the slot
-    if (playerShip->cargo[cargoIndex].quantity == 0)
-    {
-        strcpy(playerShip->cargo[cargoIndex].name, "Empty");
-        playerShip->cargo[cargoIndex].purchasePrice = 0;
-    }
-
-    // Update current cargo weight
-    playerShip->attributes.currentCargoTons -= effectiveQuantity;
-
-    // Sync with global state if requested
-    if (externalSync)
-    {
-        extern uint16_t ShipHold[];
-        extern uint16_t HoldSpace;
-
-// Use a simplified approach as in AddCargo
-#define LAST_TRADE_INDEX 16
-#define COMMODITY_ARRAY_SIZE_VALUE 18
-
-        // Find the commodity index by name matching
-        extern char tradnames[][30]; // MAX_LEN is defined as 30 in elite_state.h
-
-        int commodityIndex = -1;
-        for (int i = 0; i <= LAST_TRADE_INDEX; ++i)
-        {
-            if (strcmp(cargoName, tradnames[i]) == 0)
-            {
-                commodityIndex = i;
-                break;
-            }
-        }
-
-        if (commodityIndex >= 0 && commodityIndex < COMMODITY_ARRAY_SIZE_VALUE)
-        {
-            // Make sure not to go below 0
-            if (ShipHold[commodityIndex] >= effectiveQuantity)
-            {
-                ShipHold[commodityIndex] -= effectiveQuantity;
-                HoldSpace += effectiveQuantity;
-            }
-        }
-    }
-
-    printf("Removed %d %s from cargo hold.\n", effectiveQuantity, cargoName);
-    return effectiveQuantity;
 }
 
 /**
@@ -1621,4 +1420,65 @@ inline void DisplayCargoDetails(const PlayerShip *playerShip)
     printf("%-20s %-10s %-15s %-15s\n", "----------", "--------", "--------------", "-----------");
     printf("%-20s %-10d %-15s %-15d\n", "TOTAL", totalItems, "", totalValue);
     printf("\nAvailable space: %d tons\n", GetAvailableCargoSpace(playerShip));
+}
+
+// Helper functions to get equipment names from types
+inline const char* GetWeaponTypeName(WeaponType type)
+{
+    switch (type)
+    {
+        case WEAPON_TYPE_PULSE_LASER:
+            return "Pulse Laser";
+        case WEAPON_TYPE_BEAM_LASER:
+            return "Beam Laser";
+        case WEAPON_TYPE_MILITARY_LASER:
+            return "Military Laser";
+        case WEAPON_TYPE_MINING_LASER:
+            return "Mining Laser";
+        case WEAPON_TYPE_MISSILE_HOMING:
+            return "Homing Missile";
+        case WEAPON_TYPE_MISSILE_DUMBFIRE:
+            return "Dumbfire Missile";
+        case WEAPON_TYPE_REAR_LASER:
+            return "Rear Laser";
+        case WEAPON_TYPE_NONE:
+        default:
+            return "None";
+    }
+}
+
+inline const char* GetDefensiveSystemTypeName(DefensiveSystemType type)
+{
+    switch (type)
+    {
+        case DEFENSIVE_SYSTEM_TYPE_ECM:
+            return "ECM System";
+        case DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT:
+            return "Extra Energy Unit";
+        case DEFENSIVE_SYSTEM_TYPE_NONE:
+        default:
+            return "None";
+    }
+}
+
+inline const char* GetUtilitySystemTypeName(UtilitySystemType type)
+{
+    switch (type)
+    {
+        case UTILITY_SYSTEM_TYPE_ESCAPE_POD:
+            return "Escape Pod";
+        case UTILITY_SYSTEM_TYPE_FUEL_SCOOPS:
+            return "Fuel Scoops";
+        case UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION:
+            return "Cargo Bay Extension";
+        case UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER:
+            return "Docking Computer";
+        case UTILITY_SYSTEM_TYPE_GALACTIC_HYPERSPACE_DRIVE:
+            return "Galactic Hyperspace Drive";
+        case UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE:
+            return "Scanner Upgrade";
+        case UTILITY_SYSTEM_TYPE_NONE:
+        default:
+            return "None";
+    }
 }

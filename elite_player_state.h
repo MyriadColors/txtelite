@@ -6,6 +6,7 @@
 #include "elite_galaxy.h"           // For build_galaxy_data()
 #include "elite_utils.h"            // For minimum_value
 #include "elite_star_system.h"      // For StarSystem
+#include "elite_ship_types.h"       // For PlayerShip structure and functions
 
 extern struct NavigationState PlayerNavState;
 extern struct StarSystem *CurrentStarSystem;
@@ -27,8 +28,7 @@ static inline void initialize_player_state(void)
     GalaxyNum = 1;      // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed
-    build_galaxy_data(Seed);      // Set current planet to Lave (planet 7 in galaxy 1)
-    CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h
+    build_galaxy_data(Seed);      // Set current planet to Lave (planet 7 in galaxy 1)    CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h
 
     // Populate LocalMarket for the starting planet. Fluctuation is 0 for initial state.
     // Galaxy[CurrentPlanet] is now valid after build_galaxy_data()
@@ -45,9 +45,40 @@ static inline void initialize_player_state(void)
 
     // Initialize the tradenames array for command parsing
     init_tradnames();
+    
+    // Initialize player ship
+    if (PlayerShipPtr != NULL) {
+        free(PlayerShipPtr);
+    }
+    
+    PlayerShipPtr = (PlayerShip *)malloc(sizeof(PlayerShip));
+    if (PlayerShipPtr == NULL) {
+        printf("Error: Could not allocate memory for player ship!\n");
+        return;
+    }
+    
+    InitializeCobraMkIII(PlayerShipPtr);
+    
+    // Synchronize ship fuel with global state
+    PlayerShipPtr->attributes.fuelLiters = Fuel * 10.0; // Convert game units to liters
+    
+    // Synchronize cargo capacity with HoldSpace
+    PlayerShipPtr->attributes.cargoCapacityTons = HoldSpace;
 
     // Initialize star system for the current planet
     initialize_star_system_for_current_planet();
+}
+
+// Cleanup player ship resources
+static inline void cleanup_player_ship(void)
+{
+    if (PlayerShipPtr != NULL)
+    {
+        // Any additional cleanup for ship resources would go here
+        
+        free(PlayerShipPtr);
+        PlayerShipPtr = NULL;
+    }
 }
 
 // Initializes the star system for the current planet.
@@ -78,6 +109,35 @@ static inline void initialize_star_system_for_current_planet(void)
     PlayerNavState.currentLocationType = CELESTIAL_PLANET;
     PlayerNavState.currentLocation.planet = get_planet_by_index(CurrentStarSystem, 0);
     PlayerNavState.distanceFromStar = PlayerNavState.currentLocation.planet->orbitalDistance;
+}
+
+// Displays a brief summary of the ship status
+static inline void display_ship_status_brief(void)
+{
+    if (PlayerShipPtr == NULL)
+    {
+        printf("\nError: Ship data is not available.\n");
+        return;
+    }
+
+    printf("\nShip: %s (%s) - ", 
+           PlayerShipPtr->shipName, 
+           PlayerShipPtr->shipClassName);
+    
+    // Calculate hull percentage
+    int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / COBRA_MK3_BASE_HULL_STRENGTH;
+    printf("Hull: %d%% - ", hullPercentage);
+    
+    // Round energy to one decimal place
+    printf("Energy: %.1f - ", PlayerShipPtr->attributes.energyBanks);
+    
+    // Convert fuel liters to LY (assuming 100L = 1LY)
+    printf("Fuel: %.1f LY - ", PlayerShipPtr->attributes.fuelLiters / 100.0);
+    
+    // Show cargo capacity
+    printf("Cargo: %d/%d tons", 
+           PlayerShipPtr->attributes.currentCargoTons,
+           PlayerShipPtr->attributes.cargoCapacityTons);
 }
 
 // Calculates how much fuel can be bought with the available cash.

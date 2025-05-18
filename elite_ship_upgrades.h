@@ -10,7 +10,7 @@ typedef struct PlayerShip PlayerShip;
 
 // Forward declare equipment types and functions used in this file
 typedef enum EquipmentSlotType EquipmentSlotType;
-typedef struct EquipmentTypeSpecifics EquipmentTypeSpecifics;
+typedef union EquipmentTypeSpecifics EquipmentTypeSpecifics;
 #define MAX_EQUIPMENT_SLOTS 10
 
 // Function declarations from other files that we need
@@ -173,55 +173,50 @@ inline bool ConfigureCombatLoadout(PlayerShip* playerShip) {
     EquipmentTypeSpecifics equipType; // Use the new named union
     
     // Forward military laser
-    equipType.weaponType = WEAPON_TYPE_MILITARY_LASER;
-    bool success = AddEquipment(
+    equipType.weaponType = WEAPON_TYPE_MILITARY_LASER;    bool success = AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Military Laser", 
-        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, 
         equipType, 
         15.0,  // Higher energy draw 
         10.0   // Higher damage output
     );
-    
-    // Rear-mounted beam laser
+      // Rear-mounted beam laser
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
     success &= AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_AFT_WEAPON,
         "Beam Laser (Aft)", 
-        EQUIPMENT_SLOT_TYPE_AFT_WEAPON, 
         equipType, 
         12.0,  // Energy draw 
         7.5    // Damage output
     );
     
-    // ECM System
-    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
+    // ECM System    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
     success &= AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1,
         "ECM System", 
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, 
         equipType, 
         5.0,   // Energy draw 
         0.0    // No damage (defensive)
     );
-    
-    // Extra Energy Unit
+      // Extra Energy Unit
     equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT;
     success &= AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_DEFENSIVE_2,
         "Extra Energy Unit", 
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_2, 
         equipType, 
         0.0,   // No ongoing draw (it provides energy) 
         0.0    // No damage (defensive)
     );
     
-    // Escape Pod
-    equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
+    // Escape Pod    equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_1,
         "Escape Pod", 
-        UTILITY_SYSTEM_1, 
         equipType, 
         0.0,   // No energy draw 
         0.0    // No damage (utility)
@@ -270,56 +265,51 @@ inline bool ConfigureTradingLoadout(PlayerShip* playerShip) {
     
     // Add trading-focused equipment
     EquipmentTypeSpecifics equipType; // Use the new named union
-    
-    // Forward beam laser (better than pulse, less energy than military)
+      // Forward beam laser (better than pulse, less energy than military)
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
     bool success = AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Beam Laser", 
-        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, 
         equipType, 
         12.0,  // Energy draw 
         7.5    // Damage output
     );
-    
-    // ECM System for missile defense
+      // ECM System for missile defense
     equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
     success &= AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1,
         "ECM System", 
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, 
         equipType, 
         5.0,   // Energy draw 
         0.0    // No damage (defensive)
     );
-    
-    // Docking Computer for easier station docking
+      // Docking Computer for easier station docking
     equipType.utilityType = UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_1,
         "Docking Computer", 
-        UTILITY_SYSTEM_1, 
         equipType, 
         2.0,   // Small energy draw 
         0.0    // No damage (utility)
     );
-    
-    // Cargo Bay Extension in Utility Slot 2
+      // Cargo Bay Extension in Utility Slot 2
     equipType.utilityType = UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_2,
         "Cargo Bay Extension", 
-        UTILITY_SYSTEM_2, 
         equipType, 
         0.0,   // No energy draw 
         0.0    // No damage (utility)
     );
-    
-    // Cargo Bay Extension in Utility Slot 3
+      // Cargo Bay Extension in Utility Slot 3
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_3,
         "Cargo Bay Extension", 
-        UTILITY_SYSTEM_3, 
         equipType, 
         0.0,   // No energy draw 
         0.0    // No damage (utility)
@@ -361,57 +351,52 @@ inline bool ConfigureExplorerLoadout(PlayerShip* playerShip) {
     
     // Add explorer-focused equipment
     EquipmentTypeSpecifics equipType; // Use the new named union
-    
-    // Forward pulse laser (standard)
+      // Forward pulse laser (standard)
     equipType.weaponType = WEAPON_TYPE_PULSE_LASER;
     bool success = AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Pulse Laser", 
-        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, 
         equipType, 
         10.0,  // Energy draw 
         5.0    // Damage output
     );
-    
-    // Fuel Scoops - essential for explorers
+      // Fuel Scoops - essential for explorers
     equipType.utilityType = UTILITY_SYSTEM_TYPE_FUEL_SCOOPS;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_1,
         "Fuel Scoops", 
-        UTILITY_SYSTEM_1, 
         equipType, 
         3.0,   // Energy when scooping 
         0.0    // No damage (utility)
     );
-    
-    // Scanner Upgrade
+      // Scanner Upgrade
     equipType.utilityType = UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_2,
         "Advanced Scanner", 
-        UTILITY_SYSTEM_2, 
         equipType, 
         4.0,   // Energy draw 
         0.0    // No damage (utility)
     );
-    
-    // Galactic Hyperspace Drive - for exceptional range
+      // Galactic Hyperspace Drive - for exceptional range
     equipType.utilityType = UTILITY_SYSTEM_TYPE_GALACTIC_HYPERSPACE_DRIVE;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_3,
         "Galactic Hyperspace", 
-        UTILITY_SYSTEM_3, 
         equipType, 
         20.0,  // High energy use for jump 
         0.0    // No damage (utility)
     );
-    
-    // Escape Pod for safety
+      // Escape Pod for safety
     equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_4,
         "Escape Pod", 
-        UTILITY_SYSTEM_4, 
         equipType, 
         0.0,   // No energy draw 
         0.0    // No damage (utility)
@@ -456,67 +441,61 @@ inline bool ConfigureMiningLoadout(PlayerShip* playerShip) {
     
     // Add mining-focused equipment
     EquipmentTypeSpecifics equipType; // Use the new named union
-    
-    // Forward Mining Laser - essential for asteroid mining
+      // Forward Mining Laser - essential for asteroid mining
     equipType.weaponType = WEAPON_TYPE_MINING_LASER;
     bool success = AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Mining Laser", 
-        EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, 
         equipType, 
         12.0,  // Energy draw 
         3.0    // Less combat damage, but effective on asteroids
     );
-    
-    // Beam Laser - for defense against pirates
+      // Beam Laser - for defense against pirates
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
     success &= AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_AFT_WEAPON,
         "Beam Laser (Aft)", 
-        EQUIPMENT_SLOT_TYPE_AFT_WEAPON, 
         equipType, 
         12.0,  // Energy draw 
         7.5    // Damage output
     );
-    
-    // ECM System for defense
+      // ECM System for defense
     equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
     success &= AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1,
         "ECM System", 
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, 
         equipType, 
         5.0,   // Energy draw 
         0.0    // No damage (defensive)
     );
-    
-    // Extra Energy Unit for mining operations
+      // Extra Energy Unit for mining operations
     equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT;
     success &= AddEquipment(
         playerShip, 
+        EQUIPMENT_SLOT_TYPE_DEFENSIVE_2,
         "Extra Energy Unit", 
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_2, 
         equipType, 
         0.0,   // No ongoing draw (it provides energy) 
         0.0    // No damage (defensive)
     );
-    
-    // Cargo Bay Extension in Utility Slot 1
+      // Cargo Bay Extension in Utility Slot 1
     equipType.utilityType = UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION;
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_1,
         "Cargo Bay Extension", 
-        UTILITY_SYSTEM_1, 
         equipType, 
         0.0,   // No energy draw 
         0.0    // No damage (utility)
     );
-    
-    // Cargo Bay Extension in Utility Slot 2
+      // Cargo Bay Extension in Utility Slot 2
     success &= AddEquipment(
         playerShip, 
+        UTILITY_SYSTEM_2,
         "Cargo Bay Extension", 
-        UTILITY_SYSTEM_2, 
         equipType, 
         0.0,   // No energy draw 
         0.0    // No damage (utility)
@@ -553,8 +532,9 @@ inline bool ConfigureMiningLoadout(PlayerShip* playerShip) {
 inline bool PurchaseEquipment(PlayerShip* playerShip, 
                               const char* equipmentName, 
                               EquipmentSlotType slotType, 
-                              EquipmentTypeSpecifics specificType, // Changed to named union 
+                              EquipmentTypeSpecifics specificType, // Changed to named union
                               int cost, 
+                              int techLevelRequired,
                               double energyDraw, 
                               double damageOutput) {
     
@@ -581,12 +561,11 @@ inline bool PurchaseEquipment(PlayerShip* playerShip,
                techLevelRequired, Galaxy[CurrentPlanet].techLev);
         return false;
     }
-    
-    // Try to add the equipment
+      // Try to add the equipment
     bool equipmentAdded = AddEquipment(
         playerShip, 
+        slotType,
         equipmentName, 
-        slotType, 
         specificType, 
         energyDraw, 
         damageOutput

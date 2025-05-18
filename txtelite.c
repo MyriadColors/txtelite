@@ -74,6 +74,10 @@ int main(void)
 	PARSER("help");
 
 #undef PARSER
+	
+	// Track last time energy was regenerated
+	uint64_t lastEnergyRegenTime = currentGameTimeSeconds;
+	
 	for (;;)
 	{
 		char locBuffer[MAX_LEN];
@@ -81,9 +85,39 @@ int main(void)
 
 		// Periodically update all markets in the system as time passes
 		update_all_system_markets();
+				// Regenerate ship energy over time
+		if (PlayerShipPtr != NULL && currentGameTimeSeconds > lastEnergyRegenTime) {
+			// Calculate time elapsed since last regeneration
+			uint64_t timeElapsed = currentGameTimeSeconds - lastEnergyRegenTime;
+			
+			// Regenerate energy at a rate of 1 unit per 5 seconds, up to max
+			if (timeElapsed >= 5) {
+				float energyToAdd = timeElapsed / 5.0f;
+				
+				// Add energy, but don't exceed maximum
+				PlayerShipPtr->attributes.energyBanks = 
+					(PlayerShipPtr->attributes.energyBanks + energyToAdd > PlayerShipPtr->attributes.maxEnergyBanks) ? 
+					PlayerShipPtr->attributes.maxEnergyBanks : PlayerShipPtr->attributes.energyBanks + energyToAdd;
+				
+				// Update last regeneration time
+				lastEnergyRegenTime = currentGameTimeSeconds;
+			}
+		}
 
-		printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ",
-			   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);
+		// Enhanced status display with ship information
+		if (PlayerShipPtr != NULL) {
+			// Calculate hull percentage
+			int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / COBRA_MK3_BASE_HULL_STRENGTH;
+			// Calculate energy percentage
+			int energyPercentage = (int)((PlayerShipPtr->attributes.energyBanks * 100) / PlayerShipPtr->attributes.maxEnergyBanks);
+			
+			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | Energy: %d%% | Time: %llu seconds > ",
+				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, 
+				   hullPercentage, energyPercentage, currentGameTimeSeconds);
+		} else {
+			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ",
+				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);
+		}
 		if (!fgets(getcommand, sizeof(getcommand) - 1, stdin))
 			break;
 		getcommand[sizeof(getcommand) - 1] = '\0';

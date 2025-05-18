@@ -3,6 +3,7 @@
 #include "elite_state.h"            // For PlanSys and other related structures
 #include "elite_navigation_types.h" // For NavigationState and CelestialType
 #include "elite_market.h"           // For market-related functions
+#include "elite_ship_types.h"      // For PlayerShip structure
 
 // Forward declarations
 struct Star;
@@ -567,10 +568,30 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
     default:
         fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
         return false;
-    }
-
-    // Calculate travel time
+    }    // Calculate travel time
     uint32_t travelTime = calculate_travel_time(startDistance, endDistance);
+
+    // Calculate energy requirement for travel
+    double distanceDelta = fabs(endDistance - startDistance);
+    double energyRequired = calculate_travel_energy_requirement(distanceDelta);
+    
+    // Check if player ship has enough energy
+    extern struct PlayerShip *PlayerShipPtr;
+    if (PlayerShipPtr != NULL)
+    {
+        // Check if there's enough energy
+        if (PlayerShipPtr->attributes.energyBanks < energyRequired)
+        {
+            fprintf(stderr, "Error: Insufficient energy for travel.\n");
+            printf("\nTravel aborted: Insufficient energy.\n");
+            printf("Required: %.1f, Available: %.1f\n", energyRequired, PlayerShipPtr->attributes.energyBanks);
+            return false;
+        }
+        
+        // Consume energy
+        PlayerShipPtr->attributes.energyBanks -= energyRequired;
+        printf("\nTravel energy consumed: %.1f units\n", energyRequired);
+    }
 
     // Update game time
     game_time_advance(travelTime);

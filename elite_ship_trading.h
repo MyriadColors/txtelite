@@ -112,7 +112,7 @@ static inline double GetShipPriceMultiplier(const char* shipClassName, int syste
  * @param shipPrices Array to store ship prices (must be at least MAX_SHIPS_AT_SHIPYARD)
  * @return Number of ships available
  */
-static inline int GetAvailableShips(const char* systemName __attribute__((unused)), int systemEconomy, 
+static inline int GetAvailableShips(const char* systemName [[maybe_unused]], int systemEconomy, 
                              const ShipType** availableShips, double* shipPrices) {
     // Initialize ship registry if needed
     InitializeShipRegistry();
@@ -330,12 +330,9 @@ static inline void CompareShips(const PlayerShip* playerShip, const char* compar
     printf("%-20s %-15d %-15d %+d\n", "Utility Slots", 
            playerShip->shipType->defaultUtilitySlots, 
            compareShip->defaultUtilitySlots,
-           compareShip->defaultUtilitySlots - playerShip->shipType->defaultUtilitySlots);
-    
-    // Compare cost
+           compareShip->defaultUtilitySlots - playerShip->shipType->defaultUtilitySlots);      // Compare cost
     printf("%-20s %-15.1f %-15.1f %+.1f\n", "Base Cost (CR)", 
-           playerShip->shipType->baseCost, 
-           compareShip->baseCost,
+           playerShip->shipType->baseCost, compareShip->baseCost, 
            compareShip->baseCost - playerShip->shipType->baseCost);
 }
 
@@ -591,9 +588,10 @@ static inline int TransferCargo(PlayerShip* sourceShip, PlayerShip* targetShip) 
  * @param tradeIn Whether to trade in the current ship
  * @return true if purchase successful, false otherwise
  */
-static inline bool BuyNewShip(const char* systemName __attribute__((unused)), int systemEconomy, 
-                       PlayerShip* playerShip, const char* newShipName,
-                       uint64_t gameTime, bool tradeIn) {
+static inline bool BuyNewShip(const char* systemName, int systemEconomy, 
+                      PlayerShip* playerShip, const char* newShipName,
+                      uint64_t gameTime, bool tradeIn) {
+    (void)systemName; // Unused parameter
     if (playerShip == NULL || newShipName == NULL) {
         printf("Error: Invalid ship data.\n");
         return false;
@@ -660,8 +658,7 @@ static inline bool BuyNewShip(const char* systemName __attribute__((unused)), in
         
         return false;
     }
-    
-    // Transfer equipment if trading in
+      // Transfer equipment if trading in
     int equipmentTransferred = 0;
     int cargoLost = 0;
     if (tradeIn) {
@@ -671,8 +668,7 @@ static inline bool BuyNewShip(const char* systemName __attribute__((unused)), in
         // Clear the trade-in storage
         tradeInStorage.isActive = false;
     }
-    
-    // Deduct the cost from player's cash
+      // Deduct the cost from player's cash
     Cash -= (int32_t)netCost;
     
     // Display purchase information
@@ -686,9 +682,9 @@ static inline bool BuyNewShip(const char* systemName __attribute__((unused)), in
         
         if (cargoLost > 0) {
             printf("Warning: %d tons of cargo could not be transferred due to space limitations.\n", cargoLost);
-        }
-    }
-      printf("Net cost: %.1f CR\n", netCost);
+        }    }
+    
+    printf("Net cost: %.1f CR\n", netCost);
     printf("Remaining cash: %.1f CR\n", (double)Cash / 10.0);
     
     return true;
@@ -703,7 +699,9 @@ static inline bool BuyNewShip(const char* systemName __attribute__((unused)), in
  * @param arguments Command arguments (unused)
  * @return true if command handled successfully
  */
-static inline bool ShipyardCommand(const char* arguments __attribute__((unused))) {    // Check if player is docked at a station
+static inline bool ShipyardCommand(const char* arguments) {
+    (void)arguments; // Unused parameter
+    // Check if player is docked at a station
     extern struct NavigationState PlayerNavState;
     extern int PlayerLocationType;
     

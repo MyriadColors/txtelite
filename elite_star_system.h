@@ -1,7 +1,7 @@
 #pragma once
 
 #include "elite_state.h"            // For PlanSys and other related structures
-#include "elite_navigation_types.h" // For NavigationState and CelestialType
+#include "elite_navigation.h"       // For NavigationState and CelestialType
 #include "elite_market.h"           // For market-related functions
 #include "elite_ship_types.h"      // For PlayerShip structure
 

@@ -1,7 +1,6 @@
 #pragma once
 
 // Include headers for necessary typedefs and forward declarations
-#include "elite_navigation_types.h" // For CelestialType and NavigationState
 #include "elite_star_system.h"		// For Star, Planet, Station, etc.
 
 // Include the rest of the headers
@@ -14,6 +13,7 @@
 #include "elite_ship_types.h"   // For ship status display functions
 #include "elite_ship_inventory.h" // For inventory management functions
 #include "elite_ship_trading.h" // For ship trading commands
+#include "elite_ship_upgrades.h" // For ship upgrades
 #include <stdlib.h>				// For atoi, atof
 #include <math.h>				// For floor, fabs
 #include <string.h>				// For string operations
@@ -879,10 +879,10 @@ static inline bool do_help(char *commandArguments)
 	printf("\n  shipinfo                - Display detailed ship information");
 	printf("\n  repair                  - Repair ship's hull damage (when docked)");
 	printf("\n  equip [item]            - Purchase and install ship equipment (ECM, fuel scoop, etc.)");
-	printf("\n  inv                     - Display stored equipment items in your ship's inventory");	printf("\n  store <slot_number>     - Remove equipment from a slot and store it in inventory");	printf("\n  use <inv_idx> <slot>    - Install equipment from inventory into a ship slot");
-	printf("\n  shipyard                - View ships available for purchase at the station");
+	printf("\n  inv                     - Display stored equipment items in your ship's inventory");	printf("\n  store <slot_number>     - Remove equipment from a slot and store it in inventory");	printf("\n  use <inv_idx> <slot>    - Install equipment from inventory into a ship slot");	printf("\n  shipyard                - View ships available for purchase at the station");
 	printf("\n  compareship <shipname>  - Compare your ship with another ship type");
 	printf("\n  buyship <ID or shipname> - Purchase a new ship (ID from shipyard list)");
+	printf("\n  upgrade [ID] [quantity] - View and purchase ship upgrades (hull, shields, etc.)");
 
 	printf("\n\nGAME MANAGEMENT:");
 	printf("\n  save  [description]     - Save the game with optional description");
@@ -1798,7 +1798,7 @@ static inline bool do_land(char *commandArguments)
 			planet->planetaryMarket.market = tempStation.market;
 			planet->planetaryMarket.isInitialized = true;
 		}
-		else
+			else
 		{
 			// Update existing market based on elapsed time
 			uint64_t currentTime = game_time_get_seconds();
@@ -2613,4 +2613,13 @@ bool do_compareship(char* args) {
 
 bool do_buyship(char* args) {
     return BuyShipCommand(args);
+}
+
+/**
+ * Command handler for the 'upgrade' command
+ * Shows available ship upgrades or purchases a specific upgrade
+ */
+static inline bool do_upgrade(char *commandArguments)
+{
+	return UpgradeCommand(commandArguments);
 }

@@ -46,6 +46,13 @@ extern bool AddEquipment(PlayerShip* playerShip, EquipmentSlotType slotType,
 #define SHIELD_UPGRADE_AMOUNT 25.0      // 25 additional shield points per upgrade
 #define EXTRA_ENERGY_UNIT_CAPACITY 50.0 // 50 additional energy bank capacity
 
+// Upgrade costs (credits)
+#define COST_HULL_REINFORCEMENT 2000     // Cost per point of hull reinforcement
+#define COST_SHIELD_ENHANCEMENT 3000     // Cost per shield upgrade level
+#define COST_ENERGY_UNIT 1500            // Cost per energy unit (already defined above)
+#define COST_CARGO_BAY_EXTENSION 400     // Cost per cargo bay extension (already defined above)
+#define COST_MISSILE_PYLON 1000          // Cost per missile pylon
+
 // === Upgrade Types ===
 typedef enum ShipUpgradeType {
     UPGRADE_TYPE_HULL_REINFORCEMENT,
@@ -584,4 +591,299 @@ inline bool PurchaseEquipment(PlayerShip* playerShip,
         printf("Failed to install %s. Make sure the slot is empty.\n", equipmentName);
         return false;
     }
+}
+
+/**
+ * Displays a list of upgrades available for purchase at the shipyard
+ * 
+ * @param playerShip Pointer to the PlayerShip structure
+ */
+static inline void DisplayUpgrades(const PlayerShip* playerShip) {
+    if (playerShip == NULL) {
+        printf("Error: Invalid ship data.\n");
+        return;
+    }
+    
+    // Access to player's cash from elite_state.h
+    extern int32_t Cash;
+    
+    // Display upgrades header
+    printf("\n=== Ship Upgrades Available ===\n");
+    printf("Your current ship: %s (%s)\n", playerShip->shipName, playerShip->shipClassName);
+    printf("Available credits: %.1f CR\n\n", (double)Cash / 10.0);
+    
+    // Display current ship stats
+    printf("Current ship specifications:\n");
+    printf("  Hull Strength: %d\n", playerShip->attributes.hullStrength);
+    printf("  Shield Strength: %.1f front, %.1f aft\n", 
+           playerShip->attributes.shieldStrengthFront, 
+           playerShip->attributes.shieldStrengthAft);
+    printf("  Energy Banks: %.1f\n", playerShip->attributes.energyBanks);
+    printf("  Cargo Capacity: %d/%d tonnes\n", 
+           playerShip->attributes.currentCargoTons,
+           playerShip->attributes.cargoCapacityTons);
+    printf("  Missile Pylons: %d\n\n", playerShip->attributes.missilePylons);
+    
+    // Display available upgrades
+    printf("Available Upgrades:\n");
+    printf("%-4s %-25s %-15s %-15s %-15s\n", 
+           "ID", "Upgrade", "Current Level", "Cost", "Effect");
+    printf("%-4s %-25s %-15s %-15s %-15s\n",
+           "---", "-------", "-------------", "----", "------");
+    
+    // 1. Hull reinforcement
+    printf("%-4d %-25s %-15d %-15d +1 Hull\n", 
+           1, "Hull Reinforcement", playerShip->attributes.hullStrength, 
+           COST_HULL_REINFORCEMENT);
+    
+    // 2. Shield enhancement
+    // Calculate current shield level (approximate, based on default values)
+    int currentShieldLevel = (int)((playerShip->attributes.shieldStrengthFront - 
+                                  playerShip->shipType->baseShieldStrengthFront) / 
+                                 (SHIELD_UPGRADE_AMOUNT / 2.0));
+    printf("%-4d %-25s %-15d %-15d +%.1f Shield\n", 
+           2, "Shield Enhancement", currentShieldLevel, 
+           COST_SHIELD_ENHANCEMENT, SHIELD_UPGRADE_AMOUNT);
+    
+    // 3. Energy Bank Expansion
+    // Calculate current energy upgrade level
+    int currentEnergyLevel = (int)((playerShip->attributes.energyBanks - 
+                                  playerShip->shipType->baseEnergyBanks) / 
+                                 EXTRA_ENERGY_UNIT_CAPACITY);
+    printf("%-4d %-25s %-15d %-15d +%.1f Energy\n", 
+           3, "Energy Bank Expansion", currentEnergyLevel, 
+           COST_ENERGY_UNIT, EXTRA_ENERGY_UNIT_CAPACITY);
+    
+    // 4. Cargo Bay Extension
+    // Calculate current cargo upgrade level
+    int currentCargoLevel = (playerShip->attributes.cargoCapacityTons - 
+                           playerShip->shipType->baseCargoCapacityTons) / 
+                          CARGO_BAY_EXTENSION_CAPACITY;
+    printf("%-4d %-25s %-15d %-15d +%d Cargo Space\n", 
+           4, "Cargo Bay Extension", currentCargoLevel, 
+           COST_CARGO_BAY_EXTENSION, CARGO_BAY_EXTENSION_CAPACITY);
+    
+    // 5. Missile Pylon
+    // Calculate current pylon upgrade level
+    int currentPylonLevel = playerShip->attributes.missilePylons - 
+                          playerShip->shipType->initialMissilePylons;
+    printf("%-4d %-25s %-15d %-15d +1 Missile Pylon\n", 
+           5, "Missile Pylon", currentPylonLevel, 
+           COST_MISSILE_PYLON);
+    
+    // Instructions for the player
+    printf("\nUse 'upgrade <ID> [quantity]' to purchase an upgrade (e.g., 'upgrade 1' or 'upgrade 2 3').\n");
+    printf("Quantity is optional and defaults to 1 if not specified.\n");
+}
+
+/**
+ * Display available ship upgrades at the current station
+ * 
+ * @param playerShip Pointer to the PlayerShip structure
+ * @return true if upgrades were displayed successfully
+ */
+static inline bool DisplayUpgradesShop(PlayerShip* playerShip) {
+    if (playerShip == NULL) {
+        printf("Error: Invalid ship data.\n");
+        return false;
+    }
+    
+    // Access to player's cash
+    extern int32_t Cash;
+    double playerCash = (double)Cash / 10.0; // Convert to displayed value
+    
+    // Display upgrade shop header
+    printf("\n=== Shipyard Upgrade Center ===\n");
+    printf("Current ship: %s (%s)\n", playerShip->shipName, playerShip->shipClassName);
+    printf("Available credits: %.1f CR\n\n", playerCash);
+    
+    // Display current ship stats
+    printf("Current Ship Specifications:\n");
+    printf("- Hull Strength: %d\n", playerShip->attributes.hullStrength);
+    printf("- Shield Strength (Front/Aft): %.1f / %.1f\n", 
+           playerShip->attributes.shieldStrengthFront, 
+           playerShip->attributes.shieldStrengthAft);
+    printf("- Energy Banks: %.1f\n", playerShip->attributes.energyBanks);
+    printf("- Cargo Capacity: %d tons\n", playerShip->attributes.cargoCapacityTons);
+    printf("- Missile Pylons: %d\n\n", playerShip->attributes.missilePylons);
+    
+    // Display available upgrades
+    printf("Available Upgrades:\n");
+    printf("%-4s %-25s %-15s %-15s %-15s\n", 
+           "ID", "Upgrade", "Current Level", "Cost", "Effect");
+    printf("%-4s %-25s %-15s %-15s %-15s\n",
+           "---", "-------", "-------------", "----", "------");
+      // 1. Hull Reinforcement
+    printf("%-4d %-25s %-15d %-15.1f +1 Hull\n", 
+           1, "Hull Reinforcement", playerShip->attributes.hullStrength, 
+           (double)COST_HULL_REINFORCEMENT / 10.0);
+    
+    // 2. Shield Enhancement
+    // Calculate current shield level (approximate, based on default values)
+    int currentShieldLevel = (int)((playerShip->attributes.shieldStrengthFront - 
+                                  playerShip->shipType->baseShieldStrengthFront) / 
+                                 (SHIELD_UPGRADE_AMOUNT / 2.0));
+    printf("%-4d %-25s %-15d %-15.1f +%.1f Shield\n", 
+           2, "Shield Enhancement", currentShieldLevel, 
+           (double)COST_SHIELD_ENHANCEMENT / 10.0, SHIELD_UPGRADE_AMOUNT);
+    
+    // 3. Energy Bank Expansion
+    // Calculate current energy upgrade level
+    int currentEnergyLevel = (int)((playerShip->attributes.energyBanks - 
+                                  playerShip->shipType->baseEnergyBanks) / 
+                                 EXTRA_ENERGY_UNIT_CAPACITY);
+    printf("%-4d %-25s %-15d %-15.1f +%.1f Energy\n", 
+           3, "Energy Bank Expansion", currentEnergyLevel, 
+           (double)COST_ENERGY_UNIT / 10.0, EXTRA_ENERGY_UNIT_CAPACITY);
+    
+    // 4. Cargo Bay Extension
+    // Calculate current cargo upgrade level
+    int currentCargoLevel = (playerShip->attributes.cargoCapacityTons - 
+                           playerShip->shipType->baseCargoCapacityTons) / 
+                          CARGO_BAY_EXTENSION_CAPACITY;
+    printf("%-4d %-25s %-15d %-15.1f +%d Cargo Space\n", 
+           4, "Cargo Bay Extension", currentCargoLevel, 
+           (double)COST_CARGO_BAY_EXTENSION / 10.0, CARGO_BAY_EXTENSION_CAPACITY);
+    
+    // 5. Missile Pylon
+    // Calculate current pylon upgrade level
+    int currentPylonLevel = playerShip->attributes.missilePylons - 
+                          playerShip->shipType->initialMissilePylons;    printf("%-4d %-25s %-15d %-15.1f +1 Missile Pylon\n", 
+           5, "Missile Pylon", currentPylonLevel, 
+           (double)COST_MISSILE_PYLON / 10.0);
+    
+    // Instructions for the player
+    printf("\nUse 'upgrade <ID> [quantity]' to purchase an upgrade (e.g., 'upgrade 1' or 'upgrade 2 3').\n");
+    printf("Quantity is optional and defaults to 1 if not specified.\n");
+    
+    return true;
+}
+
+/**
+ * Process a ship upgrade purchase
+ * 
+ * @param playerShip Pointer to the PlayerShip structure
+ * @param upgradeId ID of the upgrade to purchase (1-5)
+ * @param quantity Quantity of the upgrade to purchase
+ * @return true if purchase was successful
+ */
+static inline bool PurchaseUpgrade(PlayerShip* playerShip, int upgradeId, int quantity) {
+    if (playerShip == NULL || upgradeId < 1 || upgradeId > 5 || quantity <= 0) {
+        printf("Error: Invalid upgrade parameters.\n");
+        return false;
+    }
+    
+    // Map upgrade ID to upgrade type and cost
+    ShipUpgradeType upgradeType;
+    int costPerUnit = 0;
+    const char* upgradeName = "Unknown";
+    
+    switch (upgradeId) {
+        case 1: // Hull Reinforcement
+            upgradeType = UPGRADE_TYPE_HULL_REINFORCEMENT;
+            costPerUnit = COST_HULL_REINFORCEMENT;
+            upgradeName = "Hull Reinforcement";
+            break;
+            
+        case 2: // Shield Enhancement
+            upgradeType = UPGRADE_TYPE_SHIELD_ENHANCEMENT;
+            costPerUnit = COST_SHIELD_ENHANCEMENT;
+            upgradeName = "Shield Enhancement";
+            break;
+            
+        case 3: // Energy Bank Expansion
+            upgradeType = UPGRADE_TYPE_ENERGY_UNIT;
+            costPerUnit = COST_ENERGY_UNIT;
+            upgradeName = "Energy Bank Expansion";
+            break;
+            
+        case 4: // Cargo Bay Extension
+            upgradeType = UPGRADE_TYPE_CARGO_BAY;
+            costPerUnit = COST_CARGO_BAY_EXTENSION;
+            upgradeName = "Cargo Bay Extension";
+            break;
+            
+        case 5: // Missile Pylon
+            upgradeType = UPGRADE_TYPE_MISSILE_PYLON;
+            costPerUnit = COST_MISSILE_PYLON;
+            upgradeName = "Missile Pylon";
+            break;
+            
+        default:
+            printf("Error: Invalid upgrade ID.\n");
+            return false;
+    }
+    
+    // Calculate total cost
+    int totalCost = costPerUnit * quantity;
+    
+    // Access to player's cash
+    extern int32_t Cash;
+    double playerCash = (double)Cash / 10.0; // Convert to displayed value
+    
+    // Check if player can afford the upgrade
+    if (totalCost > playerCash * 10.0) {
+        printf("Error: Insufficient credits for %s x%d.\n", upgradeName, quantity);
+        printf("Required: %.1f CR, Available: %.1f CR\n", 
+               (double)totalCost / 10.0, playerCash);
+        return false;
+    }
+    
+    // Apply the upgrade
+    bool success = ApplyUpgrade(playerShip, upgradeType, quantity, totalCost, true);
+    
+    if (success) {
+        printf("Successfully purchased %s x%d for %.1f CR.\n", 
+               upgradeName, quantity, (double)totalCost / 10.0);
+        playerCash = (double)Cash / 10.0; // Update displayed cash
+        printf("Remaining credits: %.1f CR\n", playerCash);
+    }
+    
+    return success;
+}
+
+/**
+ * Command handler for the 'upgrade' command
+ * Allows the player to view available upgrades and purchase them
+ * 
+ * @param arguments Command arguments (upgrade ID and optional quantity)
+ * @return true if command handled successfully
+ */
+static inline bool UpgradeCommand(const char* arguments) {
+    // Check if player is docked at a station
+    extern int PlayerLocationType;
+    
+    // Need to be docked at a station (PlayerLocationType == 10 means docked)
+    if (PlayerLocationType != 10) {
+        printf("Error: You must be docked at a station to access ship upgrades.\n");
+        return false;
+    }
+    
+    // Get player ship
+    extern PlayerShip* PlayerShipPtr;  // From elite_player_state.h
+    
+    // If no arguments, just display the upgrade shop
+    if (arguments == NULL || arguments[0] == '\0') {
+        return DisplayUpgradesShop(PlayerShipPtr);
+    }
+    
+    // Parse arguments for purchase
+    int upgradeId = 0;
+    int quantity = 1; // Default quantity
+    
+    // Try to parse as "upgrade <ID> [quantity]"
+    if (sscanf(arguments, "%d %d", &upgradeId, &quantity) < 1) {
+        printf("Error: Invalid upgrade command format.\n");
+        printf("Usage: upgrade [ID] [quantity]\n");
+        printf("Example: upgrade 2 3 (to buy 3 shield enhancements)\n");
+        return false;
+    }
+    
+    // Make sure quantity is positive
+    if (quantity <= 0) {
+        quantity = 1;
+    }
+    
+    // Purchase the upgrade
+    return PurchaseUpgrade(PlayerShipPtr, upgradeId, quantity);
 }

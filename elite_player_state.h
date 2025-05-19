@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elite_navigation_types.h" // For NavigationState definition
+#include "elite_navigation.h"    // For NavigationState definition
 #include "elite_state.h"            // Unified header for constants, structures, and globals
 #include "elite_market.h"           // For generate_market(), init_tradnames()
 #include "elite_galaxy.h"           // For build_galaxy_data()

@@ -53,24 +53,10 @@ static inline void initialize_player_state(void)
     GalaxyNum = 1;      // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed
-    build_galaxy_data(SEED);      // Set current planet to Lave (planet 7 in galaxy 1)    CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h
-
-    // Populate LocalMarket for the starting planet. Fluctuation is 0 for initial state.
+    build_galaxy_data(SEED);      // Set current planet to Lave (planet 7 in galaxy 1)    CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h    // Populate LocalMarket for the starting planet. Fluctuation is 0 for initial state.
     // Galaxy[CurrentPlanet] is now valid after build_galaxy_data()
     LocalMarket = generate_market(0, Galaxy[CurrentPlanet]);
 
-    Fuel = MaxFuel; // Start with maximum fuel (e.g., 7.0 LY)
-    Cash = 1000;    // Start with 100.0 credits (1000 internal units)
-    HoldSpace = 20; // Start with 20t hold space    // Zero out the player's ship hold
-    // COMMODITY_ARRAY_SIZE is from elite_state.h
-    for (int i = 0; i < COMMODITY_ARRAY_SIZE; i++)
-    {
-        ShipHold[i] = 0;
-    }
-
-    // Initialize the tradenames array for command parsing
-    init_tradnames();
-    
     // Initialize player ship
     if (PlayerShipPtr != NULL) {
         free(PlayerShipPtr);
@@ -83,6 +69,22 @@ static inline void initialize_player_state(void)
     }
     
     InitializeCobraMkIII(PlayerShipPtr);
+    
+    // Now set fuel based on the ship's max fuel capacity
+    Fuel = GetMaxFuel(); // Get the max fuel based on the ship type    
+    
+    Cash = 1000;    // Start with 100.0 credits (1000 internal units)
+    HoldSpace = 20; // Start with 20t hold space
+    
+    // Zero out the player's ship hold
+    // COMMODITY_ARRAY_SIZE is from elite_state.h
+    for (int i = 0; i < COMMODITY_ARRAY_SIZE; i++)
+    {
+        ShipHold[i] = 0;
+    }
+
+    // Initialize the tradenames array for command parsing
+    init_tradnames();
     
     // Synchronize ship fuel with global state
     PlayerShipPtr->attributes.fuelLiters = Fuel * 10.0; // Convert game units to liters
@@ -196,12 +198,18 @@ static inline void display_ship_status_brief(void)
     // Calculate hull percentage
     int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / PlayerShipPtr->shipType->baseHullStrength;
     printf("Hull: %d%% - ", hullPercentage);
-    
-    // Round energy to one decimal place
+      // Round energy to one decimal place
     printf("Energy: %.1f - ", PlayerShipPtr->attributes.energyBanks);
     
-    // Convert fuel liters to LY (assuming 100L = 1LY)
-    printf("Fuel: %.1f LY - ", PlayerShipPtr->attributes.fuelLiters / 100.0);
+    // Display fuel information including consumption rate
+    double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
+    double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
+    double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
+    
+    printf("Fuel: %.1f/%.1f LY (%.0f%%) - ", 
+           currentFuelLY, 
+           maxFuelLY,
+           fuelPercent);
     
     // Show cargo capacity
     printf("Cargo: %d/%d tons", 
@@ -225,14 +233,56 @@ static inline void display_ship_status_brief(void)
  */
 static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
 {
-    if (FuelCost <= 0)
+    int currentFuelCost = GetFuelCost();
+    if (currentFuelCost <= 0)
         return 0; // Avoid division by zero if FuelCost is invalid
     if (Cash <= 0)
         return 0; // No cash, no fuel
 
     // Calculate fuel units player can afford (1 unit = 0.1 LY)
-    uint16_t affordable_fuel_units = (uint16_t)((double)Cash / FuelCost);
+    uint16_t affordable_fuel_units = (uint16_t)((double)Cash / currentFuelCost);
 
     // Return the minimum of what's desired and what's affordable
     return (desiredAmount < affordable_fuel_units) ? desiredAmount : affordable_fuel_units;
+}
+
+/**
+ * @brief Displays detailed fuel information for the player's ship.
+ * 
+ * This function shows the current fuel level, maximum capacity, consumption rate,
+ * and estimated range based on the ship's specifications.
+ */
+static inline void display_ship_fuel_status(void)
+{
+    if (PlayerShipPtr == NULL)
+    {
+        printf("\nError: Ship data is not available.\n");
+        return;
+    }
+    
+    double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
+    double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
+    double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
+    double consumptionRate = PlayerShipPtr->shipType->fuelConsumptionRate;
+    
+    printf("\n=== Fuel Status ===\n");
+    printf("Current fuel:     %.1f LY (%.0f%%)\n", currentFuelLY, fuelPercent);
+    printf("Maximum capacity: %.1f LY\n", maxFuelLY);
+    printf("Consumption rate: %.1f credits per 0.1 LY\n", consumptionRate / 10.0);
+    
+    // Calculate estimated maximum range based on current fuel and consumption rate
+    // The formula accounts for the ship's efficiency
+    double efficiency = 2.0 / consumptionRate; // Higher efficiency = better fuel economy
+    double estimatedRange = currentFuelLY * efficiency;
+    
+    printf("Estimated range:  %.1f LY at current efficiency\n", estimatedRange);
+    
+    // Display cost to refill
+    double fuelNeeded = maxFuelLY - currentFuelLY;
+    if (fuelNeeded > 0) {
+        int totalCost = (int)((fuelNeeded * 10.0) * consumptionRate);
+        printf("Cost to refill:   %d credits\n", totalCost);
+    } else {
+        printf("Fuel tanks are full\n");
+    }
 }

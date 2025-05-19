@@ -33,6 +33,7 @@ typedef struct ShipType
     double baseShieldStrengthFront;             // Base front shield strength
     double baseShieldStrengthAft;               // Base aft shield strength
     double maxFuelLY;                           // Maximum fuel capacity in LY
+    double fuelConsumptionRate;                 // Fuel consumption rate (lower is better, liters per 0.1 LY)
     int baseCargoCapacityTons;                  // Base cargo capacity in tons
     int initialMissilePylons;                   // Initial missile pylons
     double baseCost;                            // Base cost in credits
@@ -183,6 +184,7 @@ static inline const ShipType* RegisterShipType(
     double baseShieldStrengthFront,
     double baseShieldStrengthAft,
     double maxFuelLY,
+    double fuelConsumptionRate,
     int baseCargoCapacityTons,
     int initialMissilePylons,
     double baseCost,
@@ -204,8 +206,7 @@ static inline const ShipType* RegisterShipType(
 
     // Get a reference to the new ship type slot
     ShipType* newShipType = &shipRegistry.shipTypes[shipRegistry.registeredShipCount];
-    
-    // Fill in the details
+      // Fill in the details
     strncpy(newShipType->className, className, MAX_SHIP_NAME_LENGTH - 1);
     newShipType->className[MAX_SHIP_NAME_LENGTH - 1] = '\0';
     newShipType->baseHullStrength = baseHullStrength;
@@ -213,6 +214,7 @@ static inline const ShipType* RegisterShipType(
     newShipType->baseShieldStrengthFront = baseShieldStrengthFront;
     newShipType->baseShieldStrengthAft = baseShieldStrengthAft;
     newShipType->maxFuelLY = maxFuelLY;
+    newShipType->fuelConsumptionRate = fuelConsumptionRate;
     newShipType->baseCargoCapacityTons = baseCargoCapacityTons;
     newShipType->initialMissilePylons = initialMissilePylons;
     newShipType->baseCost = baseCost;
@@ -241,9 +243,7 @@ static inline void InitializeShipRegistry(void)
     if (shipRegistry.registeredShipCount > 0)
     {
         return;
-    }
-    
-    // Register Cobra Mk III
+    }    // Register Cobra Mk III
     RegisterShipType(
         "Cobra Mk III",           // className
         100,                      // baseHullStrength
@@ -251,6 +251,7 @@ static inline void InitializeShipRegistry(void)
         50.0,                     // baseShieldStrengthFront
         50.0,                     // baseShieldStrengthAft
         7.0,                      // maxFuelLY
+        2.0,                      // fuelConsumptionRate (liters per 0.1 LY)
         20,                       // baseCargoCapacityTons
         0,                        // initialMissilePylons
         10000.0,                  // baseCost
@@ -263,8 +264,7 @@ static inline void InitializeShipRegistry(void)
         true,                     // hasStandardShields
         true                      // includesPulseLaser
     );
-    
-    // Register Viper
+      // Register Viper
     RegisterShipType(
         "Viper",                  // className
         80,                       // baseHullStrength
@@ -272,6 +272,7 @@ static inline void InitializeShipRegistry(void)
         40.0,                     // baseShieldStrengthFront
         40.0,                     // baseShieldStrengthAft
         5.0,                      // maxFuelLY
+        1.5,                      // fuelConsumptionRate (liters per 0.1 LY) - more efficient than Cobra
         10,                       // baseCargoCapacityTons
         2,                        // initialMissilePylons
         8000.0,                   // baseCost
@@ -284,8 +285,7 @@ static inline void InitializeShipRegistry(void)
         true,                     // hasStandardShields
         true                      // includesPulseLaser
     );
-    
-    // Register Asp Mk II
+      // Register Asp Mk II
     RegisterShipType(
         "Asp Mk II",              // className
         120,                      // baseHullStrength
@@ -293,6 +293,7 @@ static inline void InitializeShipRegistry(void)
         60.0,                     // baseShieldStrengthFront
         60.0,                     // baseShieldStrengthAft
         8.0,                      // maxFuelLY
+        2.5,                      // fuelConsumptionRate (liters per 0.1 LY) - less efficient, larger ship
         30,                       // baseCargoCapacityTons
         1,                        // initialMissilePylons
         15000.0,                  // baseCost
@@ -524,16 +525,20 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
     // This section is now dynamic based on equipment array and ship class
     printf("\n--- Key Systems & Upgrades ---\n");
 
-    bool isCobraMkIII = (strcmp(playerShip->shipClassName, "Cobra Mk III") == 0);
-
-    // Standard Inherent features for Cobra Mk III
+    bool isCobraMkIII = (strcmp(playerShip->shipClassName, "Cobra Mk III") == 0);    // Standard Inherent features for Cobra Mk III
     if (isCobraMkIII)
     {
         printf("- Basic Shields System\n"); // Cobra Mk III always has shields
-        printf("- Standard Hyperspace Drive (%.1f LY Max)\n", playerShip->shipType->maxFuelLY);
-        // Standard Cargo Bay is reflected in attributes.cargoCapacityTons
-        printf("- Standard Cargo Bay (%dT)\n", playerShip->shipType->baseCargoCapacityTons);
-    }// Check for specific equipment types in their typical slots or any slot if generic
+    }
+
+    // Display fuel-related information for all ships
+    printf("- %s Hyperspace Drive (%.1f LY Max, %.1f CR per 0.1 LY)\n", 
+           playerShip->shipType->hasStandardHyperdrive ? "Standard" : "Enhanced",
+           playerShip->shipType->maxFuelLY, 
+           playerShip->shipType->fuelConsumptionRate / 10.0);
+           
+    // Standard Cargo Bay is reflected in attributes.cargoCapacityTons
+    printf("- Standard Cargo Bay (%dT)\n", playerShip->shipType->baseCargoCapacityTons);// Check for specific equipment types in their typical slots or any slot if generic
     bool ecmFound = false;
     bool escapePodFound = false;
     bool fuelScoopsFound = false;
@@ -746,22 +751,24 @@ inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuel
 
         // Add the fuel to the ship
         playerShip->attributes.fuelLiters += (effectiveRequestLY * 100.0f); // Convert LY to liters
-        printf("Successfully scooped %.1f LY of fuel from the star.\n", effectiveRequestLY);
-
-        // Sync with global state if requested
+        printf("Successfully scooped %.1f LY of fuel from the star.\n", effectiveRequestLY);        // Sync with global state if requested
         if (externalSync)
-        {
-            // Declare external variables
+        {            // Declare external variables
             extern uint16_t Fuel;
-            extern int MaxFuel;
+            
+            // Import the function from elite_state.h
+            extern int GetMaxFuel(void);
+
+            // Get the current ship's max fuel
+            int currentMaxFuel = GetMaxFuel();
 
             // Convert to the units used in elite_state.h (tenth of LY)
             uint16_t fuelToAdd = (uint16_t)(effectiveRequestLY * 10.0f);
 
-            // Make sure not to exceed MaxFuel
-            if (Fuel + fuelToAdd > (uint16_t)MaxFuel)
+            // Make sure not to exceed the ship's max fuel
+            if (Fuel + fuelToAdd > (uint16_t)currentMaxFuel)
             {
-                Fuel = (uint16_t)MaxFuel;
+                Fuel = (uint16_t)currentMaxFuel;
             }
             else
             {
@@ -770,25 +777,28 @@ inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuel
         }
 
         return effectiveRequestLY;
-    }
-    // Standard refueling at a station (costs money)
+    }    // Standard refueling at a station (costs money)
     else
-    {
-        // Declare external variables
-        extern int FuelCost;
+    {        // Declare external variables
         extern int32_t Cash;
+        
+        // Import the function from elite_state.h
+        extern int GetFuelCost(void);
+
+        // Get the current fuel cost based on ship type
+        int currentFuelCost = GetFuelCost();
 
         // Convert to tenths of LY for cost calculation
         uint16_t fuelUnits = (uint16_t)(effectiveRequestLY * 10.0f);
-        int totalCost = fuelUnits * FuelCost;
+        int totalCost = fuelUnits * currentFuelCost;
 
         // Check if we can afford it
         if (externalSync && totalCost > Cash)
         {
             // Calculate how much we can afford
-            uint16_t affordableUnits = (uint16_t)(Cash / FuelCost);
+            uint16_t affordableUnits = (uint16_t)(Cash / currentFuelCost);
             fuelUnits = affordableUnits;
-            totalCost = fuelUnits * FuelCost;
+            totalCost = fuelUnits * currentFuelCost;
             effectiveRequestLY = (float)affordableUnits / 10.0f;
 
             if (fuelUnits == 0)
@@ -802,21 +812,22 @@ inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuel
         if (externalSync)
         {
             Cash -= totalCost;
-        }
-
-        // Add the fuel to the ship
-        playerShip->attributes.fuelLiters += (effectiveRequestLY * 100.0f); // Convert LY to liters
-
-        // Sync with global state if requested
+        }        // Add the fuel to the ship
+        playerShip->attributes.fuelLiters += (effectiveRequestLY * 100.0f); // Convert LY to liters        // Sync with global state if requested
         if (externalSync)
         {
             extern uint16_t Fuel;
-            extern int MaxFuel;
+            
+            // Import the function from elite_state.h
+            extern int GetMaxFuel(void);
 
-            // Make sure not to exceed MaxFuel
-            if (Fuel + fuelUnits > (uint16_t)MaxFuel)
+            // Get the current ship's max fuel
+            int currentMaxFuel = GetMaxFuel();
+
+            // Make sure not to exceed the ship's max fuel
+            if (Fuel + fuelUnits > (uint16_t)currentMaxFuel)
             {
-                Fuel = (uint16_t)MaxFuel;
+                Fuel = (uint16_t)currentMaxFuel;
             }
             else
             {

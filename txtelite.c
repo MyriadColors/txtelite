@@ -44,6 +44,37 @@ of Elite with no combat or missions.
 #include "elite_ship_upgrades.h" // For equipment access
 #include "elite_equipment_constants.h" // For equipment indices
 
+/* ======================================== *
+ * Fuel-related functions implementation    *
+ * These were declared in elite_state.h     *
+ * But implemented here to avoid circular   *
+ * dependencies with PlayerShip structure   *
+ * ======================================== */
+
+/**
+ * Gets the fuel cost per unit based on ship type
+ * 
+ * @return Cost of fuel unit (for 0.1 LY of travel)
+ */
+int GetFuelCost(void) {
+    if (PlayerShipPtr == NULL) {
+        return 2; // Default value if ship not initialized
+    }
+    return (int)PlayerShipPtr->shipType->fuelConsumptionRate;
+}
+
+/**
+ * Gets the maximum fuel capacity of the current ship in tenths of LY
+ * 
+ * @return Maximum fuel capacity in tenths of LY
+ */
+int GetMaxFuel(void) {
+    if (PlayerShipPtr == NULL) {
+        return 70; // Default value if ship not initialized
+    }
+    return (int)(PlayerShipPtr->shipType->maxFuelLY * 10.0); // Convert from LY to 0.1 LY units
+}
+
 /* ================= *
  * General functions *
  * ================= */

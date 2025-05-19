@@ -45,7 +45,7 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 // Other game constants
 #define MAX_CARGO_ITEMS 50
 #define MAX_EQUIPMENT_SLOTS 10
-#define NUM_COMMANDS 33  // Number of commands in the commands array
+#define NUM_COMMANDS 34  // Number of commands in the commands array
 #define GOV_MAX_COUNT 8  // Number of government types
 #define ECON_MAX_COUNT 8 // Number of economy types
 #define MAX_MISSIONS 10
@@ -141,8 +141,9 @@ extern int32_t Cash;
 extern uint16_t Fuel;
 extern MarketType LocalMarket;
 extern uint16_t HoldSpace;
-extern int FuelCost;
-extern int MaxFuel;
+// Function declarations (implementations are later in this file)
+int GetFuelCost(void);
+int GetMaxFuel(void);
 
 // Star System Navigation State
 extern struct StarSystem *CurrentStarSystem;
@@ -253,6 +254,16 @@ uint16_t Fuel;
 MarketType LocalMarket;
 uint16_t HoldSpace;
 
+// Forward declare PlayerShipPtr for use in function implementations
+extern struct PlayerShip *PlayerShipPtr;
+
+// These functions are implemented in txtelite.c
+// They provide fuel-related attributes from the current ship
+int GetFuelCost(void);
+int GetMaxFuel(void);
+
+// Legacy global variables for backward compatibility
+// These are now just placeholders - use the getter functions instead
 int FuelCost = 2;
 int MaxFuel = 70;
 

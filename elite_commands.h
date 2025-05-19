@@ -61,12 +61,17 @@ static inline bool do_jump(char *commandArguments)
 		printf("\nBad jump");
 		return false;
 	}
-
 	d = distance(Galaxy[dest], Galaxy[CurrentPlanet]);
 
-	if (d > Fuel)
+	// Get the fuel cost per distance unit based on ship type
+	int fuelCostPerUnit = GetFuelCost();
+	
+	// Calculate the fuel needed for this jump based on ship's consumption rate
+	uint16_t fuelNeeded = (uint16_t)((float)d * ((float)fuelCostPerUnit / 2.0)); // Scale based on ship efficiency
+
+	if (fuelNeeded > Fuel)
 	{
-		printf("\nJump too far");
+		printf("\nJump too far - requires %d fuel units, you have %d", fuelNeeded, Fuel);
 		return false;
 	}
 	
@@ -81,12 +86,12 @@ static inline bool do_jump(char *commandArguments)
 			printf("\nInsufficient energy for hyperspace jump");
 			return false;
 		}
-		
-		// Consume energy for jump
+				// Consume energy for jump
 		PlayerShipPtr->attributes.energyBanks -= energyRequired;
 		
-		// Also update ship's fuel (in liters)
-		float fuelUsed = d * 10.0f; // Convert game units to liters
+		// Also update ship's fuel (in liters) based on the ship's consumption rate
+		float fuelRatio = (float)GetFuelCost() / 2.0f; // Get consumption rate and scale to usable value
+		float fuelUsed = d * fuelRatio * 10.0f; // Convert game units to liters with consumption rate
 		PlayerShipPtr->attributes.fuelLiters -= fuelUsed;
 		
 		// Small chance of minor hull damage during jump
@@ -98,11 +103,7 @@ static inline bool do_jump(char *commandArguments)
 				PlayerShipPtr->attributes.hullStrength - damageTaken : 1;
 			
 			printf("\nHyperspace stress caused minor hull damage (-%d)", damageTaken);
-		}
-	}
-	Fuel -= d;
-	
-	// Make sure ship's fuel value is consistent with global Fuel if ship exists
+		}	}	// Update global Fuel based on ship's fuel if PlayerShipPtr is available
 	if (PlayerShipPtr != NULL) {
 		// Sync the ship's fuel with the global value (exact match)
 		PlayerShipPtr->attributes.fuelLiters = Fuel * 10.0f;
@@ -278,8 +279,7 @@ static inline bool do_fuel(char *commandArguments)
 	{
 		printf("\nUsage: fuel <amount>");
 		return false;
-	}
-	uint16_t f = calculate_fuel_purchase((uint16_t)floor(10 * atof(commandArguments)));
+	}	uint16_t f = calculate_fuel_purchase((uint16_t)floor(10 * atof(commandArguments)));
 	if (f == 0)
 	{
 		printf("\nCan't buy any fuel");
@@ -287,10 +287,11 @@ static inline bool do_fuel(char *commandArguments)
 	else
 	{
 		// Deduct the cost from cash
-		Cash -= f * FuelCost;
+		Cash -= f * GetFuelCost();
 		
-		// Add the fuel to the current fuel level, making sure not to exceed MaxFuel
-		Fuel = (Fuel + f > MaxFuel) ? MaxFuel : Fuel + f;
+		// Add the fuel to the current fuel level, making sure not to exceed max fuel for the ship
+		int currentMaxFuel = GetMaxFuel();
+		Fuel = (Fuel + f > currentMaxFuel) ? currentMaxFuel : Fuel + f;
 		
 		// Also update the ship's fuel levels
 		if (PlayerShipPtr != NULL) {
@@ -298,7 +299,7 @@ static inline bool do_fuel(char *commandArguments)
 			float fuelLiters = f * 10.0f;                        float maxFuelLiters = PlayerShipPtr->shipType->maxFuelLY * 100.0f;
 			
 			PlayerShipPtr->attributes.fuelLiters = 
-				(PlayerShipPtr->attributes.fuelLiters + fuelLiters > maxFuelLiters) ? 
+				(PlayerShipPtr->attributes.fuelLiters + fuelLiters > maxFuelLiters) ?
 				maxFuelLiters : PlayerShipPtr->attributes.fuelLiters + fuelLiters;
 		}
 		
@@ -473,12 +474,19 @@ static inline bool do_help(char *commandArguments)
 			return true;
 		}
 		else if (strcmp(command, "fuel") == 0 || strcmp(command, "f") == 0)
-		{
-			printf("\nFUEL <amount> - Purchase fuel for your ship");
+		{			printf("\nFUEL <amount> - Purchase fuel for your ship");
 			printf("\n  <amount> - Amount of fuel to buy in light years");
 			printf("\n  Example: fuel 2.5");
 			printf("\n  Note: You must be docked at a station to buy fuel.");
-			printf("\n        Fuel costs %.1f credits per 0.1 LY unit", (float)FuelCost / 10.0f);
+			printf("\n        Fuel costs %.1f credits per 0.1 LY unit for your current ship", (float)GetFuelCost() / 10.0f);
+			return true;
+		}
+		else if (strcmp(command, "fuelinfo") == 0)
+		{
+			printf("\nFUELINFO - Display detailed fuel information for your ship");
+			printf("\n  Shows current fuel level, maximum capacity, consumption rate,");
+			printf("\n  estimated range, and refill cost based on your ship's specifications");
+			printf("\n  This command has no parameters");
 			return true;
 		}
 
@@ -2119,11 +2127,16 @@ static inline bool do_ship_status(char *commandArguments)
     printf("\nEnergy Banks: %.1f / %.1f", 
            PlayerShipPtr->attributes.energyBanks,
            PlayerShipPtr->attributes.maxEnergyBanks);
+      // Display fuel
+    double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
+    double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
+    double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
     
-    // Display fuel
-    printf("\nFuel: %.1f LY (%.0f liters)", 
-           PlayerShipPtr->attributes.fuelLiters / 100.0,
-           PlayerShipPtr->attributes.fuelLiters);
+    printf("\nFuel: %.1f/%.1f LY (%.0f%%) - Consumption: %.1f CR per 0.1 LY",
+           currentFuelLY,
+           maxFuelLY,
+           fuelPercent,
+           PlayerShipPtr->shipType->fuelConsumptionRate / 10.0);
     
     // Display cargo
     printf("\nCargo Capacity: %d/%d tons", 
@@ -2622,4 +2635,20 @@ bool do_buyship(char* args) {
 static inline bool do_upgrade(char *commandArguments)
 {
 	return UpgradeCommand(commandArguments);
+}
+
+/**
+ * Display detailed fuel information for the current ship
+ */
+static inline bool show_fuel_status(char *commandArguments)
+{
+    // Unused parameter
+    (void)commandArguments;
+    
+    // Forward declaration for function from elite_player_state.h
+    extern void display_ship_fuel_status(void);
+    
+    // Call the function that displays detailed fuel information
+    display_ship_fuel_status();
+    return true;
 }

@@ -3,13 +3,63 @@
 #include "elite_ship_types.h"
 #include <string.h> // For string functions
 #include <stdio.h>  // For printf
+#include <ctype.h>  // For tolower
 
+
+// Helper function for case-insensitive string comparison
+// Also ignores trailing whitespace in either string
+inline int StringCompareIgnoreCase(const char* str1, const char* str2) {
+    if (str1 == NULL || str2 == NULL) {
+        return -1;
+    }
+    
+    // Skip trailing whitespace
+    const char* end1 = str1 + strlen(str1);
+    const char* end2 = str2 + strlen(str2);
+    
+    // Move end1 back to the last non-whitespace character
+    while (end1 > str1 && isspace((unsigned char)*(end1-1))) {
+        end1--;
+    }
+    
+    // Move end2 back to the last non-whitespace character
+    while (end2 > str2 && isspace((unsigned char)*(end2-1))) {
+        end2--;
+    }
+    
+    // Compare characters up to the non-whitespace ends
+    const char* p1 = str1;
+    const char* p2 = str2;
+    
+    while (p1 < end1 && p2 < end2) {
+        int c1 = tolower((unsigned char)*p1);
+        int c2 = tolower((unsigned char)*p2);
+        
+        if (c1 != c2) {
+            return c1 - c2;
+        }
+        
+        p1++;
+        p2++;
+    }
+    
+    // If we reached the end of both strings (up to non-whitespace),
+    // they are equal; otherwise, the shorter one is "less"
+    if (p1 == end1 && p2 == end2) {
+        return 0;  // Strings are equal (ignoring trailing whitespace)
+    } else if (p1 == end1) {
+        return -1; // str1 is shorter than str2
+    } else {
+        return 1;  // str1 is longer than str2
+    }
+}
 
 /**
  * @brief Finds the index of a cargo slot containing a specified cargo item in the player's ship.
  *
  * This function searches through the player's ship cargo slots to find a slot
  * where the cargo name matches the specified name and the quantity is greater than zero.
+ * The comparison is done in a case-insensitive manner.
  *
  * @param playerShip Pointer to the PlayerShip structure to search within.
  * @param cargoName Name of the cargo item to search for.
@@ -17,11 +67,10 @@
  */
 inline int FindCargoSlot(const PlayerShip* playerShip, const char* cargoName) {
     if (playerShip == NULL || cargoName == NULL) {
-        return -1;
-    }
+        return -1;    }
     
     for (int i = 0; i < MAX_CARGO_SLOTS; ++i) {
-        if (playerShip->cargo[i].quantity > 0 && strcmp(playerShip->cargo[i].name, cargoName) == 0) {
+        if (playerShip->cargo[i].quantity > 0 && StringCompareIgnoreCase(playerShip->cargo[i].name, cargoName) == 0) {
             return i;
         }
     }
@@ -123,18 +172,17 @@ inline bool RemoveCargo(PlayerShip* playerShip, const char* cargoName, int quant
     if (playerShip == NULL || cargoName == NULL || quantity <= 0) {
         return false;
     }
-    
-    // Find the cargo slot
+      // Find the cargo slot
     int cargoSlot = FindCargoSlot(playerShip, cargoName);
     
     if (cargoSlot < 0) {
-        printf("Error: %s not found in cargo hold.\n", cargoName);
+        printf("\nError: %s not found in cargo hold.", cargoName);
         return false;
     }
     
     // Check if we have enough of this cargo
     if (playerShip->cargo[cargoSlot].quantity < quantity) {
-        printf("Error: Not enough %s in cargo hold. Available: %d tonnes, Requested: %d tonnes\n", 
+        printf("\nError: Not enough %s in cargo hold. Available: %d tonnes, Requested: %d tonnes", 
                cargoName, playerShip->cargo[cargoSlot].quantity, quantity);
         return false;
     }
@@ -300,9 +348,105 @@ inline bool JettisonCargo(PlayerShip* playerShip, const char* cargoName, int qua
     
     // This simply removes cargo but with a different message
     if (RemoveCargo(playerShip, cargoName, quantity)) {
-        printf("Jettisoned %d tonnes of %s into space.\n", quantity, cargoName);
+        printf("\nJettisoned %d tonnes of %s into space.", quantity, cargoName);
         return true;
     }
     
     return false;
+}
+
+/**
+ * Jettison all cargo from the ship (remove all cargo without selling it).
+ * Useful in emergencies such as being chased by authorities or in combat situations.
+ * 
+ * @param playerShip Pointer to the PlayerShip structure
+ * @return true if cargo was successfully jettisoned, false if there was an error
+ */
+static inline bool JettisonAllCargo(PlayerShip* playerShip) {
+    if (playerShip == NULL) {
+        return false;
+    }
+    
+    // Check if the ship has any cargo at all
+    if (playerShip->attributes.currentCargoTons <= 0) {
+        printf("\nNo cargo to jettison.");
+        return false;
+    }
+    
+    int totalJettisoned = 0;
+    
+    // Temporary array to store cargo data before jettisoning
+    // (because we'll be modifying the cargo array while iterating)
+    struct {
+        char name[MAX_SHIP_NAME_LENGTH];
+        int quantity;
+    } cargoToJettison[MAX_CARGO_SLOTS];
+    
+    int numCargoTypes = 0;
+    
+    // First, collect all cargo items that need to be jettisoned
+    for (int i = 0; i < MAX_CARGO_SLOTS; ++i) {
+        if (playerShip->cargo[i].quantity > 0) {
+            strncpy(cargoToJettison[numCargoTypes].name, playerShip->cargo[i].name, MAX_SHIP_NAME_LENGTH - 1);
+            cargoToJettison[numCargoTypes].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+            cargoToJettison[numCargoTypes].quantity = playerShip->cargo[i].quantity;
+            numCargoTypes++;
+            totalJettisoned += playerShip->cargo[i].quantity;
+        }
+    }
+    
+    // If no cargo found (should not happen since we checked currentCargoTons)
+    if (numCargoTypes == 0) {
+        printf("\nNo cargo to jettison.");
+        return false;
+    }
+    
+    // Now jettison each cargo item
+    for (int i = 0; i < numCargoTypes; ++i) {
+        // Find cargo index in global tradnames array for ShipHold update
+        uint16_t cargoIndex = 0;
+        bool cargoFound = false;
+        
+        // Find the cargo index in the global tradnames array
+        for (uint16_t j = 0; j <= LAST_TRADE; j++) {
+            if (StringCompareIgnoreCase(tradnames[j], cargoToJettison[i].name) == 0) {
+                cargoIndex = j;
+                cargoFound = true;
+                break;
+            }
+        }
+        
+        if (cargoFound) {
+            // Update the global ShipHold array
+            if (ShipHold[cargoIndex] >= cargoToJettison[i].quantity) {
+                ShipHold[cargoIndex] -= cargoToJettison[i].quantity;
+                
+                // Update HoldSpace if it's measured in tons
+                if (Commodities[cargoIndex].units == TONNES_UNIT) {
+                    HoldSpace += cargoToJettison[i].quantity;
+                }
+                
+                // Remove the cargo using RemoveCargo (which will update playerShip->cargo)
+                RemoveCargo(playerShip, cargoToJettison[i].name, cargoToJettison[i].quantity);
+                
+                printf("\nJettisoned %d tonnes of %s into space.", 
+                       cargoToJettison[i].quantity, cargoToJettison[i].name);
+            }
+        }
+    }
+    
+    // Clear all remaining cargo in playerShip (in case RemoveCargo missed anything)
+    for (int i = 0; i < MAX_CARGO_SLOTS; ++i) {
+        playerShip->cargo[i].quantity = 0;
+        strcpy(playerShip->cargo[i].name, "Empty");
+        playerShip->cargo[i].purchasePrice = 0;
+    }
+    
+    // Reset current cargo tons
+    playerShip->attributes.currentCargoTons = 0;
+    
+    // Print summary
+    printf("\nAll cargo jettisoned: %d tonnes total.", totalJettisoned);
+    
+    return true;
 }

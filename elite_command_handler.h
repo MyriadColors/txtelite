@@ -12,7 +12,7 @@ static char commands[NUM_COMMANDS][MAX_LEN] =
 		"quit", "rand", "save", "load",
 		"system", "travel", "dock",
 		"compare", "land", "scan", "ship", "repair", "shipinfo", "equip",
-		"inv", "store", "use", "shipyard", "compareship", "buyship", "upgrade", "fuelinfo"};
+		"inv", "store", "use", "shipyard", "compareship", "buyship", "upgrade", "fuelinfo", "jettison"};
 
 // Array of function pointers to command functions
 static bool (*comfuncs[NUM_COMMANDS])(char *) =
@@ -23,7 +23,7 @@ static bool (*comfuncs[NUM_COMMANDS])(char *) =
 		do_quit, do_tweak_random_native, do_save, do_load,
 		do_system_info, do_travel, do_dock,
 		do_compare_markets, do_land, do_system_info, do_ship_status, do_repair, do_ship_details, do_purchase_equipment,
-		do_inventory_display, do_store_equipment, do_equip_from_inventory, do_shipyard, do_compareship, do_buyship, do_upgrade, show_fuel_status};
+		do_inventory_display, do_store_equipment, do_equip_from_inventory, do_shipyard, do_compareship, do_buyship, do_upgrade, show_fuel_status, do_jettison};
 
 // Function to parse and execute commands
 static inline bool parse_and_execute_command(char *commandString)

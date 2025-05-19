@@ -14,11 +14,13 @@
 #include "elite_ship_inventory.h" // For inventory management functions
 #include "elite_ship_trading.h" // For ship trading commands
 #include "elite_ship_upgrades.h" // For ship upgrades
+#include "elite_ship_cargo.h"   // For cargo management functions
 #include <stdlib.h>				// For atoi, atof
 #include <math.h>				// For floor, fabs
 #include <string.h>				// For string operations
 #include <time.h>				// For time functions
 #include <windows.h>			// For Windows directory operations
+#include <ctype.h>              // For toupper, tolower
 
 static inline bool do_tweak_random_native(char *commandArguments)
 {
@@ -500,7 +502,6 @@ static inline bool do_help(char *commandArguments)
 			printf("\n  Note: You must be docked at a station with a market to buy goods.");
 			return true;
 		}
-
 		if (strcmp(command, "sell") == 0 || strcmp(command, "s") == 0)
 		{
 			printf("\nSELL <good> <amount> - Sell goods to the market");
@@ -508,6 +509,19 @@ static inline bool do_help(char *commandArguments)
 			printf("\n  <amount> - Quantity to sell (default: 1)");
 			printf("\n  Example: sell Computers 3");
 			printf("\n  Note: You must be docked at a station with a market to sell goods.");
+			return true;
+		}
+		
+		if (strcmp(command, "jettison") == 0 || strcmp(command, "j") == 0)
+		{
+			printf("\nJETTISON <good> <amount> or JETTISON ALL - Discard cargo into space");
+			printf("\n  <good>   - Type of trade good to jettison (e.g., Food, Computers)");
+			printf("\n  <amount> - Quantity to jettison (default: 1)");
+			printf("\n  ALL      - Special flag to jettison all cargo at once");
+			printf("\n  Examples: jettison Food 5");
+			printf("\n            jettison all");
+			printf("\n  Note: Jettisoned cargo is lost permanently with no payment received.");
+			printf("\n        Useful in emergencies or when carrying illegal goods and avoiding authorities.");
 			return true;
 		}
 
@@ -861,12 +875,12 @@ static inline bool do_help(char *commandArguments)
 		printf("\nUse 'help' without parameters to see all available commands.");
 		return true;
 	}
-
-	// Display general help categories
-	printf("\n=== TXTELITE COMMAND REFERENCE ===");
+	// Display general help categories	printf("\n=== TXTELITE COMMAND REFERENCE ===");
 	printf("\n\nTRADING COMMANDS:");
 	printf("\n  buy   <good> <amount>   - Buy goods");
 	printf("\n  sell  <good> <amount>   - Sell goods");
+	printf("\n  jettison <good> <amount> - Discard goods into space");
+	printf("\n  jettison all            - Discard all cargo at once");
 	printf("\n  mkt                     - Show current market prices, fuel, and cash");
 	printf("\n  compare                 - Compare markets across stations in the system");
 	printf("\n\nINTERSTELLAR NAVIGATION:");
@@ -1779,6 +1793,7 @@ static inline bool do_land(char *commandArguments)
 	// Initialize or update the planet's market
 	if (CurrentStarSystem->planSys)
 	{
+		
 		// Generate or update the planet's market using the correct functions
 		if (!planet->planetaryMarket.isInitialized)
 		{
@@ -2651,4 +2666,112 @@ static inline bool show_fuel_status(char *commandArguments)
     // Call the function that displays detailed fuel information
     display_ship_fuel_status();
     return true;
+}
+
+/**
+ * Command to jettison cargo from the ship (discard cargo into space).
+ * Usage: jettison <cargo_name> <quantity>
+ *        jettison all
+ * This will remove the specified cargo from the ship without receiving payment.
+ * Using "jettison all" will discard all cargo currently in the ship.
+ * Useful in emergencies or when carrying illegal goods and avoiding authorities.
+ * 
+ * @param commandArguments Arguments provided to the command
+ * @return true if the cargo was successfully jettisoned
+ */
+static inline bool do_jettison(char *commandArguments)
+{
+    if (PlayerShipPtr == NULL)
+    {
+        printf("\nError: Ship data not available.");
+        return false;
+    }
+    
+    if (commandArguments == NULL || strlen(commandArguments) == 0)
+    {
+        printf("\nUsage: jettison <cargo_name> <quantity>");
+        printf("\nUsage: jettison all");
+        printf("\nExample: jettison Food 5");
+        return false;
+    }
+    
+    // Check if the "all" flag was used
+    if (StringCompareIgnoreCase(commandArguments, "all") == 0)
+    {
+        // Special case: jettison all cargo
+        return JettisonAllCargo(PlayerShipPtr);
+    }// Parse the arguments
+    char cargoName[MAX_LEN];
+    char quantityStr[MAX_LEN];
+    
+    // Split the command arguments to get the cargo name
+    split_string_at_first_space(commandArguments, cargoName);
+    
+    // Get the quantity part
+    commandArguments = strip_leading_trailing_spaces(commandArguments);
+    
+    // If quantity is not provided, default to 1
+    int quantity = 1;
+    
+    if (strlen(commandArguments) > 0) {
+        strncpy(quantityStr, commandArguments, MAX_LEN - 1);
+        quantityStr[MAX_LEN - 1] = '\0';
+        quantity = atoi(quantityStr);
+    }
+      // Verify quantity is valid
+    if (quantity <= 0) {
+        printf("\nInvalid quantity. Please specify a positive number.");
+        return false;
+    }
+      // No need to modify cargo name capitalization since we use case-insensitive comparison
+    // The StringCompareIgnoreCase function will handle different capitalizations
+    
+    // Find the cargo index in the ShipHold array (needed for synchronization)
+    uint16_t cargoIndex = 0;
+    bool cargoFound = false;
+    
+    // First, check if the cargo exists in the player's ship
+    if (!GetCargoQuantity(PlayerShipPtr, cargoName)) {
+        printf("\nError: %s not found in cargo hold.", cargoName);
+        return false;
+    }
+    
+    // Find the cargo index in the global tradnames array
+    for (uint16_t i = 0; i <= LAST_TRADE; i++) {
+        if (StringCompareIgnoreCase(tradnames[i], cargoName) == 0) {
+            cargoIndex = i;
+            cargoFound = true;
+            break;
+        }
+    }
+    
+    if (!cargoFound) {
+        printf("\nError: Unable to find cargo in global inventory. Please report this bug.");
+        return false;
+    }
+    
+    // Call the JettisonCargo function to remove from player ship
+    if (JettisonCargo(PlayerShipPtr, cargoName, quantity)) {
+        // Update the global ShipHold array
+        if (ShipHold[cargoIndex] >= quantity) {
+            ShipHold[cargoIndex] -= quantity;
+            
+            // Update HoldSpace if it's measured in tons
+            if (Commodities[cargoIndex].units == TONNES_UNIT) {
+                HoldSpace += quantity;
+            }
+            
+            // Synchronize the cargo systems
+            SynchronizeCargoSystems(PlayerShipPtr);
+            return true;
+        } else {
+            printf("\nError: Global cargo quantity mismatch. Please report this bug.");
+            // Try to recover by synchronizing
+            SynchronizeCargoSystems(PlayerShipPtr);
+            return false;
+        }
+    } else {
+        printf("\nFailed to jettison %s. Check cargo name and quantity.", cargoName);
+        return false;
+    }
 }

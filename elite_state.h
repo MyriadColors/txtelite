@@ -45,7 +45,7 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 // Other game constants
 #define MAX_CARGO_ITEMS 50
 #define MAX_EQUIPMENT_SLOTS 10
-#define NUM_COMMANDS 35  // Number of commands in the commands array
+#define NUM_COMMANDS 34  // Number of commands in the commands array
 #define GOV_MAX_COUNT 8  // Number of government types
 #define ECON_MAX_COUNT 8 // Number of economy types
 #define MAX_MISSIONS 10

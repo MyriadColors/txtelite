@@ -552,21 +552,15 @@ static inline bool do_help(char *commandArguments)
 			printf("\n  No fuel is required for this special jump.");
 			return true;
 		}
-		// Star system navigation commands
-		if (strcmp(command, "system") == 0 || strcmp(command, "sys") == 0)
+		// Star system navigation commands		if (strcmp(command, "system") == 0 || strcmp(command, "sys") == 0)
 		{
-			printf("\nSYSTEM - Displays detailed information about the current star system, including celestial bodies, stations, points of interest, distances, and estimated travel times. Costs 1 minute of game time.\n");
+			printf("\nSYSTEM - Displays detailed information about the current star system");
+			printf("\n  Shows all celestial bodies, stations, their locations, and travel times.");
+			printf("\n  Note: This command (formerly also available as 'scan') scans the system");
+			printf("\n        for points of interest and costs 1 minute of game time.");
 			return true;
 		}
 
-		if (strcmp(command, "scan") == 0)
-		{
-			printf("\nSCAN - Scan the current star system for points of interest");
-			printf("\n  Shows all celestial bodies, stations, their locations, and travel times.");
-			printf("\n  Identical to the 'system' command - use either one as preferred.");
-			printf("\n  Costs 1 minute of game time.");
-			return true;
-		}
 		if (strcmp(command, "travel") == 0 || strcmp(command, "t") == 0)
 		{
 			printf("\nTRAVEL [destination] - Travel within the current star system");
@@ -883,14 +877,13 @@ static inline bool do_help(char *commandArguments)
 	printf("\n  jettison all            - Discard all cargo at once");
 	printf("\n  mkt                     - Show current market prices, fuel, and cash");
 	printf("\n  compare                 - Compare markets across stations in the system");
-	printf("\n\nINTERSTELLAR NAVIGATION:");
-	printf("\n  jump  <planetname>      - Jump to planet (uses fuel)");
+	printf("\n\nINTERSTELLAR NAVIGATION:");	printf("\n  jump  <planetname>      - Jump to planet (uses fuel)");
 	printf("\n  fuel  <amount>          - Buy amount Light Years of fuel");
 	printf("\n  galhyp                  - Jump to the next galaxy");
 	printf("\n  local                   - List systems within 7 light years");
 	printf("\n  info  <planetname>      - Display information about a system");
-	printf("\n\nSTAR SYSTEM NAVIGATION:");	printf("\n  system                  - Display detailed information about the current star system");
-	printf("\n  scan                    - Scan system for points of interest and travel times");
+	printf("\n\nSTAR SYSTEM NAVIGATION:");	
+	printf("\n  system                  - Scan system for detailed information and points of interest");
 	printf("\n  travel [destination]    - List destinations or travel within the system (uses energy)");
 	printf("\n  dock                    - Dock with a station if at a station location");
 	printf("\n  land                    - Land on a planet if at a planet location");
@@ -1110,16 +1103,12 @@ static inline bool do_system_info(char *commandArguments)
 	{
 		printf("\nError: Planet system data not available.");
 		return false;
-	}
-	// Get current location information
+	}	// Get current location information
 	char locBuffer[MAX_LEN];
 	get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
 	
-	// Determine whether this was called via "system" or "scan" command
-	const char* commandName = "SYSTEM SCAN";
-	
 	// System header with basic information
-	printf("\n==== %s: %s ====", commandName, CurrentStarSystem->planSys->name);
+	printf("\n==== SYSTEM SCAN: %s ====", CurrentStarSystem->planSys->name);
 	printf("\nCurrent location: %s (%.2f AU from star)", locBuffer, PlayerNavState.distanceFromStar);
 
 	// Economic and political information
@@ -1758,7 +1747,7 @@ static inline bool do_land(char *commandArguments)
 		{
 			Planet *planet = &CurrentStarSystem->planets[i];
 			if (!planet)
-				continue;
+							continue;
 
 			double distToPlanet = fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
 
@@ -2631,16 +2620,130 @@ static inline bool do_equip_from_inventory(char *commandArguments)
 }
 
 // Ship trading commands
-bool do_shipyard(char* args) {
-    return ShipyardCommand(args);
+static inline bool do_shipyard(char* args) {
+    (void)args; // Mark args as unused
+    
+    // Check if player is docked at a station
+    extern struct NavigationState PlayerNavState;
+    extern int PlayerLocationType;
+    
+    // Need to be both at a station AND docked
+    if (PlayerNavState.currentLocationType != CELESTIAL_STATION || PlayerLocationType != 10) {
+        printf("Error: You must be docked at a station to access the shipyard.\n");
+        return false;
+    }
+    
+    // Get current system info
+    extern char CurrentSystemName[20];  // From elite_player_state.h
+    extern int CurrentSystemEconomy;    // From elite_player_state.h
+    extern uint64_t currentGameTimeSeconds; // From elite_state.h
+    extern PlayerShip* PlayerShipPtr;       // From elite_player_state.h
+    
+    // Display the shipyard
+    DisplayShipyard(CurrentSystemName, CurrentSystemEconomy, PlayerShipPtr, currentGameTimeSeconds);
+    
+    return true;
 }
 
-bool do_compareship(char* args) {
-    return CompareShipCommand(args);
+static inline bool do_compareship(char* args) {
+    // Check if arguments are provided
+    if (args == NULL || args[0] == '\0') {
+        printf("Error: Please specify a ship to compare with.\n");
+        printf("Usage: compareship <shipname>\n");
+        return false;
+    }
+    
+    // Get player ship
+    extern PlayerShip* PlayerShipPtr;  // From elite_player_state.h
+    
+    // Compare ships
+    CompareShips(PlayerShipPtr, (const char*)args);
+    
+    return true;
 }
 
-bool do_buyship(char* args) {
-    return BuyShipCommand(args);
+static inline bool do_buyship(char* args) {
+    // Check if player is docked at a station
+    extern struct NavigationState PlayerNavState;
+    extern int PlayerLocationType;
+    
+    // Need to be both at a station AND docked
+    if (PlayerNavState.currentLocationType != CELESTIAL_STATION || PlayerLocationType != 10) {
+        printf("Error: You must be docked at a station to purchase a ship.\n");
+        return false;
+    }
+    
+    // Check if arguments are provided
+    if (args == NULL || args[0] == '\0') {
+        printf("Error: Please specify a ship to buy.\n");
+        printf("Usage: buyship <ID or shipname> [notrade]\n");
+        printf("Example: buyship 1  or  buyship \"Cobra Mk III\"\n");
+        return false;
+    }
+    
+    // Get current system info and player ship
+    extern char CurrentSystemName[20];      // From elite_player_state.h
+    extern int CurrentSystemEconomy;        // From elite_player_state.h
+    extern uint64_t currentGameTimeSeconds; // From elite_state.h
+    extern PlayerShip* PlayerShipPtr;       // From elite_player_state.h
+    
+    // Parse arguments
+    char shipNameOrID[64] = {0};
+    bool tradeIn = true;
+    
+    // Copy the first part of the arguments (up to the first space)
+    const char* space = strchr(args, ' ');
+    if (space != NULL) {
+        size_t nameLen = space - args;
+        strncpy(shipNameOrID, args, nameLen < 63 ? nameLen : 63);
+        shipNameOrID[nameLen < 63 ? nameLen : 63] = '\0';
+        
+        // Check for 'notrade' flag in the remaining part
+        if (strstr(space + 1, "notrade") != NULL) {
+            tradeIn = false;
+        }
+    } else {
+        // No space, just copy the entire argument
+        strncpy(shipNameOrID, args, 63);
+        shipNameOrID[63] = '\0';
+    }
+    
+    // Check if the argument is a number (ID) or a string (ship name)
+    char actualShipName[MAX_SHIP_NAME_LENGTH] = {0};
+    bool isID = true;
+    
+    // Check if shipNameOrID is a number
+    for (size_t i = 0; i < strlen(shipNameOrID); i++) {
+        if (!isdigit(shipNameOrID[i])) {
+            isID = false;
+            break;
+        }
+    }
+    
+    if (isID) {
+        // Convert the ID to an integer
+        int shipID = atoi(shipNameOrID);
+        
+        // Get the ship name by ID
+        if (!GetShipNameByID(CurrentSystemName, CurrentSystemEconomy, shipID, actualShipName, MAX_SHIP_NAME_LENGTH)) {
+            printf("Error: Invalid ship ID: %d\n", shipID);
+            return false;
+        }
+    } else {
+        // The argument is a ship name, just copy it
+        strncpy(actualShipName, shipNameOrID, MAX_SHIP_NAME_LENGTH - 1);
+        actualShipName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    }
+    
+    // Buy the new ship
+    return BuyNewShip(
+        CurrentSystemName, 
+        CurrentSystemEconomy, 
+        PlayerShipPtr, 
+        (const char*)actualShipName, 
+        currentGameTimeSeconds, 
+        tradeIn
+    );
 }
 
 /**

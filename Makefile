@@ -50,9 +50,10 @@ release:
 # This depends on $(TARGET). If $(TARGET) is not present or outdated,
 # it will be rebuilt using the default (debug) rule.
 # If 'make release' was run previously and $(TARGET) is up-to-date, it runs that version.
+# Usage: make run ARGS="arguments to pass to the program"
 run: $(TARGET)
 	@echo "Running $(TARGET)..."
-	.\$(TARGET)
+	.\$(TARGET) $(ARGS)
 
 # Target to clean build artifacts
 clean:

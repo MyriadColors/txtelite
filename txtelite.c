@@ -80,13 +80,24 @@ int GetMaxFuel(void)
 // This will be linked with the extern declaration in elite_state.h
 uint64_t currentGameTimeSeconds = 0;
 
-int main(void)
+int main(int argc, char *argv[])
 {
-
 	char getcommand[MAX_LEN];
+	unsigned int seed = 12345; // Default seed
+	
+	// Process command-line arguments
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+			// Get seed value from next argument
+			seed = (unsigned int)atoi(argv[i + 1]);
+			i++; // Skip the next argument as we've already processed it
+			printf("\nUsing custom seed: %u\n", seed);
+		}
+	}
+	
 	printf("\nWelcome to Text Elite 1.5.\n");
 
-	my_srand(12345);
+	my_srand(seed);
 	initialize_player_state();
 	game_time_initialize();
 

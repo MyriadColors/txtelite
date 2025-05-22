@@ -1,17 +1,17 @@
 #pragma once
 
-#include "elite_state.h" // Unified header for constants, structures, and globals
-#include "elite_utils.h"  // For minimum_value
+#include "elite_state.h"      // Unified header for constants, structures, and globals
+#include "elite_utils.h"      // For minimum_value
 #include "elite_ship_types.h" // For PlayerShip structure
-#include <math.h>         // For floor (used in execute_buy_order)
-#include <string.h>       // For string operations (strcpy, strncpy)
+#include <math.h>             // For floor (used in execute_buy_order)
+#include <string.h>           // For string operations (strcpy, strncpy)
 
 // This macro was originally with the Commodities array definition
 #define POLITICALLY_CORRECT 0
 /* Set to 1 for NES-sanitised trade goods */
 
 // UnitNames array, static within this header
-static char UnitNames[][5] ={"t","kg","g"};
+static char UnitNames[][5] = {"t", "kg", "g"};
 
 // Commodities array, static within this header
 // Defines NUM_STANDARD_COMMODITIES (10) items
@@ -41,20 +41,27 @@ static TradeGood Commodities[] = {
 // tradnames is char tradnames[LAST_TRADE + 1][MAX_LEN];
 // Copies names for the first NUM_STANDARD_COMMODITIES.
 // Clears remaining entries up to LAST_TRADE.
-static inline void init_tradnames(void) {
+static inline void init_tradnames(void)
+{
     uint16_t i;
     // Copy names from the Commodities array
-    for (i = 0; i < NUM_STANDARD_COMMODITIES; i++) {
-        if (i < (sizeof(Commodities) / sizeof(Commodities[0]))) {
+    for (i = 0; i < NUM_STANDARD_COMMODITIES; i++)
+    {
+        if (i < (sizeof(Commodities) / sizeof(Commodities[0])))
+        {
             strncpy(tradnames[i], Commodities[i].name, MAX_LEN - 1);
             tradnames[i][MAX_LEN - 1] = '\0'; // Ensure null termination
-        } else {
+        }
+        else
+        {
             tradnames[i][0] = '\0';
         }
     }
     // Initialize the remaining part of tradnames up to LAST_TRADE.
-    for (; i <= LAST_TRADE; i++) {
-        if (i < (LAST_TRADE + 1)) { 
+    for (; i <= LAST_TRADE; i++)
+    {
+        if (i < (LAST_TRADE + 1))
+        {
             tradnames[i][0] = '\0';
         }
     }
@@ -62,85 +69,109 @@ static inline void init_tradnames(void) {
 
 // Generates market data for a given planet system and fluctuation.
 // MarketType arrays are sized COMMODITY_ARRAY_SIZE (ALIEN_ITEMS_IDX + 1).
-static inline MarketType generate_market(uint16_t fluctuation, struct PlanSys planetSystem) {
+static inline MarketType generate_market(uint16_t fluctuation, struct PlanSys planetSystem)
+{
     MarketType market;
     uint16_t i;
 
-    for (i = 0; i < NUM_STANDARD_COMMODITIES; i++) {
+    for (i = 0; i < NUM_STANDARD_COMMODITIES; i++)
+    {
         int32_t q;
         int32_t product = (planetSystem.economy) * (Commodities[i].gradient);
         int32_t changing = fluctuation & (Commodities[i].maskByte);
         q = (Commodities[i].baseQuant) + changing - product;
         q = q & 0xFF;
-        if (q & 0x80) { q = 0; } 
-        market.quantity[i] = (uint16_t)(q & 0x3F); 
+        if (q & 0x80)
+        {
+            q = 0;
+        }
+        market.quantity[i] = (uint16_t)(q & 0x3F);
 
         q = (Commodities[i].basePrice) + changing + product;
         q = q & 0xFF;
         market.price[i] = (uint16_t)(q * 4);
     }
 
-    for (i = NUM_STANDARD_COMMODITIES; i <= LAST_TRADE; i++) {
+    for (i = NUM_STANDARD_COMMODITIES; i <= LAST_TRADE; i++)
+    {
         market.quantity[i] = 0;
         market.price[i] = 0;
     }
 
-    market.quantity[ALIEN_ITEMS_IDX] = 0; 
-    market.price[ALIEN_ITEMS_IDX] = 0;    
+    market.quantity[ALIEN_ITEMS_IDX] = 0;
+    market.price[ALIEN_ITEMS_IDX] = 0;
 
     return market;
 }
 
 // Displays the market information.
-static inline void display_market_info(MarketType marketData) {
+static inline void display_market_info(MarketType marketData)
+{
     uint16_t i;
-    printf("ITEM          PRICE  QTY UNIT CARGO"); 
+    printf("ITEM          PRICE  QTY UNIT CARGO");
 
     // Only show the actual defined commodities (NUM_STANDARD_COMMODITIES)
     // This matches the original game behavior more closely
-    for (i = 0; i < NUM_STANDARD_COMMODITIES; i++) {
+    for (i = 0; i < NUM_STANDARD_COMMODITIES; i++)
+    {
         printf("\n");
-        printf("%-12s", Commodities[i].name); 
-        printf("   %5.1f", ((float)(marketData.price[i]) / 10)); 
-        printf("   %3u", marketData.quantity[i]); 
-        printf(" %-3s", UnitNames[Commodities[i].units]); 
-        printf("   %3u", ShipHold[i]); 
+        printf("%-12s", Commodities[i].name);
+        printf("   %5.1f", ((float)(marketData.price[i]) / 10));
+        printf("   %3u", marketData.quantity[i]);
+        printf(" %-3s", UnitNames[Commodities[i].units]);
+        printf("   %3u", ShipHold[i]);
     }
-    printf("\n"); 
+    printf("\n");
 }
 
 // Executes a buy order for a given item and amount.
-static inline uint16_t execute_buy_order(uint16_t itemIndex, uint16_t amount) {
+static inline uint16_t execute_buy_order(uint16_t itemIndex, uint16_t amount)
+{
     uint16_t t;
-    if (Cash < 0) { t = 0; }
-    else {
-        if (itemIndex >= COMMODITY_ARRAY_SIZE) return 0; 
+    if (Cash < 0)
+    {
+        t = 0;
+    }
+    else
+    {
+        if (itemIndex >= COMMODITY_ARRAY_SIZE)
+            return 0;
 
         t = minimum_value(LocalMarket.quantity[itemIndex], amount);
 
-        if (itemIndex < NUM_STANDARD_COMMODITIES) {
-            if ((Commodities[itemIndex].units) == TONNES_UNIT) {
+        if (itemIndex < NUM_STANDARD_COMMODITIES)
+        {
+            if ((Commodities[itemIndex].units) == TONNES_UNIT)
+            {
                 t = minimum_value(HoldSpace, t);
             }
         }
-        
-        if (LocalMarket.price[itemIndex] > 0) {
+
+        if (LocalMarket.price[itemIndex] > 0)
+        {
             t = minimum_value(t, (uint16_t)floor((double)Cash / LocalMarket.price[itemIndex]));
-        } else if (Cash > 0 && LocalMarket.quantity[itemIndex] > 0 && LocalMarket.price[itemIndex] == 0) {
+        }
+        else if (Cash > 0 && LocalMarket.quantity[itemIndex] > 0 && LocalMarket.price[itemIndex] == 0)
+        {
             // Free item, t is already min(available, requested)
-        } else { 
+        }
+        else
+        {
             t = 0;
         }
     }
 
-    if (itemIndex >= COMMODITY_ARRAY_SIZE) return 0;
+    if (itemIndex >= COMMODITY_ARRAY_SIZE)
+        return 0;
 
     ShipHold[itemIndex] += t;
     LocalMarket.quantity[itemIndex] -= t;
-    Cash -= (int32_t)t * (LocalMarket.price[itemIndex]); 
+    Cash -= (int32_t)t * (LocalMarket.price[itemIndex]);
 
-    if (itemIndex < NUM_STANDARD_COMMODITIES) {
-        if ((Commodities[itemIndex].units) == TONNES_UNIT) {
+    if (itemIndex < NUM_STANDARD_COMMODITIES)
+    {
+        if ((Commodities[itemIndex].units) == TONNES_UNIT)
+        {
             HoldSpace -= t;
         }
     }
@@ -148,17 +179,21 @@ static inline uint16_t execute_buy_order(uint16_t itemIndex, uint16_t amount) {
 }
 
 // Executes a sell order for a given item and amount.
-static inline uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount) {
-    if (itemIndex >= COMMODITY_ARRAY_SIZE) return 0; 
+static inline uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount)
+{
+    if (itemIndex >= COMMODITY_ARRAY_SIZE)
+        return 0;
 
     uint16_t t = minimum_value(ShipHold[itemIndex], amount);
 
     ShipHold[itemIndex] -= t;
-    LocalMarket.quantity[itemIndex] += t; 
+    LocalMarket.quantity[itemIndex] += t;
     Cash += (int32_t)t * (LocalMarket.price[itemIndex]);
 
-    if (itemIndex < NUM_STANDARD_COMMODITIES) {
-        if ((Commodities[itemIndex].units) == TONNES_UNIT) {
+    if (itemIndex < NUM_STANDARD_COMMODITIES)
+    {
+        if ((Commodities[itemIndex].units) == TONNES_UNIT)
+        {
             HoldSpace += t;
         }
     }
@@ -168,56 +203,68 @@ static inline uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount) {
 /**
  * Synchronizes cargo between the global ShipHold array and the PlayerShip cargo system.
  * This ensures that both systems have consistent cargo information.
- * 
+ *
  * @param playerShip Pointer to the PlayerShip structure to synchronize with
  * @return true if synchronization was successful, false otherwise
  */
-static inline bool SynchronizeCargoSystems(struct PlayerShip* playerShip) {    if (playerShip == NULL) {
+static inline bool SynchronizeCargoSystems(struct PlayerShip *playerShip)
+{
+    if (playerShip == NULL)
+    {
         return false;
     }
-    
+
     // Clear current cargo in the PlayerShip structure
-    for (int i = 0; i < MAX_CARGO_SLOTS; ++i) {
+    for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
+    {
         playerShip->cargo[i].quantity = 0;
         strcpy(playerShip->cargo[i].name, "Empty");
         playerShip->cargo[i].purchasePrice = 0;
     }
-    
+
     // Reset current cargo tons
     playerShip->attributes.currentCargoTons = 0;
-    
+
     // Transfer cargo from ShipHold to PlayerShip
-    for (uint16_t i = 0; i <= LAST_TRADE; ++i) {
-        if (ShipHold[i] > 0) {
+    for (uint16_t i = 0; i <= LAST_TRADE; ++i)
+    {
+        if (ShipHold[i] > 0)
+        {
             // Find empty slot in PlayerShip
             int emptySlot = -1;
-            for (int j = 0; j < MAX_CARGO_SLOTS; ++j) {
-                if (playerShip->cargo[j].quantity == 0) {
+            for (int j = 0; j < MAX_CARGO_SLOTS; ++j)
+            {
+                if (playerShip->cargo[j].quantity == 0)
+                {
                     emptySlot = j;
                     break;
                 }
             }
-            
-            if (emptySlot >= 0) {
+
+            if (emptySlot >= 0)
+            {
                 // Copy the cargo into the player ship
                 strncpy(playerShip->cargo[emptySlot].name, tradnames[i], MAX_SHIP_NAME_LENGTH - 1);
                 playerShip->cargo[emptySlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
                 playerShip->cargo[emptySlot].quantity = ShipHold[i];
-                
+
                 // For simplicity, use the current market price as the purchase price
                 playerShip->cargo[emptySlot].purchasePrice = LocalMarket.price[i] / 10; // Convert from internal to display units
-                
+
                 // Update current cargo tons if it's measured in tons
-                if (Commodities[i].units == TONNES_UNIT) {
+                if (Commodities[i].units == TONNES_UNIT)
+                {
                     playerShip->attributes.currentCargoTons += ShipHold[i];
                 }
-            } else {
+            }
+            else
+            {
                 // This should not happen if MAX_CARGO_SLOTS is large enough
                 printf("Warning: Not enough cargo slots to synchronize cargo.\n");
                 return false;
             }
         }
     }
-    
+
     return true;
 }

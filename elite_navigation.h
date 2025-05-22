@@ -1,10 +1,10 @@
 #pragma once
 
-#include "elite_state.h"            // Unified header for constants, structures, and globals
-#include "elite_utils.h"            // For float_to_int_round, random_byte, string_begins_with
-#include "elite_market.h"           // For generate_market
-#include "elite_galaxy.h"           // For Galaxy array functions
-#include <math.h>                   // For sqrt
+#include "elite_state.h"  // Unified header for constants, structures, and globals
+#include "elite_utils.h"  // For float_to_int_round, random_byte, string_begins_with
+#include "elite_market.h" // For generate_market
+#include "elite_galaxy.h" // For Galaxy array functions
+#include <math.h>         // For sqrt
 
 // Enum for celestial body types
 typedef enum
@@ -52,20 +52,19 @@ static inline double calculate_travel_fuel_requirement(double distanceInAU)
 // Forward declaration for function from elite_player_state.h
 static inline void initialize_star_system_for_current_planet(void);
 
-
 /**
  * @brief Calculates the distance between two planetary systems.
- * 
+ *
  * This function calculates the Euclidean distance between two planetary systems
  * with a scaling factor of 4. It uses double precision for intermediate calculations
  * to maintain accuracy, following the approach from the original Elite game.
- * 
+ *
  * The y-coordinate is given half the weight of the x-coordinate during distance
  * calculation, which creates an elliptical rather than circular distance metric.
- * 
+ *
  * @param systemA The first planetary system.
  * @param systemB The second planetary system.
- * 
+ *
  * @return The scaled distance between the two systems as a 16-bit unsigned integer.
  */
 static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB)
@@ -76,18 +75,17 @@ static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB)
     return (uint16_t)float_to_int_round(4 * sqrt(dx * dx + (dy * dy) / 4.0));
 }
 
-
 /**
  * @brief Finds a planet with a name matching the search string
- * 
- * This function searches the galaxy for planets whose names begin with the 
+ *
+ * This function searches the galaxy for planets whose names begin with the
  * provided search string. If multiple planets match, it returns the one
  * closest to the current planet.
- * 
+ *
  * @param searchName Pointer to the string to search for in planet names
  * @return PlanetNum The index of the matching planet in the Galaxy array
  *                   (returns CurrentPlanet if no match is found)
- * 
+ *
  * @note The function uses the global variables Galaxy and CurrentPlanet
  * @see distance - Function used to calculate distances between planets
  * @see string_begins_with - Function that checks if a string begins with another string
@@ -127,7 +125,7 @@ static inline PlanetNum find_matching_system_name(char *searchName)
  *       - CurrentPlanet: Updated to the new planet index
  *       - LocalMarket: Updated with newly generated market data
  *       - Galaxy: Used to access planet information
- * 
+ *
  * @see random_byte(), generate_market(), initialize_star_system_for_current_planet()
  */
 static inline void execute_jump_to_planet(PlanetNum planetIndex)

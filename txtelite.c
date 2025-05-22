@@ -31,48 +31,45 @@ of Elite with no combat or missions.
 #include <math.h>
 #include <ctype.h>
 
-#include "elite_state.h"		// Unified header for constants, structures, and globals
-#include "elite_utils.h"		// For string handling and other utilities
-#include "elite_galaxy.h"		// For galaxy generation
-#include "elite_market.h"		// For market calculations
-#include "elite_navigation.h"	// For distance and jump calculations
-#include "elite_planet_info.h"	// For planet info printing
-#include "elite_commands.h"		// For game commands
-#include "elite_command_handler.h"	// For command parsing
-#include "elite_player_state.h"	// For player state initialization
-#include "elite_star_system.h"	// For star system data
-#include "elite_ship_upgrades.h" // For equipment access
+#include "elite_state.h"			   // Unified header for constants, structures, and globals
+#include "elite_utils.h"			   // For string handling and other utilities
+#include "elite_galaxy.h"			   // For galaxy generation
+#include "elite_market.h"			   // For market calculations
+#include "elite_navigation.h"		   // For distance and jump calculations
+#include "elite_planet_info.h"		   // For planet info printing
+#include "elite_commands.h"			   // For game commands
+#include "elite_command_handler.h"	   // For command parsing
+#include "elite_player_state.h"		   // For player state initialization
+#include "elite_star_system.h"		   // For star system data
+#include "elite_ship_upgrades.h"	   // For equipment access
 #include "elite_equipment_constants.h" // For equipment indices
-
-/* ======================================== *
- * Fuel-related functions implementation    *
- * These were declared in elite_state.h     *
- * But implemented here to avoid circular   *
- * dependencies with PlayerShip structure   *
- * ======================================== */
 
 /**
  * Gets the fuel cost per unit based on ship type
- * 
+ *
  * @return Cost of fuel unit (for 0.1 LY of travel)
  */
-int GetFuelCost(void) {
-    if (PlayerShipPtr == NULL) {
-        return 2; // Default value if ship not initialized
-    }
-    return (int)PlayerShipPtr->shipType->fuelConsumptionRate;
+int GetFuelCost(void)
+{
+	if (PlayerShipPtr == NULL)
+	{
+		return 2; // Default value if ship not initialized
+	}
+	return (int)PlayerShipPtr->shipType->fuelConsumptionRate;
 }
 
 /**
  * Gets the maximum fuel capacity of the current ship in tenths of LY
- * 
+ *
  * @return Maximum fuel capacity in tenths of LY
  */
-int GetMaxFuel(void) {
-    if (PlayerShipPtr == NULL) {
-        return 70; // Default value if ship not initialized
-    }
-    return (int)(PlayerShipPtr->shipType->maxFuelLY * 10.0); // Convert from LY to 0.1 LY units
+int GetMaxFuel(void)
+{
+	if (PlayerShipPtr == NULL)
+	{
+		return 70; // Default value if ship not initialized
+	}
+	return (int)(PlayerShipPtr->shipType->maxFuelLY * 10.0); // Convert from LY to 0.1 LY units
 }
 
 /* ================= *
@@ -104,10 +101,10 @@ int main(void)
 	PARSER("help");
 
 #undef PARSER
-	
+
 	// Track last time energy was regenerated
 	uint64_t lastEnergyRegenTime = currentGameTimeSeconds;
-	
+
 	for (;;)
 	{
 		char locBuffer[MAX_LEN];
@@ -115,46 +112,60 @@ int main(void)
 
 		// Periodically update all markets in the system as time passes
 		update_all_system_markets();
-				// Regenerate ship energy over time
-		if (PlayerShipPtr != NULL && currentGameTimeSeconds > lastEnergyRegenTime) {
+		// Regenerate ship energy over time
+		if (PlayerShipPtr != NULL && currentGameTimeSeconds > lastEnergyRegenTime)
+		{
 			// Calculate time elapsed since last regeneration
 			uint64_t timeElapsed = currentGameTimeSeconds - lastEnergyRegenTime;
-			
+
 			// Regenerate energy at a rate of 1 unit per 5 seconds, up to max
-			if (timeElapsed >= 5) {
+			if (timeElapsed >= 5)
+			{
 				float energyToAdd = timeElapsed / 5.0f;
-				
+
 				// Add energy, but don't exceed maximum
-				PlayerShipPtr->attributes.energyBanks = 
-					(PlayerShipPtr->attributes.energyBanks + energyToAdd > PlayerShipPtr->attributes.maxEnergyBanks) ? 
-					PlayerShipPtr->attributes.maxEnergyBanks : PlayerShipPtr->attributes.energyBanks + energyToAdd;
-				
+				PlayerShipPtr->attributes.energyBanks =
+					(PlayerShipPtr->attributes.energyBanks + energyToAdd > PlayerShipPtr->attributes.maxEnergyBanks) ? PlayerShipPtr->attributes.maxEnergyBanks : PlayerShipPtr->attributes.energyBanks + energyToAdd;
+
 				// Update last regeneration time
 				lastEnergyRegenTime = currentGameTimeSeconds;
 			}
 		}
 
 		// Enhanced status display with ship information
-		if (PlayerShipPtr != NULL) {			// Calculate hull percentage
+		if (PlayerShipPtr != NULL)
+		{ // Calculate hull percentage
 			int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / PlayerShipPtr->shipType->baseHullStrength;
 			// Calculate energy percentage
-			int energyPercentage = (int)((PlayerShipPtr->attributes.energyBanks * 100) / PlayerShipPtr->attributes.maxEnergyBanks);// Prepare equipment status string
+			int energyPercentage = (int)((PlayerShipPtr->attributes.energyBanks * 100) / PlayerShipPtr->attributes.maxEnergyBanks); // Prepare equipment status string
 			char equipmentStatus[MAX_LEN] = "";
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ECM_SYSTEM)) strcat(equipmentStatus, "ECM ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_FUEL_SCOOP)) strcat(equipmentStatus, "FuelScoop ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ENERGY_BOMB)) strcat(equipmentStatus, "E-Bomb ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_DOCKING_COMPUTER)) strcat(equipmentStatus, "DockCmp ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MINING_LASER)) strcat(equipmentStatus, "Mining ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_BEAM_LASER)) strcat(equipmentStatus, "Beam ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MILITARY_LASER)) strcat(equipmentStatus, "Military ");			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) strcat(equipmentStatus, "Scanner ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ESCAPE_POD)) strcat(equipmentStatus, "EscPod ");
-			if (strlen(equipmentStatus) == 0) strcpy(equipmentStatus, "None");
-
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ECM_SYSTEM))
+				strcat(equipmentStatus, "ECM ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_FUEL_SCOOP))
+				strcat(equipmentStatus, "FuelScoop ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ENERGY_BOMB))
+				strcat(equipmentStatus, "E-Bomb ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_DOCKING_COMPUTER))
+				strcat(equipmentStatus, "DockCmp ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MINING_LASER))
+				strcat(equipmentStatus, "Mining ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_BEAM_LASER))
+				strcat(equipmentStatus, "Beam ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MILITARY_LASER))
+				strcat(equipmentStatus, "Military ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_SCANNER_UPGRADE))
+				strcat(equipmentStatus, "Scanner ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ESCAPE_POD))
+				strcat(equipmentStatus, "EscPod ");
+			if (strlen(equipmentStatus) == 0)
+				strcpy(equipmentStatus, "None");
 
 			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | Energy: %d%% | Equip: %s| Time: %llu seconds > ",
-				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, 
+				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f,
 				   hullPercentage, energyPercentage, equipmentStatus, currentGameTimeSeconds);
-		} else {
+		}
+		else
+		{
 			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ",
 				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);
 		}

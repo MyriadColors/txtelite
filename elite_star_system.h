@@ -1,9 +1,9 @@
 #pragma once
 
-#include "elite_state.h"            // For PlanSys and other related structures
-#include "elite_navigation.h"       // For NavigationState and CelestialType
-#include "elite_market.h"           // For market-related functions
-#include "elite_ship_types.h"      // For PlayerShip structure
+#include "elite_state.h"      // For PlanSys and other related structures
+#include "elite_navigation.h" // For NavigationState and CelestialType
+#include "elite_market.h"     // For market-related functions
+#include "elite_ship_types.h" // For PlayerShip structure
 
 // Forward declarations
 struct Star;
@@ -568,12 +568,12 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
     default:
         fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
         return false;
-    }    // Calculate travel time
-    uint32_t travelTime = calculate_travel_time(startDistance, endDistance);    // Calculate energy requirement for travel
+    } // Calculate travel time
+    uint32_t travelTime = calculate_travel_time(startDistance, endDistance); // Calculate energy requirement for travel
     double distanceDelta = fabs(endDistance - startDistance);
     double energyRequired = calculate_travel_energy_requirement(distanceDelta);
     double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
-    
+
     // Check if player ship has enough energy and fuel
     extern struct PlayerShip *PlayerShipPtr;
     if (PlayerShipPtr != NULL)
@@ -586,7 +586,7 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
             printf("Required: %.1f, Available: %.1f\n", energyRequired, PlayerShipPtr->attributes.energyBanks);
             return false;
         }
-        
+
         // Check if there's enough fuel
         if (PlayerShipPtr->attributes.fuelLiters < fuelRequired)
         {
@@ -595,17 +595,17 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
             printf("Required: %.3f liters, Available: %.1f liters\n", fuelRequired, PlayerShipPtr->attributes.fuelLiters);
             return false;
         }
-        
+
         // Consume energy
         PlayerShipPtr->attributes.energyBanks -= energyRequired;
-        
+
         // Consume fuel
         PlayerShipPtr->attributes.fuelLiters -= fuelRequired;
-        
+
         // Update global Fuel variable (in 0.1 LY units)
         extern uint16_t Fuel;
         Fuel = (uint16_t)(PlayerShipPtr->attributes.fuelLiters / 10.0);
-        
+
         printf("\nTravel energy consumed: %.1f units", energyRequired);
         printf("\nTravel fuel consumed: %.3f liters (%.5f LY)", fuelRequired, fuelRequired / 100.0);
     }
@@ -623,12 +623,13 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
 
     case CELESTIAL_PLANET:
         navState->currentLocation.planet = (Planet *)targetBody;
-        break;    case CELESTIAL_STATION:
+        break;
+    case CELESTIAL_STATION:
         navState->currentLocation.station = (Station *)targetBody;
-        
+
         // Update global location type to indicate we're at a station but not yet docked
         extern int PlayerLocationType;
-        PlayerLocationType = 0;  // We're at the station but not docked yet
+        PlayerLocationType = 0; // We're at the station but not docked yet
         break;
 
     case CELESTIAL_NAV_BEACON:

@@ -62,18 +62,18 @@ typedef struct
 
 /**
  * @brief Saves the current game state to a file
- * 
+ *
  * This function writes the current game state to a binary file, including:
  * - A header with signature, version, timestamp, and description
  * - Complete game state including seed, position, inventory, market data, and navigation state
- * 
+ *
  * If no description is provided, a default one is generated based on the current timestamp
  * and planet name. The function handles finding and saving indices for the current planet
  * and station to allow proper reconstruction when loading.
- * 
+ *
  * @param filename The path to the save file to be created
  * @param description Optional custom description for the save (pass NULL for automatic description)
- * 
+ *
  * @return true if the save operation succeeded, false if any error occurred
  */
 static inline bool save_game(const char *filename, const char *description)
@@ -338,7 +338,7 @@ static inline bool load_game(const char *filename)
  *
  * This function opens a saved game file, verifies its format by checking the signature,
  * and displays information including the version, creation timestamp, and description.
- * 
+ *
  * The function performs the following steps:
  * 1. Opens the specified file for reading in binary mode
  * 2. Reads the save header

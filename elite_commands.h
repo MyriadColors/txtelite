@@ -705,7 +705,7 @@ static inline bool do_help(char *commandArguments)
 			printf("\nSAVE [description] - Save the current game state");
 			printf("\n  [description] - Optional description of the save (e.g., 'At Lave')");
 			printf("\n  Example: save Trading at Lave");
-			printf("\n  Note: Save files are timestamped and stored in the game directory.");
+			printf("\n  Note: Save files are timestamped and stored in the 'saves' directory.");
 			return true;
 		}
 
@@ -817,7 +817,7 @@ static inline bool do_help(char *commandArguments)
 			printf("\nSAVE [description] - Save the current game state");
 			printf("\n  [description] - Optional description of the save (e.g., 'At Lave')");
 			printf("\n  Example: save Trading at Lave");
-			printf("\n  Note: Save files are timestamped and stored in the game directory.");
+			printf("\n  Note: Save files are timestamped and stored in the 'saves' directory.");
 			return true;
 		}
 
@@ -1002,14 +1002,13 @@ static inline bool do_load(char *commandArguments)
 		char filename[MAX_PATH];
 		time_t timestamp;
 	} SaveFileInfo;
-
-	// Find all .sav files
+	// Find all .sav files in the saves directory
 	WIN32_FIND_DATA findData;
-	HANDLE hFind = FindFirstFile("*.sav", &findData);
+	HANDLE hFind = FindFirstFile("saves\\*.sav", &findData);
 
 	if (hFind == INVALID_HANDLE_VALUE)
 	{
-		printf("No save files found.\n");
+		printf("No save files found in the 'saves' directory.\n");
 		return false;
 	}
 
@@ -1023,13 +1022,15 @@ static inline bool do_load(char *commandArguments)
 		{
 			// Store filename
 			strncpy(saveFiles[fileCount].filename, findData.cFileName, MAX_PATH - 1);
-			saveFiles[fileCount].filename[MAX_PATH - 1] = '\0';
-
-			// Get file timestamp
+			saveFiles[fileCount].filename[MAX_PATH - 1] = '\0';			// Get file timestamp
 			FILETIME ftCreate, ftAccess, ftWrite;
 			SYSTEMTIME stUTC, stLocal;
 
-			HANDLE hFile = CreateFile(findData.cFileName,
+			// Create full path for the file
+			char fullPath[MAX_PATH];
+			snprintf(fullPath, MAX_PATH, "saves\\%s", findData.cFileName);
+
+			HANDLE hFile = CreateFile(fullPath,
 									  GENERIC_READ,
 									  FILE_SHARE_READ,
 									  NULL,
@@ -1091,10 +1092,11 @@ static inline bool do_load(char *commandArguments)
 
 	// Display the sorted save files
 	for (int i = 0; i < fileCount; i++)
-	{
-		// Read save header to get the description
+	{		// Read save header to get the description
 		SaveHeader header;
-		FILE *file = fopen(saveFiles[i].filename, "rb");
+		char fullPath[MAX_PATH];
+		snprintf(fullPath, MAX_PATH, "saves\\%s", saveFiles[i].filename);
+		FILE *file = fopen(fullPath, "rb");
 		bool headerValid = false;
 
 		if (file)
@@ -1125,11 +1127,12 @@ static inline bool do_load(char *commandArguments)
 		printf("\nEnter the number of the save file to load (or 0 to cancel): ");
 		char input[10];
 		if (fgets(input, sizeof(input), stdin) != NULL)
-		{
-			int selection = atoi(input);
+		{			int selection = atoi(input);
 			if (selection > 0 && selection <= fileCount)
 			{
-				return load_game(saveFiles[selection - 1].filename);
+				char fullPath[MAX_PATH];
+				snprintf(fullPath, MAX_PATH, "saves/%s", saveFiles[selection - 1].filename);
+				return load_game(fullPath);
 			}
 		}
 	}

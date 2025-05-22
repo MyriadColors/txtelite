@@ -11,6 +11,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>  // For directory operations
+
+#ifdef _WIN32
+#include <direct.h>  // For _mkdir on Windows
+#define MKDIR(dir) _mkdir(dir)
+#else
+#define MKDIR(dir) mkdir(dir, 0755)
+#endif
 #include "elite_state.h"
 #include "elite_player_state.h"
 #include "elite_galaxy.h"
@@ -22,6 +30,49 @@
 
 // Signature to identify valid save files
 #define SAVE_SIGNATURE "TXTELITE"
+
+// Directory where save files are stored
+#define SAVE_DIRECTORY "saves"
+
+/**
+ * Helper function to ensure the saves directory exists and construct the full path.
+ * 
+ * @param filename The base filename for the save
+ * @param fullPath Buffer to store the full path
+ * @param size Size of the fullPath buffer
+ * @return true if the directory exists or was created successfully, false otherwise
+ */
+static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t size)
+{
+    // Create the save directory if it doesn't exist
+    struct stat st = {0};
+    if (stat(SAVE_DIRECTORY, &st) == -1) 
+    {
+#ifdef _WIN32
+        if (MKDIR(SAVE_DIRECTORY) != 0) 
+#else
+        if (MKDIR(SAVE_DIRECTORY) != 0)
+#endif
+        {
+            printf("Error: Could not create directory '%s'.\n", SAVE_DIRECTORY);
+            return false;
+        }
+    }
+
+    // Check if filename already contains the directory
+    if (strncmp(filename, SAVE_DIRECTORY, strlen(SAVE_DIRECTORY)) == 0) 
+    {
+        // Filename already includes the directory path
+        snprintf(fullPath, size, "%s", filename);
+    } 
+    else 
+    {
+        // Construct the full path
+        snprintf(fullPath, size, "%s/%s", SAVE_DIRECTORY, filename);
+    }
+
+    return true;
+}
 
 // Structure for the save file header
 typedef struct
@@ -78,10 +129,18 @@ typedef struct
  */
 static inline bool save_game(const char *filename, const char *description)
 {
-    FILE *file = fopen(filename, "wb");
+    char fullPath[256];
+    
+    // Get the full path with save directory
+    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
+    {
+        return false;
+    }
+    
+    FILE *file = fopen(fullPath, "wb");
     if (!file)
     {
-        printf("Error: Could not open file '%s' for writing.\n", filename);
+        printf("Error: Could not open file '%s' for writing.\n", fullPath);
         return false;
     }
     // Prepare header
@@ -201,10 +260,18 @@ static inline bool save_game(const char *filename, const char *description)
  */
 static inline bool load_game(const char *filename)
 {
-    FILE *file = fopen(filename, "rb");
+    char fullPath[256];
+    
+    // Get the full path with save directory
+    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
+    {
+        return false;
+    }
+    
+    FILE *file = fopen(fullPath, "rb");
     if (!file)
     {
-        printf("Error: Could not open file '%s' for reading.\n", filename);
+        printf("Error: Could not open file '%s' for reading.\n", fullPath);
         return false;
     }
     // Read header
@@ -352,10 +419,18 @@ static inline bool load_game(const char *filename)
  */
 static inline bool show_save_info(const char *filename)
 {
-    FILE *file = fopen(filename, "rb");
+    char fullPath[256];
+    
+    // Get the full path with save directory
+    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
+    {
+        return false;
+    }
+    
+    FILE *file = fopen(fullPath, "rb");
     if (!file)
     {
-        printf("Error: Could not open file '%s' for reading.\n", filename);
+        printf("Error: Could not open file '%s' for reading.\n", fullPath);
         return false;
     }
     // Read header
@@ -388,6 +463,8 @@ static inline bool show_save_info(const char *filename)
     return true;
 }
 
+// GetSaveFilePath function has been moved to the top of the file
+
 /**
  * Helper function to get a default save filename based on the current planet.
  *
@@ -396,6 +473,45 @@ static inline bool show_save_info(const char *filename)
  */
 static inline void get_default_save_filename(char *buffer, size_t size)
 {
-    snprintf(buffer, size, "txtelite_save_%s_g%d.sav",
-             Galaxy[CurrentPlanet].name, GalaxyNum);
+    snprintf(buffer, size, "%s/txtelite_save_%s_g%d.sav",
+             SAVE_DIRECTORY, Galaxy[CurrentPlanet].name, GalaxyNum);
+}
+
+/**
+ * @brief Creates the save directory if it doesn't exist.
+ *
+ * This function checks if the directory for saving files exists, and creates it if necessary.
+ * It is used to ensure that the save directory is available before attempting to save a game.
+ *
+ * @return true if the directory exists or was created successfully, false if an error occurred
+ */
+static inline bool create_save_directory()
+{
+    struct stat st = {0};
+    if (stat(SAVE_DIRECTORY, &st) == -1)
+    {
+        // Directory does not exist, attempt to create it
+        if (MKDIR(SAVE_DIRECTORY) != 0)
+        {
+            printf("Error: Failed to create save directory '%s'.\n", SAVE_DIRECTORY);
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * @brief Gets the full path for a save file in the designated save directory.
+ *
+ * This function constructs the full file path for a save file by combining the save directory,
+ * the base filename, and the file extension. It ensures that the directory separator is correct
+ * for the current platform.
+ *
+ * @param buffer Buffer to write the file path to.
+ * @param size Size of the buffer.
+ * @param filename Base filename without path or extension.
+ */
+static inline void get_save_file_path(char *buffer, size_t size, const char *filename)
+{
+    snprintf(buffer, size, "%s/%s.sav", SAVE_DIRECTORY, filename);
 }

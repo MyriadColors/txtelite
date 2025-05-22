@@ -105,7 +105,7 @@ This section details the significant changes made to the original codebase to mo
    * Or download a standalone version from [GnuWin32](http://gnuwin32.sourceforge.net/packages/make.htm).
 4. Open Command Prompt or PowerShell in the project root directory.
 5. Run `make` to build the executable (`main.exe`).
-6. To run the compiled program, execute `.\main.exe`.
+6. To run the compiled program, execute `make run` or `main.exe` from the Command Prompt/PowerShell in the project directory.
 
 **Windows (using MSYS2 UCRT64):**
 
@@ -115,4 +115,10 @@ This section details the significant changes made to the original codebase to mo
 4. Install Clang and Make: `pacman -S mingw-w64-ucrt-x86_64-clang mingw-w64-ucrt-x86_64-make`.
 5. Navigate to the project root directory within the MSYS2 UCRT64 terminal.
 6. Run `make` to build the Windows executable (`main.exe`).
-7. To run the compiled program, execute `./main.exe` from the MSYS2 UCRT64 terminal or `main.exe` from Command Prompt/PowerShell in the project directory.
+7. To run the compiled program, execute `make run` or `main.exe` from the MSYS2 UCRT64 terminal.
+
+Note: If modifying the code, you should ruin 'make clean' before running 'make run' again to ensure a clean build. Or you can use 'make clean run' to do both in one command.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

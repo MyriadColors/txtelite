@@ -4,6 +4,7 @@
 #include "elite_navigation.h" // For NavigationState and CelestialType
 #include "elite_market.h"     // For market-related functions
 #include "elite_ship_types.h" // For PlayerShip structure
+#include "elite_ship_maintenance.h" // For ConsumeFuel function
 
 // Forward declarations
 struct Star;
@@ -594,17 +595,15 @@ static inline bool travel_to_celestial(StarSystem *system, NavigationState *navS
             printf("\nTravel aborted: Insufficient fuel.\n");
             printf("Required: %.3f liters, Available: %.1f liters\n", fuelRequired, PlayerShipPtr->attributes.fuelLiters);
             return false;
-        }
-
-        // Consume energy
+        }        // Consume energy
         PlayerShipPtr->attributes.energyBanks -= energyRequired;
 
-        // Consume fuel
-        PlayerShipPtr->attributes.fuelLiters -= fuelRequired;
-
-        // Update global Fuel variable (in 0.1 LY units)
-        extern uint16_t Fuel;
-        Fuel = (uint16_t)(PlayerShipPtr->attributes.fuelLiters / 10.0);
+        // Consume fuel using ConsumeFuel function
+        if (!ConsumeFuel(fuelRequired, true)) {
+            fprintf(stderr, "Error: Failed to consume fuel for travel.\n");
+            printf("\nTravel aborted: Insufficient fuel for operation.\n");
+            return false;
+        }
 
         printf("\nTravel energy consumed: %.1f units", energyRequired);
         printf("\nTravel fuel consumed: %.3f liters (%.5f LY)", fuelRequired, fuelRequired / 100.0);

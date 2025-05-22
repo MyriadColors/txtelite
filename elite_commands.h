@@ -15,6 +15,7 @@
 #include "elite_ship_trading.h"	  // For ship trading commands
 #include "elite_ship_upgrades.h"  // For ship upgrades
 #include "elite_ship_cargo.h"	  // For cargo management functions
+#include "elite_ship_maintenance.h" // For ship maintenance functions including ConsumeFuel
 #include <stdlib.h>				  // For atoi, atof
 #include <math.h>				  // For floor, fabs
 #include <string.h>				  // For string operations
@@ -90,11 +91,13 @@ static inline bool do_jump(char *commandArguments)
 		}
 		// Consume energy for jump
 		PlayerShipPtr->attributes.energyBanks -= energyRequired;
-
-		// Also update ship's fuel (in liters) based on the ship's consumption rate
-		float fuelRatio = (float)GetFuelCost() / 2.0f; // Get consumption rate and scale to usable value
-		float fuelUsed = d * fuelRatio * 10.0f;		   // Convert game units to liters with consumption rate
-		PlayerShipPtr->attributes.fuelLiters -= fuelUsed;
+		
+		// Use the new ConsumeFuel function to update both global and ship fuel
+		if (!ConsumeFuel((double)fuelNeeded, false))
+		{
+			printf("\nJump failed: Insufficient fuel");
+			return false;
+		}
 
 		// Small chance of minor hull damage during jump
 		if (rand() % 100 < 5) // 5% chance
@@ -1781,6 +1784,7 @@ static inline bool do_land(char *commandArguments)
 	(void)(commandArguments); // Unused parameter
 
 	// Validate star system data
+
 	if (!CurrentStarSystem)
 	{
 		printf("\nError: Star system data not available. System might not be properly initialized.");

@@ -6,3 +6,4 @@ design.md
 .github
 *.md
 !readme.md
+output.txt

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "elite_navigation.h"    // For NavigationState definition
-#include "elite_state.h"            // Unified header for constants, structures, and globals
-#include "elite_market.h"           // For generate_market(), init_tradnames()
-#include "elite_galaxy.h"           // For build_galaxy_data()
-#include "elite_utils.h"            // For minimum_value
-#include "elite_star_system.h"      // For StarSystem
-#include "elite_ship_types.h"       // For PlayerShip structure and functions
+#include "elite_navigation.h"          // For NavigationState definition
+#include "elite_state.h"               // Unified header for constants, structures, and globals
+#include "elite_market.h"              // For generate_market(), init_tradnames()
+#include "elite_galaxy.h"              // For build_galaxy_data()
+#include "elite_utils.h"               // For minimum_value
+#include "elite_star_system.h"         // For StarSystem
+#include "elite_ship_types.h"          // For PlayerShip structure and functions
 #include "elite_equipment_constants.h" // For equipment mapping functions
 
 extern struct NavigationState PlayerNavState;
@@ -15,10 +15,9 @@ extern struct StarSystem *CurrentStarSystem;
 // Forward declarations
 static inline void initialize_star_system_for_current_planet(void);
 
-
 /**
  * @brief Initializes the player's state at the start of a new game.
- * 
+ *
  * This function sets up all the initial player state for the game, including:
  * - Setting the random seed for Galaxy 1 generation
  * - Building the galaxy data based on the seed
@@ -33,49 +32,60 @@ static inline void initialize_star_system_for_current_planet(void);
  * - Allocating and initializing the player's ship as a Cobra Mk III
  * - Synchronizing ship properties with global game state
  * - Setting up the star system for the current planet
- * 
+ *
  * @note This function allocates memory for the PlayerShipPtr which must be freed
  *       when no longer needed to prevent memory leaks.
- * 
+ *
  * @warning If memory allocation fails for the player ship, an error message is
  *          printed and the function returns without completing initialization.
  */
 static inline void initialize_player_state(void)
 {
-    // Set initial seed for Galaxy 1
+    // Set initial seed for Galaxy 1, but allow customization from my_rand seed
+    // Use the current state of my_rand to derive galaxy seed values
+    uint32_t randSeed = my_rand();
+
     // SeedType has a, b, c, d members as defined in elite_structs.h
-    SEED.a = BASE_0; // 0x5A4A
-    SEED.b = BASE_1; // 0x0248
-    SEED.c = BASE_2; // 0xB753
-    SEED.d = BASE_2; // Match original seed for Galaxy 1 (d was same as c)
+    SEED.a = BASE_0 ^ (randSeed & 0xFFFF); // XOR with random value to vary galaxy
+    SEED.b = BASE_1 ^ ((randSeed >> 8) & 0xFFFF);
+    SEED.c = BASE_2 ^ ((randSeed >> 16) & 0xFFFF);
+    SEED.d = BASE_2 ^ ((randSeed >> 24) & 0xFFFF);
+
+    // Also initialize RndSeed structure for deterministic randomness within the galaxy
+    RndSeed.a = (uint8_t)(randSeed & 0xFF);
+    RndSeed.b = (uint8_t)((randSeed >> 8) & 0xFF);
+    RndSeed.c = (uint8_t)((randSeed >> 16) & 0xFF);
+    RndSeed.d = (uint8_t)((randSeed >> 24) & 0xFF);
 
     NativeRand = false; // Set to false as per original logic for predictable generation initially
     GalaxyNum = 1;      // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed
-    build_galaxy_data(SEED);      // Set current planet to Lave (planet 7 in galaxy 1)    CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h    // Populate LocalMarket for the starting planet. Fluctuation is 0 for initial state.
+    build_galaxy_data(SEED); // Set current planet to Lave (planet 7 in galaxy 1)    CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h    // Populate LocalMarket for the starting planet. Use random fluctuation instead of 0.
     // Galaxy[CurrentPlanet] is now valid after build_galaxy_data()
-    LocalMarket = generate_market(0, Galaxy[CurrentPlanet]);
+    LocalMarket = generate_market(random_byte(), Galaxy[CurrentPlanet]);
 
     // Initialize player ship
-    if (PlayerShipPtr != NULL) {
+    if (PlayerShipPtr != NULL)
+    {
         free(PlayerShipPtr);
     }
-    
+
     PlayerShipPtr = (PlayerShip *)malloc(sizeof(PlayerShip));
-    if (PlayerShipPtr == NULL) {
+    if (PlayerShipPtr == NULL)
+    {
         printf("Error: Could not allocate memory for player ship!\n");
         return;
     }
-    
+
     InitializeCobraMkIII(PlayerShipPtr);
-    
+
     // Now set fuel based on the ship's max fuel capacity
-    Fuel = GetMaxFuel(); // Get the max fuel based on the ship type    
-    
+    Fuel = GetMaxFuel(); // Get the max fuel based on the ship type
+
     Cash = 1000;    // Start with 100.0 credits (1000 internal units)
     HoldSpace = 20; // Start with 20t hold space
-    
+
     // Zero out the player's ship hold
     // COMMODITY_ARRAY_SIZE is from elite_state.h
     for (int i = 0; i < COMMODITY_ARRAY_SIZE; i++)
@@ -85,13 +95,13 @@ static inline void initialize_player_state(void)
 
     // Initialize the tradenames array for command parsing
     init_tradnames();
-    
+
     // Synchronize ship fuel with global state
     PlayerShipPtr->attributes.fuelLiters = Fuel * 10.0; // Convert game units to liters
-    
+
     // Synchronize cargo capacity with HoldSpace
     PlayerShipPtr->attributes.cargoCapacityTons = HoldSpace;
-    
+
     // Map equipment indices for quick status checks
     MapEquipmentIndices(PlayerShipPtr);
 
@@ -101,12 +111,12 @@ static inline void initialize_player_state(void)
 
 /**
  * @brief Releases memory allocated for the player's ship.
- * 
+ *
  * This function checks if PlayerShipPtr is not NULL, frees the memory allocated
  * for the player's ship, and then sets the pointer to NULL to avoid any dangling
  * pointer issues. Any additional resource cleanup related to the ship would be
  * performed within this function.
- * 
+ *
  * @note This function is defined as inline to reduce function call overhead.
  */
 static inline void cleanup_player_ship(void)
@@ -114,7 +124,7 @@ static inline void cleanup_player_ship(void)
     if (PlayerShipPtr != NULL)
     {
         // Any additional cleanup for ship resources would go here
-        
+
         free(PlayerShipPtr);
         PlayerShipPtr = NULL;
     }
@@ -122,20 +132,20 @@ static inline void cleanup_player_ship(void)
 
 /**
  * @brief Initializes or reinitializes the current star system based on the player's current planet.
- * 
+ *
  * This function performs the following operations:
  * 1. Cleans up and frees any existing star system
  * 2. Allocates memory for a new star system
  * 3. Initializes the star system with data from the current planet in the galaxy
  * 4. Sets up the player's navigation state to start at the main planet
- * 
+ *
  * The function ensures proper memory management by freeing previously allocated
  * star system resources before allocating new ones. If memory allocation fails,
  * an error message is printed and the function returns without completing initialization.
- * 
+ *
  * After successful initialization, the player's position is set to the main planet
  * of the system with appropriate distance values.
- * 
+ *
  * @note This function assumes that CurrentPlanet and Galaxy are valid global variables.
  * @note PlayerNavState is reset completely before being initialized with new values.
  */
@@ -169,16 +179,16 @@ static inline void initialize_star_system_for_current_planet(void)
 
 /**
  * @brief Displays a brief summary of the player's ship status
- * 
+ *
  * This function prints a concise status line containing:
  * - Ship name and class
  * - Hull integrity as percentage of base strength
  * - Energy bank level (with one decimal place)
  * - Fuel level in light years (converted from liters)
  * - Cargo hold utilization (current/maximum capacity)
- * 
+ *
  * If the PlayerShipPtr is NULL, an error message is displayed instead.
- * 
+ *
  * @note Assumes COBRA_MK3_BASE_HULL_STRENGTH is defined
  * @note Assumes 100 liters of fuel equals 1 light year of range
  */
@@ -191,32 +201,31 @@ static inline void display_ship_status_brief(void)
         return;
     }
 
-    printf("\nShip: %s (%s) - ", 
-           PlayerShipPtr->shipName, 
+    printf("\nShip: %s (%s) - ",
+           PlayerShipPtr->shipName,
            PlayerShipPtr->shipClassName);
-    
+
     // Calculate hull percentage
     int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / PlayerShipPtr->shipType->baseHullStrength;
     printf("Hull: %d%% - ", hullPercentage);
-      // Round energy to one decimal place
+    // Round energy to one decimal place
     printf("Energy: %.1f - ", PlayerShipPtr->attributes.energyBanks);
-    
+
     // Display fuel information including consumption rate
     double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
     double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
     double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
-    
-    printf("Fuel: %.1f/%.1f LY (%.0f%%) - ", 
-           currentFuelLY, 
+
+    printf("Fuel: %.1f/%.1f LY (%.0f%%) - ",
+           currentFuelLY,
            maxFuelLY,
            fuelPercent);
-    
+
     // Show cargo capacity
-    printf("Cargo: %d/%d tons", 
+    printf("Cargo: %d/%d tons",
            PlayerShipPtr->attributes.currentCargoTons,
            PlayerShipPtr->attributes.cargoCapacityTons);
 }
-
 
 /**
  * @brief Calculates the maximum amount of fuel that can be purchased.
@@ -248,7 +257,7 @@ static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
 
 /**
  * @brief Displays detailed fuel information for the player's ship.
- * 
+ *
  * This function shows the current fuel level, maximum capacity, consumption rate,
  * and estimated range based on the ship's specifications.
  */
@@ -259,30 +268,33 @@ static inline void display_ship_fuel_status(void)
         printf("\nError: Ship data is not available.\n");
         return;
     }
-    
+
     double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
     double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
     double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
     double consumptionRate = PlayerShipPtr->shipType->fuelConsumptionRate;
-    
+
     printf("\n=== Fuel Status ===\n");
     printf("Current fuel:     %.1f LY (%.0f%%)\n", currentFuelLY, fuelPercent);
     printf("Maximum capacity: %.1f LY\n", maxFuelLY);
     printf("Consumption rate: %.1f credits per 0.1 LY\n", consumptionRate / 10.0);
-    
+
     // Calculate estimated maximum range based on current fuel and consumption rate
     // The formula accounts for the ship's efficiency
     double efficiency = 2.0 / consumptionRate; // Higher efficiency = better fuel economy
     double estimatedRange = currentFuelLY * efficiency;
-    
+
     printf("Estimated range:  %.1f LY at current efficiency\n", estimatedRange);
-    
+
     // Display cost to refill
     double fuelNeeded = maxFuelLY - currentFuelLY;
-    if (fuelNeeded > 0) {
+    if (fuelNeeded > 0)
+    {
         int totalCost = (int)((fuelNeeded * 10.0) * consumptionRate);
         printf("Cost to refill:   %d credits\n", totalCost);
-    } else {
+    }
+    else
+    {
         printf("Fuel tanks are full\n");
     }
 }

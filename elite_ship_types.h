@@ -467,6 +467,15 @@ inline void InitializeCobraMkIII(PlayerShip *playerShip)
 // Displays the current status of the player's ship.
 inline void DisplayShipStatus(const PlayerShip *playerShip)
 {
+    bool ecmFound = false; // Moved declaration here
+    bool escapePodFound = false;
+    bool fuelScoopsFound = false;
+    bool dockingComputerFound = false;
+    bool scannerUpgradeFound = false;
+    bool rearLaserFound = false;
+    bool forwardPulseLaserFound = false;
+    bool energyEnhancementFound = false;
+
     if (playerShip == NULL)
     {
         printf("Error: Ship data is NULL.\n");
@@ -537,14 +546,7 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
            playerShip->shipType->fuelConsumptionRate / 10.0);
            
     // Standard Cargo Bay is reflected in attributes.cargoCapacityTons
-    printf("- Standard Cargo Bay (%dT)\n", playerShip->shipType->baseCargoCapacityTons);// Check for specific equipment types in their typical slots or any slot if generic    bool ecmFound = false;
-    bool escapePodFound = false;
-    bool fuelScoopsFound = false;
-    bool dockingComputerFound = false;
-    bool scannerUpgradeFound = false;
-    bool rearLaserFound = false;
-    bool forwardPulseLaserFound = false;
-    bool energyEnhancementFound = false;
+    printf("- Standard Cargo Bay (%dT)\n", playerShip->shipType->baseCargoCapacityTons);
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {

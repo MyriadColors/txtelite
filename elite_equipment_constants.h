@@ -10,10 +10,9 @@
 #define EQUIP_DOCKING_COMPUTER    3
 #define EQUIP_SCANNER_UPGRADE     4
 #define EQUIP_ESCAPE_POD          5
-#define EQUIP_GALACTIC_HYPERSPACE 6
-#define EQUIP_MINING_LASER        7
-#define EQUIP_BEAM_LASER          8
-#define EQUIP_MILITARY_LASER      9
+#define EQUIP_MINING_LASER        6
+#define EQUIP_BEAM_LASER          7
+#define EQUIP_MILITARY_LASER      8
 
 // Additional equipment status flags
 #define EQUIP_STATUS_NOT_PRESENT  0
@@ -85,15 +84,11 @@ static inline void MapEquipmentIndices(PlayerShip* playerShip) {
                 }
                 else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER) {
                     playerShip->equipment[EQUIP_DOCKING_COMPUTER].isActive = 1;
-                }
-                else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD) {
+                }                else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD) {
                     playerShip->equipment[EQUIP_ESCAPE_POD].isActive = 1;
                 }
                 else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE) {
                     playerShip->equipment[EQUIP_SCANNER_UPGRADE].isActive = 1;
-                }
-                else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_GALACTIC_HYPERSPACE_DRIVE) {
-                    playerShip->equipment[EQUIP_GALACTIC_HYPERSPACE].isActive = 1;
                 }
             }
             else if (slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON) {

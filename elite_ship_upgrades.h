@@ -37,7 +37,6 @@ extern bool AddEquipment(PlayerShip* playerShip, EquipmentSlotType slotType,
 #define COST_FUEL_SCOOPS 525
 #define COST_CARGO_BAY_EXTENSION 400
 #define COST_DOCKING_COMPUTER 1500
-#define COST_GALACTIC_HYPERSPACE 5000
 #define COST_SCANNER_UPGRADE 700
 
 // Upgrade-related constants
@@ -601,8 +600,7 @@ inline bool ConfigureExplorerLoadout(PlayerShip* playerShip) {
         equipType, 
         3.0,   // Energy when scooping 
         0.0    // No damage (utility)
-    );
-      // Scanner Upgrade
+    );      // Scanner Upgrade
     equipType.utilityType = UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE;
     success &= AddEquipment(
         playerShip, 
@@ -611,22 +609,11 @@ inline bool ConfigureExplorerLoadout(PlayerShip* playerShip) {
         equipType, 
         4.0,   // Energy draw 
         0.0    // No damage (utility)
-    );
-      // Galactic Hyperspace Drive - for exceptional range
-    equipType.utilityType = UTILITY_SYSTEM_TYPE_GALACTIC_HYPERSPACE_DRIVE;
-    success &= AddEquipment(
-        playerShip, 
-        UTILITY_SYSTEM_3,
-        "Galactic Hyperspace", 
-        equipType, 
-        20.0,  // High energy use for jump 
-        0.0    // No damage (utility)
-    );
-      // Escape Pod for safety
+    );      // Escape Pod for safety
     equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
     success &= AddEquipment(
         playerShip, 
-        UTILITY_SYSTEM_4,
+        UTILITY_SYSTEM_3,
         "Escape Pod", 
         equipType, 
         0.0,   // No energy draw 

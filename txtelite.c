@@ -146,10 +146,8 @@ int main(void)
 			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_DOCKING_COMPUTER)) strcat(equipmentStatus, "DockCmp ");
 			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MINING_LASER)) strcat(equipmentStatus, "Mining ");
 			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_BEAM_LASER)) strcat(equipmentStatus, "Beam ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MILITARY_LASER)) strcat(equipmentStatus, "Military ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) strcat(equipmentStatus, "Scanner ");
+			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MILITARY_LASER)) strcat(equipmentStatus, "Military ");			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) strcat(equipmentStatus, "Scanner ");
 			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ESCAPE_POD)) strcat(equipmentStatus, "EscPod ");
-			if (CheckEquipmentActive(PlayerShipPtr, EQUIP_GALACTIC_HYPERSPACE)) strcat(equipmentStatus, "GalHyp ");
 			if (strlen(equipmentStatus) == 0) strcpy(equipmentStatus, "None");
 
 

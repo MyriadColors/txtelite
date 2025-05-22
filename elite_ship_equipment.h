@@ -261,8 +261,7 @@ inline bool DeployEscapePod(PlayerShip* playerShip, bool criticalDamage) {
         printf("Escape pod can only be deployed in case of critical ship damage.\n");
         return false;
     }
-    
-    printf("EMERGENCY: Escape pod deployed! You have been safely ejected from your ship.\n");
+      printf("EMERGENCY: Escape pod deployed! You have been safely ejected from your ship.\n");
     printf("Your ship and cargo have been lost, but you have survived.\n");
     
     // This would normally trigger game logic to handle the aftermath
@@ -272,47 +271,10 @@ inline bool DeployEscapePod(PlayerShip* playerShip, bool criticalDamage) {
 }
 
 /**
- * Attempts to use the Galactic Hyperspace Drive for a special long-range jump.
- * This advanced drive allows jumps to distant systems beyond normal hyperspace range.
+ * Gets the damage output of a specific weapon.
+ * Used in combat calculations to determine damage dealt to targets.
  * 
  * @param playerShip Pointer to the PlayerShip structure
- * @param targetSystemName Name of the target system
- * @return true if galactic jump was successful, false otherwise
- */
-inline bool UseGalacticHyperspace(PlayerShip* playerShip, const char* targetSystemName) {
-    if (playerShip == NULL || targetSystemName == NULL) {
-        return false;
-    }
-    
-    // Check if ship has galactic hyperspace drive
-    bool hasGalacticDrive = false;
-    double galacticDriveEnergyCost = 0.0;
-    
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
-        if (playerShip->equipment[i].isActive && 
-            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
-            playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
-            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_GALACTIC_HYPERSPACE_DRIVE) {
-            hasGalacticDrive = true;
-            galacticDriveEnergyCost = playerShip->equipment[i].energyDraw;
-            break;
-        }
-    }
-    
-    if (!hasGalacticDrive) {
-        printf("Error: Your ship is not equipped with a Galactic Hyperspace Drive.\n");
-        return false;
-    }
-    
-    // Check if there's enough energy
-    if (playerShip->attributes.energyBanks < galacticDriveEnergyCost) {
-        printf("Error: Insufficient energy to power the Galactic Hyperspace Drive.\n");
-        printf("Required: %.1f, Available: %.1f\n", galacticDriveEnergyCost, playerShip->attributes.energyBanks);
-        return false;
-    }
-    
-    // Consume energy
-    playerShip->attributes.energyBanks -= galacticDriveEnergyCost;
     
     // This would normally trigger the actual galaxy jump logic
     printf("Galactic Hyperspace Drive activated!\n");

@@ -129,31 +129,12 @@ static inline bool do_sneak(char *commandArguments)
 static inline bool do_galactic_hyperspace(char *commandArguments)
 {
 	(void)(commandArguments); /* Discard s */
-	GalaxyNum++;
-	if (GalaxyNum == 9)
-	{
-		GalaxyNum = 1;
-	}
-
-	// Create galaxy seed based on GalaxyNum
-	struct SeedType galaxySeed;
-	galaxySeed.a = BASE_0; // 0x5A4A
-	galaxySeed.b = BASE_1; // 0x0248
-	galaxySeed.c = BASE_2; // 0xB753
-	galaxySeed.d = BASE_2; // Match original seed for Galaxy 1
-
-	// For galaxies beyond 1, apply tweak_seed the appropriate number of times
-	for (uint16_t i = 1; i < GalaxyNum; i++)
-	{
-		next_galaxy(&galaxySeed);
-	}
-
-	build_galaxy_data(galaxySeed);
-
-	// Consider printing some confirmation or new system info
-	printf("\nJumped to Galaxy %d. Current system: %s\n", GalaxyNum, Galaxy[CurrentPlanet].name);
-	print_system_info(Galaxy[CurrentPlanet], false);
-	return true;
+	
+	// This feature has been removed from the game
+	printf("\nThe Galactic Hyperspace technology has been deemed unsafe and is no longer available.");
+	printf("\nPlease use standard Hyperspace jumps (jump command) for interstellar travel.");
+	
+	return false;
 }
 
 static inline bool do_planet_info_display(char *commandArguments)
@@ -187,13 +168,6 @@ static inline bool do_hold(char *commandArguments)
 		printf("\nHold too full to reduce size to %u. Current cargo: %u tonnes.", a, t);
 		return false;
 	}
-
-	// Max hold space could be a constant or configurable
-	// For now, let's assume a reasonable upper limit if needed, or just use what user provides
-	// if (a > MAX_POSSIBLE_HOLD_SPACE) {
-	//     printf("\nMaximum hold space is %u.", MAX_POSSIBLE_HOLD_SPACE);
-	//     return false;
-	// }
 
 	HoldSpace = a - t;
 	printf("\nHold space set to %u. Available: %u tonnes.", a, HoldSpace);
@@ -463,13 +437,11 @@ static inline bool do_help(char *commandArguments)
 			printf("\n    energy   - Extra Energy Unit for more energy capacity (1500 CR)");
 			printf("\n    ebomb    - Energy Bomb for emergency defense (2500 CR)");
 			printf("\n    cargo    - Cargo Bay Extension for +4 tons capacity (400 CR)");
-			printf("\n    pulse    - Pulse Laser for basic combat (400 CR)");
-			printf("\n    beam     - Beam Laser for improved combat (1000 CR)");
+			printf("\n    pulse    - Pulse Laser for basic combat (400 CR)");			printf("\n    beam     - Beam Laser for improved combat (1000 CR)");
 			printf("\n    military - Military Laser for maximum firepower (2500 CR)");
 			printf("\n    mining   - Mining Laser for resource extraction (800 CR)");
 			printf("\n    scanner  - Scanner Upgrade for improved detection (700 CR)");
 			printf("\n    missile  - Homing Missile for one-shot attacks (300 CR)");
-			printf("\n    galactic - Galactic Hyperspace Drive for long jumps (5000 CR)");
 			printf("\n  Example: equip beam");
 			printf("\n  Note: You must be docked at a station to purchase equipment");
 			printf("\n        Equipment availability depends on the system's tech level");
@@ -2259,7 +2231,6 @@ static inline bool do_purchase_equipment(char *commandArguments)
         printf("\n- military     - Military Laser (2500 CR)");
         printf("\n- mining       - Mining Laser (800 CR)");        printf("\n- scanner      - Scanner Upgrade (700 CR)");
         printf("\n- missile      - Homing Missile (300 CR)");
-        printf("\n- galactic     - Galactic Hyperspace Drive (5000 CR)");
         printf("\n  Example: equip beam");
         printf("\n  Note: You must be docked at a station to purchase equipment");
         printf("\n        Equipment availability depends on the system's tech level");
@@ -2450,20 +2421,10 @@ static inline bool do_purchase_equipment(char *commandArguments)
         
         Cash -= COST_MISSILE_HOMING * 10;
         PlayerShipPtr->attributes.missilesLoadedHoming++;
-        
-        printf("\nMissile purchased. Current missile count: %d/%d", 
+          printf("\nMissile purchased. Current missile count: %d/%d", 
                PlayerShipPtr->attributes.missilesLoadedHoming,
                PlayerShipPtr->attributes.missilePylons * MISSILE_PYLON_CAPACITY);
         return true;
-    }
-    else if (strcmp(equipName, "galactic") == 0)
-    {
-        equipType.utilityType = UTILITY_SYSTEM_TYPE_GALACTIC_HYPERSPACE_DRIVE;
-        slotType = UTILITY_SYSTEM_4;
-        formalName = "Galactic Hyperspace Drive";
-        cost = COST_GALACTIC_HYPERSPACE;
-        requiredTechLevel = 9;
-        energyDraw = 20.0;
     }
     else
     {

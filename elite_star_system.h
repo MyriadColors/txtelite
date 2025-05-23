@@ -75,6 +75,195 @@ typedef struct StarSystem
 static inline MarketType GenerateStationMarket(Station *station, Planet *planet, struct PlanSys *planSys);
 static inline void UpdateStationMarket(Station *station, uint64_t currentTime, Planet *planet, struct PlanSys *planSys);
 static inline void UseStationMarket(Station *station, Planet *planet, struct PlanSys *planSys);
+static inline MarketType GeneratePlanetaryMarket(Planet *planet, struct PlanSys *planSys);
+static inline void UpdatePlanetaryMarket(Planet *planet, uint64_t currentTime, struct PlanSys *planSys);
+static inline void UsePlanetaryMarket(Planet *planet, struct PlanSys *planSys);
+
+// Function to generate the market for a station
+static inline MarketType GenerateStationMarket(Station *station, Planet *planet, struct PlanSys *planSys)
+{
+    if (!station || !planSys) // Planet can be NULL if station is not orbiting one (e.g. deep space station, though plan implies planet context)
+    {
+        // Handle error or return a default/empty market
+        MarketType emptyMarket = {0}; // Initialize all members to zero
+        // fprintf(stderr, "Warning: GenerateStationMarket called with NULL station or planSys.\\n");
+        return emptyMarket;
+    }    // Avoid unused parameter warning
+    (void)planet;
+
+    // 1. Generate a baseMarket using the existing generate_market function from elite_market.h
+    MarketType baseMarket = generate_market(station->marketFluctuation, *planSys);
+
+    // 2. Apply modifiers to baseMarket.price[i] and baseMarket.quantity[i] for each commodity based on station->specialization
+    // Ensure station->specialization is a valid enum value
+    StationSpecialization specialization = (StationSpecialization)station->specialization;
+    if (specialization >= NUM_STATION_SPECIALIZATIONS || specialization < 0) 
+    {
+        // Optionally log this case:
+        // fprintf(stderr, "Warning: Station '%s' has invalid specialization value %d. Defaulting to Balanced.\\n", station->name, station->specialization);
+        specialization = STATION_SPECIALIZATION_BALANCED; // Default to balanced if out of bounds
+    }
+
+    for (int i = 0; i < NUM_STANDARD_COMMODITIES; i++)
+    {
+        // Get the modifier for the current commodity and station specialization
+        MarketModifier modifier = stationSpecializationModifiers[specialization][i];
+
+        // Apply price modifier
+        float newPrice = (float)baseMarket.price[i] * modifier.priceFactor;
+        if (newPrice < 0) newPrice = 0; // Price should not be negative
+        // Potentially clamp to a max price if one is defined: if (newPrice > MAX_COMMODITY_PRICE) newPrice = MAX_COMMODITY_PRICE;
+        baseMarket.price[i] = (uint16_t)roundf(newPrice); // Round to nearest integer for price
+
+        // Apply quantity modifier
+        float newQuantity = (float)baseMarket.quantity[i] * modifier.quantityFactor;
+        if (newQuantity < 0) newQuantity = 0; // Quantity should not be negative
+        // Clamp quantity to avoid overflow (uint16_t max is 65535).
+        if (newQuantity > 0xFFFF) newQuantity = 0xFFFF; 
+        baseMarket.quantity[i] = (uint16_t)roundf(newQuantity); // Round to nearest integer for quantity
+    }
+
+    // 3. Update station->lastMarketUpdate with the currentGameTimeSeconds.
+    // As per the plan, this is handled by the caller (e.g., initialize_star_system or UpdateStationMarket).
+    // station->lastMarketUpdate = currentGameTimeSeconds; // This line would be here if handled internally
+
+    return baseMarket;
+}
+
+// Function to generate the market for a planet's surface
+static inline MarketType GeneratePlanetaryMarket(Planet *planet, struct PlanSys *planSys)
+{
+    if (!planet || !planSys)
+    {
+        MarketType emptyMarket = {0}; // Initialize all members to zero
+        // fprintf(stderr, "Warning: GeneratePlanetaryMarket called with NULL planet or planSys.\\n");
+        return emptyMarket;
+    }
+
+    // 1. Generate a baseMarket using generate_market from elite_market.h
+    MarketType baseMarket = generate_market(planet->marketFluctuation, *planSys);
+
+    // 2. Apply modifiers based on planet->type
+    PlanetMarketType planetType = (PlanetMarketType)planet->type; // planet->type is uint8_t
+
+    // Check if planetType is within the valid range for the planetTypeModifiers array
+    if (planetType >= NUM_PLANET_MARKET_TYPES || planetType < 0) // planet->type is uint8_t, so < 0 is only for robustness if type changes
+    {
+        // fprintf(stderr, "Warning: Planet '%s' (type %u) has invalid type for market modifiers. Using base market without type-specific changes.\\n", planet->name, planet->type);
+        // If type is out of bounds, no type-specific modifiers are applied. The market remains the baseMarket.
+    }
+    else
+    {
+        for (int i = 0; i < NUM_STANDARD_COMMODITIES; i++)
+        {
+            MarketModifier modifier = planetTypeModifiers[planetType][i];
+
+            // Apply price modifier
+            float newPrice = (float)baseMarket.price[i] * modifier.priceFactor;
+            if (newPrice < 0) newPrice = 0; // Price should not be negative
+            // Consider clamping to a MAX_PRICE if defined
+            baseMarket.price[i] = (uint16_t)roundf(newPrice); // Round to nearest integer
+
+            // Apply quantity modifier
+            float newQuantity = (float)baseMarket.quantity[i] * modifier.quantityFactor;
+            if (newQuantity < 0) newQuantity = 0; // Quantity should not be negative
+            if (newQuantity > 0xFFFF) newQuantity = 0xFFFF; // Clamp to uint16_t max (65535)
+            baseMarket.quantity[i] = (uint16_t)roundf(newQuantity); // Round to nearest integer
+        }
+    }
+
+    // 3. Update planet->lastMarketUpdate with currentGameTimeSeconds
+    // Assuming game_time_get_seconds() is available globally or via included headers (e.g., elite_state.h)
+    planet->lastMarketUpdate = game_time_get_seconds();
+
+    // 4. Set planet->planetaryMarket.isInitialized = true
+    // This is done here as per step III.4 of the plan.
+    // The caller (e.g., initialize_star_system) will assign the returned market to planet->planetaryMarket.market.
+    planet->planetaryMarket.isInitialized = true;
+
+    // 5. Return the modified market
+    return baseMarket;
+}
+
+// Function to update the market for a station if enough time has passed
+static inline void UpdateStationMarket(Station *station, uint64_t currentTime, Planet *planet, struct PlanSys *planSys) // Added Planet* and PlanSys* params
+{
+    if (!station || !planSys) // Planet can be NULL for deep space stations, but planSys is essential
+    {
+        // fprintf(stderr, "Warning: UpdateStationMarket called with NULL station or planSys.\\n");
+        return;
+    }
+
+    const uint64_t STATION_UPDATE_INTERVAL = 3600; // 1 hour in game seconds, as per existing findings
+
+    // 1. Check if enough game time (UPDATE_INTERVAL) has passed since lastMarketUpdate.
+    if (currentTime >= station->lastMarketUpdate && (currentTime - station->lastMarketUpdate >= STATION_UPDATE_INTERVAL))
+    {
+        // 2. If so, calculate updateCycles.
+        uint64_t elapsedSeconds = currentTime - station->lastMarketUpdate;
+        uint16_t updateCycles = (uint16_t)(elapsedSeconds / STATION_UPDATE_INTERVAL);
+
+        if (updateCycles > 0)
+        {
+            // 3. Modify marketFluctuation based on updateCycles.
+            // Simple cyclic increment for fluctuation. Max fluctuation is 15 (0-15 range).
+            station->marketFluctuation = (station->marketFluctuation + updateCycles) % 16;
+
+            // 4. Call GenerateStationMarket to regenerate the market.
+            // The GenerateStationMarket function itself does not update lastMarketUpdate.
+            station->market = GenerateStationMarket(station, planet, planSys);
+
+            // 5. lastMarketUpdate is then set to the currentTime.
+            // To prevent drift, set it to the time of the last completed interval, or current time.
+            // Setting to currentTime is simpler as per plan.
+            station->lastMarketUpdate = currentTime;
+        }
+    }
+}
+
+// Function to update the market for a planet if enough time has passed
+static inline void UpdatePlanetaryMarket(Planet *planet, uint64_t currentTime, struct PlanSys *planSys) // Added PlanSys* param
+{
+    if (!planet || !planSys)
+    {
+        // fprintf(stderr, "Warning: UpdatePlanetaryMarket called with NULL planet or planSys.\\n");
+        return;
+    }
+
+    const uint64_t PLANET_UPDATE_INTERVAL = 7200; // 2 hours in game seconds, as per existing findings
+
+    // 1. Check if enough game time (UPDATE_INTERVAL) has passed since lastMarketUpdate.
+    if (currentTime >= planet->lastMarketUpdate && (currentTime - planet->lastMarketUpdate >= PLANET_UPDATE_INTERVAL))
+    {
+        // 2. If so, calculate updateCycles.
+        uint64_t elapsedSeconds = currentTime - planet->lastMarketUpdate;
+        uint16_t updateCycles = (uint16_t)(elapsedSeconds / PLANET_UPDATE_INTERVAL);
+
+        if (updateCycles > 0)
+        {
+            // 3. Modify marketFluctuation based on updateCycles.
+            planet->marketFluctuation = (planet->marketFluctuation + updateCycles) % 16;
+
+            // 4. Call GeneratePlanetaryMarket to regenerate the market.
+            // GeneratePlanetaryMarket updates its own lastMarketUpdate and isInitialized fields.
+            MarketType newMarket = GeneratePlanetaryMarket(planet, planSys);
+            // The plan for GeneratePlanetaryMarket (Step III.4) says it updates planet->lastMarketUpdate and sets isInitialized.
+            // However, the plan for UpdatePlanetaryMarket (Step IV.5) also says lastMarketUpdate is set to currentTime.
+            // To adhere to Step IV.5, we will explicitly set it here. GeneratePlanetaryMarket already sets it, this will overwrite with the exact currentTime.
+            
+            // The market data itself needs to be stored in planet->planetaryMarket.market
+            // The plan for V. says: call GeneratePlanetaryMarket(planet, planSysEntry) to populate planet->planetaryMarket.market
+            // So, the GeneratePlanetaryMarket should ideally return the market to be assigned.
+            // And indeed it does. We need to assign it to the correct place in the Planet struct.
+            // The Planet struct has: struct { MarketType market; bool isInitialized; } planetaryMarket;
+            planet->planetaryMarket.market = newMarket; 
+
+            // 5. lastMarketUpdate is then set to the currentTime.
+            planet->lastMarketUpdate = currentTime; 
+            // planet->planetaryMarket.isInitialized is already set by GeneratePlanetaryMarket
+        }
+    }
+}
 
 // Function to initialize a star system from a PlanSys entry
 static inline void initialize_star_system(StarSystem *system, struct PlanSys *planSysEntry)
@@ -255,6 +444,14 @@ static inline void initialize_star_system(StarSystem *system, struct PlanSys *pl
             planet->type = 2 + ((planSysEntry->goatSoupSeed.c + i) % 2); // 2-3 (Gas Giant or Ice Giant)
         }
 
+        // Initialize planetary market fluctuation factor
+        planet->marketFluctuation = (planSysEntry->goatSoupSeed.b + i) % 16; // 0-15 fluctuation
+
+        // Initialize the planetary market (this also sets lastMarketUpdate and isInitialized)
+        planet->planetaryMarket.market = GeneratePlanetaryMarket(planet, planSysEntry);
+        // Ensure lastMarketUpdate is set by GeneratePlanetaryMarket, or set it here if needed.
+        // Per plan, GeneratePlanetaryMarket handles its own lastMarketUpdate.
+
         // Determine number of stations for this planet
         // More developed systems (higher tech) have more stations
         // Terrestrial planets are more likely to have stations than gas giants
@@ -395,6 +592,7 @@ static inline void initialize_star_system(StarSystem *system, struct PlanSys *pl
             station->marketFluctuation = (planSysEntry->goatSoupSeed.c + i + j) % 16; // 0-15 fluctuation
 
             // Initialize the last market update time to current game time
+            // This is important so that the first call to UpdateStationMarket doesn't immediately regenerate.
             station->lastMarketUpdate = game_time_get_seconds();
 
             // Generate the station's market
@@ -724,150 +922,6 @@ static inline void get_current_location_name(NavigationState *navState, char *bu
     }
 }
 
-// =====================================
-// Station Market Functions
-// =====================================
-
-/**
- * Generates a station-specific market based on the planet system's economy
- * and the station's specialization.
- *
- * @param station Pointer to the station
- * @param planet Pointer to the parent planet
- * @param planSys Pointer to the planet system data
- * @return MarketType with station-specific prices and quantities
- */
-static inline MarketType GenerateStationMarket(Station *station, Planet *planet, struct PlanSys *planSys)
-{
-    if (!station || !planSys)
-    {
-        // Return empty market if parameters are invalid
-        MarketType emptyMarket = {0};
-        return emptyMarket;
-    }
-
-    // Avoid unused parameter warning
-    (void)planet;
-
-    // Generate base market from planet economy
-    MarketType baseMarket = generate_market(station->marketFluctuation, *planSys);
-
-    // Apply station-specific modifiers based on specialization
-    for (uint16_t i = 0; i < NUM_STANDARD_COMMODITIES; i++)
-    {
-        float priceMultiplier = 1.0f;
-        float quantityMultiplier = 1.0f;
-
-        // Different station specializations affect different commodities
-        switch (station->specialization)
-        {
-        case 1: // Industrial specialization
-            // Industrial stations have better machine/computer prices but worse food/textiles
-            if (i == 7 || i == 8)
-            { // Computers or Machinery
-                priceMultiplier = 0.85f;
-                quantityMultiplier = 1.5f;
-            }
-            else if (i == 0 || i == 1)
-            { // Food or Textiles
-                priceMultiplier = 1.15f;
-                quantityMultiplier = 0.8f;
-            }
-            break;
-
-        case 2: // Agricultural specialization
-            // Agricultural stations have better food/textiles but worse machinery/alloys
-            if (i == 0 || i == 1)
-            { // Food or Textiles
-                priceMultiplier = 0.8f;
-                quantityMultiplier = 1.6f;
-            }
-            else if (i == 8 || i == 9)
-            { // Machinery or Alloys
-                priceMultiplier = 1.2f;
-                quantityMultiplier = 0.7f;
-            }
-            break;
-
-        case 3: // Mining specialization
-            // Mining stations have better radioactives/alloys but worse luxuries/computers
-            if (i == 2 || i == 9)
-            { // Radioactives or Alloys
-                priceMultiplier = 0.75f;
-                quantityMultiplier = 1.7f;
-            }
-            else if (i == 5 || i == 7)
-            { // Luxuries or Computers
-                priceMultiplier = 1.25f;
-                quantityMultiplier = 0.6f;
-            }
-            break;
-
-        default: // Balanced
-            // No specific adjustments for balanced stations
-            break;
-        }
-
-        // Apply modifiers
-        baseMarket.price[i] = (uint16_t)(baseMarket.price[i] * priceMultiplier);
-        baseMarket.quantity[i] = (uint16_t)(baseMarket.quantity[i] * quantityMultiplier);
-
-        // Add distance factor to prices (transport costs)
-        // Further from planet = higher prices, lower quantities
-        double distanceFactor = 1.0 + (station->orbitalDistance * 2.0);
-        baseMarket.price[i] = (uint16_t)(baseMarket.price[i] * distanceFactor);
-
-        // Ensure minimum values
-        if (baseMarket.price[i] < 1)
-            baseMarket.price[i] = 1;
-    }
-
-    // Record the last market update time
-    station->lastMarketUpdate = game_time_get_seconds();
-
-    return baseMarket;
-}
-
-/**
- * Updates a station's market based on elapsed game time and events
- *
- * @param station Pointer to the station to update
- * @param currentTime Current game time in seconds
- * @param planet Pointer to the parent planet
- * @param planSys Pointer to the planet system data
- */
-static inline void UpdateStationMarket(Station *station, uint64_t currentTime, Planet *planet, struct PlanSys *planSys)
-{
-    if (!station || !planSys)
-        return;
-
-    // Only update if sufficient time has passed (at least 1 hour of game time)
-    const uint64_t UPDATE_INTERVAL = 3600; // 1 hour in seconds
-
-    if (currentTime - station->lastMarketUpdate < UPDATE_INTERVAL)
-    {
-        return; // Not enough time has passed
-    }
-
-    // Calculate how many update intervals have passed
-    uint64_t updateCycles = (currentTime - station->lastMarketUpdate) / UPDATE_INTERVAL;
-
-    // Update the market for each commodity
-    for (uint16_t i = 0; i < NUM_STANDARD_COMMODITIES; i++)
-    {
-        // Slowly revert prices and quantities toward their baseline
-        // Get baseline values from a fresh generation
-        uint8_t newFluctuation = (station->marketFluctuation + (uint8_t)updateCycles) & 0x0F;
-        station->marketFluctuation = newFluctuation;
-    }
-
-    // Regenerate the market with new fluctuation
-    station->market = GenerateStationMarket(station, planet, planSys);
-
-    // Update the last market update time
-    station->lastMarketUpdate = currentTime;
-}
-
 /**
  * Sets the current market to a station's market when docking
  *
@@ -877,158 +931,24 @@ static inline void UpdateStationMarket(Station *station, uint64_t currentTime, P
  */
 static inline void UseStationMarket(Station *station, Planet *planet, struct PlanSys *planSys)
 {
-    if (!station)
+    if (!station || !planSys) // Planet can be NULL for deep space stations
+    {
+        // fprintf(stderr, "Warning: UseStationMarket called with NULL station or planSys.\\n");
+        // Optionally clear LocalMarket or set to a default empty state
+        memset(&LocalMarket, 0, sizeof(MarketType));
         return;
+    }
 
-    // Ensure the market is up to date
+    // 1. Call UpdateStationMarket to ensure the market is up-to-date.
+    // game_time_get_seconds() should be available from an included header like elite_state.h
     UpdateStationMarket(station, game_time_get_seconds(), planet, planSys);
 
-    // Set the global LocalMarket to this station's market
+    // 2. Copy the station's market data to the global LocalMarket.
+    // Assuming LocalMarket is a global variable of type MarketType.
     LocalMarket = station->market;
 }
 
-// =====================================
-// Planetary Market Functions
-// =====================================
-
-/**
- * Generates a planet-specific market based on the planet system's economy
- * and the planet's type.
- *
- * @param planet Pointer to the planet
- * @param planSys Pointer to the planet system data
- * @return MarketType with planet-specific prices and quantities
- */
-static inline MarketType GeneratePlanetaryMarket(Planet *planet, struct PlanSys *planSys)
-{
-    if (!planet || !planSys)
-    {
-        // Return empty market if parameters are invalid
-        MarketType emptyMarket = {0};
-        return emptyMarket;
-    }
-
-    // Use the planet's market fluctuation or initialize if not set
-    if (planet->marketFluctuation == 0)
-    {
-        planet->marketFluctuation = (planSys->goatSoupSeed.c + (uint8_t)(planet->orbitalDistance * 10)) % 16; // 0-15 fluctuation
-    }
-
-    // Generate base market from system economy
-    MarketType baseMarket = generate_market(planet->marketFluctuation, *planSys);
-
-    // Apply planet-specific modifiers based on planet type
-    for (uint16_t i = 0; i < NUM_STANDARD_COMMODITIES; i++)
-    {
-        float priceMultiplier = 1.0f;
-        float quantityMultiplier = 1.0f;
-
-        // Different planet types affect different commodities
-        switch (planet->type)
-        {
-        case 0: // Rocky/Airless planets
-            // Abundant minerals, poor agriculture
-            if (i == 3 || i == 8)
-            { // Minerals or Machinery
-                priceMultiplier = 0.8f;
-                quantityMultiplier = 1.5f;
-            }
-            else if (i == 0 || i == 1)
-            { // Food or Textiles
-                priceMultiplier = 1.3f;
-                quantityMultiplier = 0.5f;
-            }
-            break;
-
-        case 1: // Terrestrial planets
-            // Good for agriculture, balanced for others
-            if (i == 0 || i == 1)
-            { // Food or Textiles
-                priceMultiplier = 0.8f;
-                quantityMultiplier = 1.6f;
-            }
-            break;
-
-        case 2: // Gas giants
-            // Gas extraction, fuel processing
-            if (i == 4 || i == 5)
-            { // Radioactives or Liquor/Wines
-                priceMultiplier = 0.75f;
-                quantityMultiplier = 1.7f;
-            }
-            else if (i == 0)
-            { // Food
-                priceMultiplier = 1.4f;
-                quantityMultiplier = 0.4f;
-            }
-            break;
-
-        case 3: // Ice worlds
-            // Water resources but harsh conditions
-            if (i == 5)
-            { // Liquor/Wines (from water processing)
-                priceMultiplier = 0.85f;
-                quantityMultiplier = 1.4f;
-            }
-            else if (i == 0 || i == 6)
-            { // Food or Luxuries
-                priceMultiplier = 1.2f;
-                quantityMultiplier = 0.6f;
-            }
-            break;
-        }
-
-        // Apply modifiers
-        baseMarket.price[i] = (uint16_t)(baseMarket.price[i] * priceMultiplier);
-        baseMarket.quantity[i] = (uint16_t)(baseMarket.quantity[i] * quantityMultiplier);
-
-        // Ensure minimum values
-        if (baseMarket.price[i] < 1)
-            baseMarket.price[i] = 1;
-    }
-
-    // Mark the planet's market as initialized
-    planet->planetaryMarket.isInitialized = true;
-
-    // Record the last market update time
-    planet->lastMarketUpdate = game_time_get_seconds();
-
-    return baseMarket;
-}
-
-/**
- * Updates a planet's market based on elapsed game time
- *
- * @param planet Pointer to the planet to update
- * @param currentTime Current game time in seconds
- * @param planSys Pointer to the planet system data
- */
-static inline void UpdatePlanetaryMarket(Planet *planet, uint64_t currentTime, struct PlanSys *planSys)
-{
-    if (!planet || !planSys || !planet->planetaryMarket.isInitialized)
-        return;
-
-    // Only update if sufficient time has passed (at least 2 hours of game time)
-    const uint64_t UPDATE_INTERVAL = 7200; // 2 hours in seconds
-
-    if (currentTime - planet->lastMarketUpdate < UPDATE_INTERVAL)
-    {
-        return; // Not enough time has passed
-    }
-
-    // Calculate how many update intervals have passed
-    uint64_t updateCycles = (currentTime - planet->lastMarketUpdate) / UPDATE_INTERVAL;
-
-    // Update the market fluctuation
-    uint8_t newFluctuation = (planet->marketFluctuation + (uint8_t)updateCycles) & 0x0F;
-    planet->marketFluctuation = newFluctuation;
-
-    // Regenerate the market with new fluctuation
-    planet->planetaryMarket.market = GeneratePlanetaryMarket(planet, planSys);
-
-    // Update the last market update time
-    planet->lastMarketUpdate = currentTime;
-}
+// Forward declarations exist at the beginning of the file
 
 /**
  * Sets the current market to a planet's market when landing
@@ -1038,11 +958,22 @@ static inline void UpdatePlanetaryMarket(Planet *planet, uint64_t currentTime, s
  */
 static inline void UsePlanetaryMarket(Planet *planet, struct PlanSys *planSys)
 {
-    if (!planet || !planet->planetaryMarket.isInitialized)
+    if (!planet || !planSys)
+    {
+        memset(&LocalMarket, 0, sizeof(MarketType));
         return;
-
-    // Ensure the market is up to date
-    UpdatePlanetaryMarket(planet, game_time_get_seconds(), planSys);
+    }
+    
+    // Ensure the planetary market is initialized if it hasn't been already
+    if (!planet->planetaryMarket.isInitialized)
+    {
+        planet->planetaryMarket.market = GeneratePlanetaryMarket(planet, planSys);
+    }
+    else
+    {
+        // Ensure the market is up to date
+        UpdatePlanetaryMarket(planet, game_time_get_seconds(), planSys);
+    }
 
     // Set the global LocalMarket to this planet's market
     LocalMarket = planet->planetaryMarket.market;

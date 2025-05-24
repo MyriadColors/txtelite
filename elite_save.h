@@ -13,12 +13,7 @@
 #include <time.h>
 #include <sys/stat.h>  // For directory operations
 
-#ifdef _WIN32
-#include <direct.h>  // For _mkdir on Windows
-#define MKDIR(dir) _mkdir(dir)
-#else
-#define MKDIR(dir) mkdir(dir, 0755)
-#endif
+#include "platform_compat.h"      // For cross-platform compatibility
 #include "elite_state.h"
 #include "elite_player_state.h"
 #include "elite_galaxy.h"
@@ -48,11 +43,7 @@ static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t 
     struct stat st = {0};
     if (stat(SAVE_DIRECTORY, &st) == -1) 
     {
-#ifdef _WIN32
-        if (MKDIR(SAVE_DIRECTORY) != 0) 
-#else
         if (MKDIR(SAVE_DIRECTORY) != 0)
-#endif
         {
             printf("Error: Could not create directory '%s'.\n", SAVE_DIRECTORY);
             return false;
@@ -67,8 +58,8 @@ static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t 
     } 
     else 
     {
-        // Construct the full path
-        snprintf(fullPath, size, "%s/%s", SAVE_DIRECTORY, filename);
+        // Construct the full path using cross-platform path separator
+        platform_make_path(fullPath, size, SAVE_DIRECTORY, filename);
     }
 
     return true;
@@ -473,8 +464,9 @@ static inline bool show_save_info(const char *filename)
  */
 static inline void get_default_save_filename(char *buffer, size_t size)
 {
-    snprintf(buffer, size, "%s/txtelite_save_%s_g%d.sav",
-             SAVE_DIRECTORY, Galaxy[CurrentPlanet].name, GalaxyNum);
+    char filename[MAX_PATH];
+    snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav", Galaxy[CurrentPlanet].name, GalaxyNum);
+    platform_make_path(buffer, size, SAVE_DIRECTORY, filename);
 }
 
 /**
@@ -513,5 +505,7 @@ static inline bool create_save_directory()
  */
 static inline void get_save_file_path(char *buffer, size_t size, const char *filename)
 {
-    snprintf(buffer, size, "%s/%s.sav", SAVE_DIRECTORY, filename);
+    char fullFilename[MAX_PATH];
+    snprintf(fullFilename, sizeof(fullFilename), "%s.sav", filename);
+    platform_make_path(buffer, size, SAVE_DIRECTORY, fullFilename);
 }

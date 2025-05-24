@@ -12,7 +12,7 @@
  * @param equipment The equipment item to store
  * @return true if equipment was successfully stored, false if inventory is full
  */
-inline bool StoreEquipmentInInventory(PlayerShip *playerShip, ShipEquipmentItem equipment)
+static inline bool StoreEquipmentInInventory(PlayerShip *playerShip, ShipEquipmentItem equipment)
 {
     if (playerShip == NULL)
     {
@@ -43,7 +43,7 @@ inline bool StoreEquipmentInInventory(PlayerShip *playerShip, ShipEquipmentItem 
  * @param slotType The slot to remove equipment from
  * @return true if equipment was successfully removed and stored, false otherwise
  */
-inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentSlotType slotType)
+static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
     {
@@ -109,7 +109,7 @@ inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentSlotType
  * @param slotType The slot to equip the item to
  * @return true if equipment was successfully equipped, false otherwise
  */
-inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex, EquipmentSlotType slotType)
+static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || inventoryIndex < 0 || inventoryIndex >= MAX_EQUIPMENT_INVENTORY || slotType < 0 || slotType >= MAX_EQUIPMENT_SLOTS)
     {
@@ -204,7 +204,7 @@ inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex, Equip
  *
  * @param playerShip Pointer to the PlayerShip structure
  */
-inline void ListEquipmentInventory(const PlayerShip *playerShip)
+static inline void ListEquipmentInventory(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -256,7 +256,7 @@ inline void ListEquipmentInventory(const PlayerShip *playerShip)
  *
  * @param playerShip Pointer to the PlayerShip structure
  */
-inline void PrintEquipmentSlots(const PlayerShip *playerShip)
+static inline void PrintEquipmentSlots(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {

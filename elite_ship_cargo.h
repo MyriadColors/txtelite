@@ -1,13 +1,14 @@
 #pragma once
 
 #include "elite_ship_types.h"
+#include "elite_market.h"  // For Commodities array
 #include <string.h> // For string functions
 #include <stdio.h>  // For printf
 #include <ctype.h>  // For tolower
 
 // Helper function for case-insensitive string comparison
 // Also ignores trailing whitespace in either string
-inline int StringCompareIgnoreCase(const char *str1, const char *str2)
+static inline int StringCompareIgnoreCase(const char *str1, const char *str2)
 {
     if (str1 == NULL || str2 == NULL)
     {
@@ -75,7 +76,7 @@ inline int StringCompareIgnoreCase(const char *str1, const char *str2)
  * @param cargoName Name of the cargo item to search for.
  * @return The index of the cargo slot if found; -1 if not found or if input is invalid.
  */
-inline int FindCargoSlot(const PlayerShip *playerShip, const char *cargoName)
+static inline int FindCargoSlot(const PlayerShip *playerShip, const char *cargoName)
 {
     if (playerShip == NULL || cargoName == NULL)
     {
@@ -102,7 +103,7 @@ inline int FindCargoSlot(const PlayerShip *playerShip, const char *cargoName)
  * @param playerShip Pointer to the PlayerShip structure to search for an empty cargo slot.
  * @return The index of the first empty cargo slot, or -1 if no empty slot is found or if playerShip is NULL.
  */
-inline int FindEmptyCargoSlot(const PlayerShip *playerShip)
+static inline int FindEmptyCargoSlot(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -130,7 +131,7 @@ inline int FindEmptyCargoSlot(const PlayerShip *playerShip)
  * @param purchasePrice Price per tonne (for player's reference)
  * @return true if cargo was successfully added, false if there was no space
  */
-inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int purchasePrice)
+static inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int purchasePrice)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0)
     {
@@ -194,7 +195,7 @@ inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int quantity
  * @param quantity Amount of cargo to remove (in tonnes)
  * @return true if cargo was successfully removed, false if the ship doesn't have that cargo
  */
-inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, int quantity)
+static inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, int quantity)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0)
     {
@@ -245,7 +246,7 @@ inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, int quant
  * @param externalSync If true, synchronize with the global state (Cash)
  * @return true if cargo was successfully sold, false if there was an error
  */
-inline bool SellCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int salePrice, bool externalSync)
+static inline bool SellCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int salePrice, bool externalSync)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0 || salePrice < 0)
     {
@@ -282,7 +283,7 @@ inline bool SellCargo(PlayerShip *playerShip, const char *cargoName, int quantit
  * @param externalSync If true, synchronize with the global state (Cash)
  * @return true if cargo was successfully purchased, false if there was an error
  */
-inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int purchasePrice, bool externalSync)
+static inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int purchasePrice, bool externalSync)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0 || purchasePrice < 0)
     {
@@ -326,7 +327,7 @@ inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int quantity
  *
  * @param playerShip Pointer to the PlayerShip structure
  */
-inline void ListCargo(const PlayerShip *playerShip)
+static inline void ListCargo(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -365,7 +366,7 @@ inline void ListCargo(const PlayerShip *playerShip)
  * @param cargoName Name of the cargo/commodity to check for
  * @return The quantity of the specified cargo, or 0 if not found
  */
-inline int GetCargoQuantity(const PlayerShip *playerShip, const char *cargoName)
+static inline int GetCargoQuantity(const PlayerShip *playerShip, const char *cargoName)
 {
     if (playerShip == NULL || cargoName == NULL)
     {
@@ -390,7 +391,7 @@ inline int GetCargoQuantity(const PlayerShip *playerShip, const char *cargoName)
  * @param quantity Amount of cargo to jettison (in tonnes)
  * @return true if cargo was successfully jettisoned, false if there was an error
  */
-inline bool JettisonCargo(PlayerShip *playerShip, const char *cargoName, int quantity)
+static inline bool JettisonCargo(PlayerShip *playerShip, const char *cargoName, int quantity)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0)
     {

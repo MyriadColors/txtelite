@@ -356,7 +356,7 @@ typedef struct PlayerShip
 // @param shipType Pointer to the ShipType to use
 // @param customName Custom name for the ship (or NULL to use default)
 // @return true if successful, false otherwise
-inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipType, const char *customName)
+static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipType, const char *customName)
 {
     if (playerShip == NULL || shipType == NULL)
     {
@@ -443,7 +443,7 @@ inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipType, con
 }
 
 // Initializes a PlayerShip to Cobra Mk III default specifications.
-inline void InitializeCobraMkIII(PlayerShip *playerShip)
+static inline void InitializeCobraMkIII(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -465,7 +465,7 @@ inline void InitializeCobraMkIII(PlayerShip *playerShip)
 }
 
 // Displays the current status of the player's ship.
-inline void DisplayShipStatus(const PlayerShip *playerShip)
+static inline void DisplayShipStatus(const PlayerShip *playerShip)
 {
     bool ecmFound = false; // Moved declaration here
     bool escapePodFound = false;
@@ -678,7 +678,7 @@ inline void DisplayShipStatus(const PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if the ship has fuel scoops, false otherwise
  */
-inline bool HasFuelScoops(const PlayerShip *playerShip)
+static inline bool HasFuelScoops(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -711,7 +711,7 @@ inline bool HasFuelScoops(const PlayerShip *playerShip)
  *
  * @return The actual amount of fuel added to the ship in light-years
  */
-inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuelScoops, bool externalSync)
+static inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuelScoops, bool externalSync)
 {
     if (playerShip == NULL)
     {
@@ -844,7 +844,7 @@ inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool useFuel
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if ECM was successfully activated, false otherwise
  */
-inline bool ActivateECM(PlayerShip *playerShip)
+static inline bool ActivateECM(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -896,7 +896,7 @@ inline bool ActivateECM(PlayerShip *playerShip)
  * @param distance The distance to the station (used to determine docking time)
  * @return true if docking computer was activated successfully, false otherwise
  */
-inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
+static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
 {
     if (playerShip == NULL)
     {
@@ -957,7 +957,7 @@ inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if scan was successful, false otherwise
  */
-inline bool UseScanner(PlayerShip *playerShip)
+static inline bool UseScanner(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -1016,7 +1016,7 @@ inline bool UseScanner(PlayerShip *playerShip)
  * @param criticalDamage Whether the ship has taken critical damage
  * @return true if escape pod was successfully deployed, false otherwise
  */
-inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
+static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
 {
     if (playerShip == NULL)
     {
@@ -1068,7 +1068,7 @@ inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
  * @param slotType The weapon slot to check (forward or aft)
  * @return The damage output value, or 0.0 if no weapon is installed
  */
-inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType slotType)
+static inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL ||
         (slotType != EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON && slotType != EQUIPMENT_SLOT_TYPE_AFT_WEAPON))
@@ -1093,7 +1093,7 @@ inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType sl
  * @param slotType The equipment slot to check
  * @return The energy draw value, or 0.0 if no equipment is installed
  */
-inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlotType slotType)
+static inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
     {
@@ -1118,7 +1118,7 @@ inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlot
  * @param specificType The specific type to check (EquipmentTypeSpecifics union)
  * @return true if the equipment is installed, false otherwise
  */
-inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType slotType, EquipmentTypeSpecifics specificType)
+static inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType slotType, EquipmentTypeSpecifics specificType)
 {
     if (playerShip == NULL)
     {
@@ -1183,7 +1183,7 @@ inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType slotTyp
  *
  * @return The actual amount of hull strength repaired
  */
-inline int RepairHull(PlayerShip *playerShip, int repairAmount, int costPerPoint, bool externalSync)
+static inline int RepairHull(PlayerShip *playerShip, int repairAmount, int costPerPoint, bool externalSync)
 {
     if (playerShip == NULL)
     {
@@ -1246,7 +1246,7 @@ inline int RepairHull(PlayerShip *playerShip, int repairAmount, int costPerPoint
  *
  * @return The actual amount of energy recharged
  */
-inline double RechargeEnergy(PlayerShip *playerShip, double rechargeAmount, bool rechargeShields, double costPerPoint, bool externalSync)
+static inline double RechargeEnergy(PlayerShip *playerShip, double rechargeAmount, bool rechargeShields, double costPerPoint, bool externalSync)
 {
     if (playerShip == NULL)
     {
@@ -1349,7 +1349,7 @@ inline double RechargeEnergy(PlayerShip *playerShip, double rechargeAmount, bool
  *
  * @return true if equipment was added successfully, false otherwise
  */
-inline bool AddEquipment(PlayerShip *playerShip,
+static inline bool AddEquipment(PlayerShip *playerShip,
                          EquipmentSlotType slotType,
                          const char *equipmentName,
                          EquipmentTypeSpecifics specificType, // Changed to named union
@@ -1370,9 +1370,6 @@ inline bool AddEquipment(PlayerShip *playerShip,
     } // Check if the slot is already occupied
     if (playerShip->equipment[slotType].isActive)
     {
-        // Forward declaration of the inventory function
-        extern bool RemoveEquipmentToInventory(PlayerShip * playerShip, EquipmentSlotType slotType);
-
         // Store the name of the equipment being replaced for better messaging
         char oldEquipName[MAX_SHIP_NAME_LENGTH];
         strncpy(oldEquipName, playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH - 1);
@@ -1413,7 +1410,7 @@ inline bool AddEquipment(PlayerShip *playerShip,
  *
  * @return true if equipment was removed successfully, false otherwise
  */
-inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType)
+static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
     {
@@ -1470,7 +1467,7 @@ inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType)
  *
  * @return The index of the cargo item, or -1 if not found
  */
-inline int FindCargoByName(const PlayerShip *playerShip, const char *cargoName)
+static inline int FindCargoByName(const PlayerShip *playerShip, const char *cargoName)
 {
     if (playerShip == NULL || cargoName == NULL)
     {
@@ -1496,7 +1493,7 @@ inline int FindCargoByName(const PlayerShip *playerShip, const char *cargoName)
  *
  * @return The available cargo space in tons
  */
-inline int GetAvailableCargoSpace(const PlayerShip *playerShip)
+static inline int GetAvailableCargoSpace(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -1513,7 +1510,7 @@ inline int GetAvailableCargoSpace(const PlayerShip *playerShip)
  *
  * @return The total number of different cargo items
  */
-inline int GetCargoItemCount(const PlayerShip *playerShip)
+static inline int GetCargoItemCount(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -1543,7 +1540,7 @@ inline int GetCargoItemCount(const PlayerShip *playerShip)
  *
  * @return true if successful, false if index is out of range or no cargo at index
  */
-inline bool GetCargoItemAtIndex(const PlayerShip *playerShip, int index,
+static inline bool GetCargoItemAtIndex(const PlayerShip *playerShip, int index,
                                 char *outCargoName, int *outQuantity, int *outPurchasePrice)
 {
     if (playerShip == NULL || outCargoName == NULL || outQuantity == NULL || outPurchasePrice == NULL)
@@ -1574,7 +1571,7 @@ inline bool GetCargoItemAtIndex(const PlayerShip *playerShip, int index,
  *
  * @param playerShip Pointer to the PlayerShip structure
  */
-inline void DisplayCargoDetails(const PlayerShip *playerShip)
+static inline void DisplayCargoDetails(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -1620,7 +1617,7 @@ inline void DisplayCargoDetails(const PlayerShip *playerShip)
 }
 
 // Helper functions to get equipment names from types
-inline const char *GetWeaponTypeName(WeaponType type)
+static inline const char *GetWeaponTypeName(WeaponType type)
 {
     switch (type)
     {
@@ -1644,7 +1641,7 @@ inline const char *GetWeaponTypeName(WeaponType type)
     }
 }
 
-inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type)
+static inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type)
 {
     switch (type)
     {
@@ -1658,7 +1655,7 @@ inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type)
     }
 }
 
-inline const char *GetUtilitySystemTypeName(UtilitySystemType type)
+static inline const char *GetUtilitySystemTypeName(UtilitySystemType type)
 {
     switch (type)
     {

@@ -30,6 +30,7 @@ of Elite with no combat or missions.
 #include <time.h>
 #include <math.h>
 #include <ctype.h>
+#include <inttypes.h>				   // For PRIu64 and other format macros
 
 #include "elite_state.h"			   // Unified header for constants, structures, and globals
 #include "elite_utils.h"			   // For string handling and other utilities
@@ -42,6 +43,9 @@ of Elite with no combat or missions.
 #include "elite_player_state.h"		   // For player state initialization
 #include "elite_star_system.h"		   // For star system data
 #include "elite_ship_upgrades.h"	   // For equipment access
+#include "elite_ship_cargo.h"		   // For cargo management functions
+#include "elite_ship_types.h"		   // For ship initialization and status functions
+#include "elite_ship_inventory.h"	   // For equipment inventory functions
 #include "elite_equipment_constants.h" // For equipment indices
 
 /**
@@ -171,13 +175,13 @@ int main(int argc, char *argv[])
 			if (strlen(equipmentStatus) == 0)
 				strcpy(equipmentStatus, "None");
 
-			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | Energy: %d%% | Equip: %s| Time: %llu seconds > ",
+			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | Energy: %d%% | Equip: %s| Time: %" PRIu64 " seconds > ",
 				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f,
 				   hullPercentage, energyPercentage, equipmentStatus, currentGameTimeSeconds);
 		}
 		else
 		{
-			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %llu seconds > ",
+			printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %" PRIu64 " seconds > ",
 				   locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f, currentGameTimeSeconds);
 		}
 		if (!fgets(getcommand, sizeof(getcommand) - 1, stdin))

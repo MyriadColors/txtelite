@@ -9,6 +9,7 @@
 #include "elite_planet_info.h"	  // For print_system_info (and goat_soup)
 #include "elite_market.h"		  // For execute_buy_order, execute_sell_order, display_market_info
 #include "elite_player_state.h"	  // For calculate_fuel_purchase, display_ship_status_brief
+#include "platform_compat.h"	  // For cross-platform file operations
 #include "elite_save.h"			  // For save_game, load_game
 #include "elite_ship_types.h"	  // For ship status display functions
 #include "elite_ship_inventory.h" // For inventory management functions
@@ -20,7 +21,6 @@
 #include <math.h>				  // For floor, fabs
 #include <string.h>				  // For string operations
 #include <time.h>				  // For time functions
-#include <windows.h>			  // For Windows directory operations
 #include <ctype.h>				  // For toupper, tolower
 
 static inline bool do_tweak_random_native(char *commandArguments)
@@ -1005,11 +1005,13 @@ static inline bool do_load(char *commandArguments)
 		char filename[MAX_PATH];
 		time_t timestamp;
 	} SaveFileInfo;
-	// Find all .sav files in the saves directory
-	WIN32_FIND_DATA findData;
-	HANDLE hFind = FindFirstFile("saves\\*.sav", &findData);
+	
+	// Use cross-platform directory iterator
+	DirectoryIterator iter;
+	char searchPattern[MAX_PATH];
+	platform_make_pattern(searchPattern, sizeof(searchPattern), "saves", "*.sav");
 
-	if (hFind == INVALID_HANDLE_VALUE)
+	if (!platform_find_first_file(&iter, searchPattern))
 	{
 		printf("No save files found in the 'saves' directory.\n");
 		return false;
@@ -1021,56 +1023,23 @@ static inline bool do_load(char *commandArguments)
 
 	do
 	{
-		if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+		const char* filename = platform_get_filename(&iter);
+		if (filename)
 		{
 			// Store filename
-			strncpy(saveFiles[fileCount].filename, findData.cFileName, MAX_PATH - 1);
-			saveFiles[fileCount].filename[MAX_PATH - 1] = '\0';			// Get file timestamp
-			FILETIME ftCreate, ftAccess, ftWrite;
-			SYSTEMTIME stUTC, stLocal;
-
-			// Create full path for the file
-			char fullPath[MAX_PATH];
-			snprintf(fullPath, MAX_PATH, "saves\\%s", findData.cFileName);
-
-			HANDLE hFile = CreateFile(fullPath,
-									  GENERIC_READ,
-									  FILE_SHARE_READ,
-									  NULL,
-									  OPEN_EXISTING,
-									  FILE_ATTRIBUTE_NORMAL,
-									  NULL);
-
-			if (hFile != INVALID_HANDLE_VALUE)
-			{
-				if (GetFileTime(hFile, &ftCreate, &ftAccess, &ftWrite))
-				{
-					FileTimeToSystemTime(&ftWrite, &stUTC);
-					SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
-
-					// Convert to time_t for sorting
-					struct tm tm;
-					memset(&tm, 0, sizeof(struct tm));
-					tm.tm_year = stLocal.wYear - 1900;
-					tm.tm_mon = stLocal.wMonth - 1;
-					tm.tm_mday = stLocal.wDay;
-					tm.tm_hour = stLocal.wHour;
-					tm.tm_min = stLocal.wMinute;
-					tm.tm_sec = stLocal.wSecond;
-					tm.tm_min = stLocal.wMinute;
-					tm.tm_sec = stLocal.wSecond;
-					saveFiles[fileCount].timestamp = mktime(&tm);
-				}
-				CloseHandle(hFile);
-			}
+			strncpy(saveFiles[fileCount].filename, filename, MAX_PATH - 1);
+			saveFiles[fileCount].filename[MAX_PATH - 1] = '\0';
+			
+			// Get file timestamp using cross-platform function
+			saveFiles[fileCount].timestamp = platform_get_file_time(&iter);
 
 			fileCount++;
 			if (fileCount >= 100)
 				break; // Limit to 100 files
 		}
-	} while (FindNextFile(hFind, &findData) != 0);
+	} while (platform_find_next_file(&iter));
 
-	FindClose(hFind);
+	platform_find_close(&iter);
 
 	if (fileCount == 0)
 	{
@@ -1095,10 +1064,11 @@ static inline bool do_load(char *commandArguments)
 
 	// Display the sorted save files
 	for (int i = 0; i < fileCount; i++)
-	{		// Read save header to get the description
+	{		
+		// Read save header to get the description
 		SaveHeader header;
 		char fullPath[MAX_PATH];
-		snprintf(fullPath, MAX_PATH, "saves\\%s", saveFiles[i].filename);
+		platform_make_path(fullPath, sizeof(fullPath), "saves", saveFiles[i].filename);
 		FILE *file = fopen(fullPath, "rb");
 		bool headerValid = false;
 
@@ -1130,11 +1100,12 @@ static inline bool do_load(char *commandArguments)
 		printf("\nEnter the number of the save file to load (or 0 to cancel): ");
 		char input[10];
 		if (fgets(input, sizeof(input), stdin) != NULL)
-		{			int selection = atoi(input);
+		{			
+			int selection = atoi(input);
 			if (selection > 0 && selection <= fileCount)
 			{
 				char fullPath[MAX_PATH];
-				snprintf(fullPath, MAX_PATH, "saves/%s", saveFiles[selection - 1].filename);
+				platform_make_path(fullPath, sizeof(fullPath), "saves", saveFiles[selection - 1].filename);
 				return load_game(fullPath);
 			}
 		}

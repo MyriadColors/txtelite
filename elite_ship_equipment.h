@@ -8,7 +8,7 @@
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if fuel scoops are installed, false otherwise
  */
-inline bool HasFuelScoops(const PlayerShip *playerShip)
+static inline bool HasFuelScoops(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -36,7 +36,7 @@ inline bool HasFuelScoops(const PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if ECM is installed, false otherwise
  */
-inline bool HasECM(const PlayerShip *playerShip)
+static inline bool HasECM(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -64,7 +64,7 @@ inline bool HasECM(const PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if docking computer is installed, false otherwise
  */
-inline bool HasDockingComputer(const PlayerShip *playerShip)
+static inline bool HasDockingComputer(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -93,7 +93,7 @@ inline bool HasDockingComputer(const PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if ECM was successfully activated, false otherwise
  */
-inline bool ActivateECM(PlayerShip *playerShip)
+static inline bool ActivateECM(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -145,7 +145,7 @@ inline bool ActivateECM(PlayerShip *playerShip)
  * @param distance The distance to the station (used to determine docking time)
  * @return true if docking computer was activated successfully, false otherwise
  */
-inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
+static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
 {
     if (playerShip == NULL)
     {
@@ -206,7 +206,7 @@ inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if scan was successful, false otherwise
  */
-inline bool UseScanner(PlayerShip *playerShip)
+static inline bool UseScanner(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -265,7 +265,7 @@ inline bool UseScanner(PlayerShip *playerShip)
  * @param criticalDamage Whether the ship has taken critical damage
  * @return true if escape pod was successfully deployed, false otherwise
  */
-inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
+static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
 {
     if (playerShip == NULL)
     {
@@ -329,7 +329,7 @@ inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
  * @param slotType The weapon slot to check (forward or aft)
  * @return The damage output value, or 0.0 if no weapon is installed
  */
-inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType slotType)
+static inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL ||
         (slotType != EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON && slotType != EQUIPMENT_SLOT_TYPE_AFT_WEAPON))
@@ -354,7 +354,7 @@ inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType sl
  * @param slotType The equipment slot to check
  * @return The energy draw value, or 0.0 if no equipment is installed
  */
-inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlotType slotType)
+static inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
     {

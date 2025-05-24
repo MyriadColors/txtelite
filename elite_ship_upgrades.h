@@ -13,11 +13,19 @@ typedef enum EquipmentSlotType EquipmentSlotType;
 typedef union EquipmentTypeSpecifics EquipmentTypeSpecifics;
 #define MAX_EQUIPMENT_SLOTS 10
 
-// Function declarations from other files that we need
-extern bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType);
-extern bool AddEquipment(PlayerShip *playerShip, EquipmentSlotType slotType,
-                         const char *equipmentName, EquipmentTypeSpecifics specificType,
-                         double energyDraw, double damageOutput);
+// Forward declare functions from elite_ship_types.h
+static inline bool AddEquipment(PlayerShip *playerShip,
+                         EquipmentSlotType slotType,
+                         const char *equipmentName,
+                         EquipmentTypeSpecifics specificType,
+                         double energyDraw,
+                         double damageOutput);
+
+static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType);
+
+// Forward declare functions from elite_ship_inventory.h  
+static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentSlotType slotType);
+static inline void MapEquipmentIndices(PlayerShip *playerShip);
 
 #include "elite_state.h"               // For global state variables
 #include "elite_equipment_constants.h" // For equipment indices
@@ -236,7 +244,7 @@ static inline int GetMaxUpgradeLevel(ShipUpgradeType upgradeType, const ShipUpgr
  *
  * @return true if upgrade was successful, false otherwise
  */
-inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeType, int upgradeLevel, int cost, bool externalSync)
+static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeType, int upgradeLevel, int cost, bool externalSync)
 {
     if (playerShip == NULL || upgradeLevel <= 0)
     {
@@ -415,7 +423,7 @@ inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeType, in
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if loadout was successfully applied, false otherwise
  */
-inline bool ConfigureCombatLoadout(PlayerShip *playerShip)
+static inline bool ConfigureCombatLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -518,7 +526,7 @@ inline bool ConfigureCombatLoadout(PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if loadout was successfully applied, false otherwise
  */
-inline bool ConfigureTradingLoadout(PlayerShip *playerShip)
+static inline bool ConfigureTradingLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -611,7 +619,7 @@ inline bool ConfigureTradingLoadout(PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if loadout was successfully applied, false otherwise
  */
-inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
+static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -696,7 +704,7 @@ inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if loadout was successfully applied, false otherwise
  */
-inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
+static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
@@ -805,7 +813,7 @@ inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
  *
  * @return true if purchase successful, false otherwise
  */
-inline bool PurchaseEquipment(PlayerShip *playerShip,
+static inline bool PurchaseEquipment(PlayerShip *playerShip,
                               const char *equipmentName,
                               EquipmentSlotType slotType,
                               EquipmentTypeSpecifics specificType, // Changed to named union

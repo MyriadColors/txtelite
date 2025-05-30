@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <sys/stat.h>  // For directory operations
 
 #include "platform_compat.h"      // For cross-platform compatibility
 #include "elite_state.h"
@@ -40,8 +39,8 @@
 static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t size)
 {
     // Create the save directory if it doesn't exist
-    struct stat st = {0};
-    if (stat(SAVE_DIRECTORY, &st) == -1) 
+    platform_stat_struct st = {0};
+    if (platform_stat(SAVE_DIRECTORY, &st) == -1)
     {
         if (MKDIR(SAVE_DIRECTORY) != 0)
         {
@@ -127,8 +126,7 @@ static inline bool save_game(const char *filename, const char *description)
     {
         return false;
     }
-    
-    FILE *file = fopen(fullPath, "wb");
+      FILE *file = safe_fopen(fullPath, "wb");
     if (!file)
     {
         printf("Error: Could not open file '%s' for writing.\n", fullPath);
@@ -139,17 +137,23 @@ static inline bool save_game(const char *filename, const char *description)
     memset(&header, 0, sizeof(header));
     memcpy(header.signature, SAVE_SIGNATURE, 7); // Exactly copy the 7 characters without null terminator
     header.version = SAVE_VERSION;
-    header.timestamp = time(NULL);
-
-    if (description)
+    header.timestamp = time(NULL);    if (description)
     {
-        strncpy(header.description, description, sizeof(header.description) - 1);
+        snprintf(header.description, sizeof(header.description), "%s", description);
     }
     else
     {
         // Create a default description with timestamp and planet name
         char timeStr[32];
-        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", localtime(&header.timestamp));
+        struct tm timeBuffer;
+        if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
+        {
+            strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
+        }
+        else
+        {
+            snprintf(timeStr, sizeof(timeStr), "Unknown time");
+        }
         snprintf(header.description, sizeof(header.description),
                  "%s - %s (Galaxy %d)",
                  timeStr, Galaxy[CurrentPlanet].name, GalaxyNum);
@@ -259,7 +263,7 @@ static inline bool load_game(const char *filename)
         return false;
     }
     
-    FILE *file = fopen(fullPath, "rb");
+    FILE *file = safe_fopen(fullPath, "rb");
     if (!file)
     {
         printf("Error: Could not open file '%s' for reading.\n", fullPath);
@@ -372,11 +376,17 @@ static inline bool load_game(const char *filename)
     {
         // Nav beacon doesn't need a specific pointer
         PlayerNavState.distanceFromStar = CurrentStarSystem->navBeaconDistance;
-    }
-
-    // Show load information
+    }    // Show load information
     char timeStr[32];
-    strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", localtime(&header.timestamp));
+    struct tm timeBuffer;
+    if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
+    {
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
+    }
+    else
+    {
+        snprintf(timeStr, sizeof(timeStr), "Unknown time");
+    }
     printf("Game loaded from '%s'.\n", filename);
     printf("Save info: %s\n", header.description);
     printf("Created: %s\n", timeStr);
@@ -418,7 +428,7 @@ static inline bool show_save_info(const char *filename)
         return false;
     }
     
-    FILE *file = fopen(fullPath, "rb");
+    FILE *file = safe_fopen(fullPath, "rb");
     if (!file)
     {
         printf("Error: Could not open file '%s' for reading.\n", fullPath);
@@ -440,11 +450,17 @@ static inline bool show_save_info(const char *filename)
                SAVE_SIGNATURE, header.signature);
         fclose(file);
         return false;
-    }
-
-    // Display information
+    }    // Display information
     char timeStr[32];
-    strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", localtime(&header.timestamp));
+    struct tm timeBuffer;
+    if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
+    {
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
+    }
+    else
+    {
+        snprintf(timeStr, sizeof(timeStr), "Unknown time");
+    }
     printf("Save file: %s\n", filename);
     printf("Version: %d\n", header.version);
     printf("Created: %s\n", timeStr);
@@ -479,8 +495,8 @@ static inline void get_default_save_filename(char *buffer, size_t size)
  */
 static inline bool create_save_directory()
 {
-    struct stat st = {0};
-    if (stat(SAVE_DIRECTORY, &st) == -1)
+    platform_stat_struct st = {0};
+    if (platform_stat(SAVE_DIRECTORY, &st) == -1)
     {
         // Directory does not exist, attempt to create it
         if (MKDIR(SAVE_DIRECTORY) != 0)

@@ -60,8 +60,8 @@ static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentS
     // Save current equipment to add to inventory
     ShipEquipmentItem equipToStore = playerShip->equipment[slotType];
     char equipmentName[MAX_SHIP_NAME_LENGTH];
-    strncpy(equipmentName, equipToStore.name, MAX_SHIP_NAME_LENGTH - 1);
-    equipmentName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    snprintf(equipmentName, MAX_SHIP_NAME_LENGTH, "%s", equipToStore.name);
+    // equipmentName[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
 
     // Special handling before removal
     if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4)
@@ -90,7 +90,7 @@ static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentS
 
     // Reset the equipment slot
     playerShip->equipment[slotType].isActive = 0;
-    strcpy(playerShip->equipment[slotType].name, "Empty");
+    snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "Empty");
     // Leave other fields as they are - they'll be overwritten on next install
 
     printf("Successfully removed %s from slot %d and stored in inventory.\n", equipmentName, slotType);
@@ -189,7 +189,7 @@ static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex
 
     // Clear the inventory slot
     playerShip->equipmentInventory[inventoryIndex].isActive = 0;
-    strcpy(playerShip->equipmentInventory[inventoryIndex].name, "Empty");
+    snprintf(playerShip->equipmentInventory[inventoryIndex].name, MAX_SHIP_NAME_LENGTH, "Empty");
 
     printf("Equipped %s from inventory to slot %d.\n", inventoryEquipment.name, slotType);
 
@@ -226,15 +226,15 @@ static inline void ListEquipmentInventory(const PlayerShip *playerShip)
 
             if (slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON || slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON)
             {
-                strcpy(itemType, "Weapon");
+                snprintf(itemType, sizeof(itemType), "Weapon");
             }
             else if (slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 || slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2)
             {
-                strcpy(itemType, "Defensive");
+                snprintf(itemType, sizeof(itemType), "Defensive");
             }
             else if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4)
             {
-                strcpy(itemType, "Utility");
+                snprintf(itemType, sizeof(itemType), "Utility");
             }
 
             printf("[%2d] %s (Type: %s)\n", i, playerShip->equipmentInventory[i].name, itemType);
@@ -272,19 +272,19 @@ static inline void PrintEquipmentSlots(const PlayerShip *playerShip)
         // Determine slot type name
         if (i == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON)
         {
-            strcpy(slotTypeName, "Forward Weapon");
+            snprintf(slotTypeName, sizeof(slotTypeName), "Forward Weapon");
         }
         else if (i == EQUIPMENT_SLOT_TYPE_AFT_WEAPON)
         {
-            strcpy(slotTypeName, "Aft Weapon");
+            snprintf(slotTypeName, sizeof(slotTypeName), "Aft Weapon");
         }
         else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1)
         {
-            strcpy(slotTypeName, "Defensive System 1");
+            snprintf(slotTypeName, sizeof(slotTypeName), "Defensive System 1");
         }
         else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2)
         {
-            strcpy(slotTypeName, "Defensive System 2");
+            snprintf(slotTypeName, sizeof(slotTypeName), "Defensive System 2");
         }
         else if (i >= UTILITY_SYSTEM_1 && i <= UTILITY_SYSTEM_4)
         {

@@ -205,9 +205,10 @@ static inline const ShipType *RegisterShipType(
 
     // Get a reference to the new ship type slot
     ShipType *newShipType = &shipRegistry.shipTypes[shipRegistry.registeredShipCount];
-    // Fill in the details
-    strncpy(newShipType->className, className, MAX_SHIP_NAME_LENGTH - 1);
-    newShipType->className[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+
+    // Initialize the new ship type with provided values
+    snprintf(newShipType->className, MAX_SHIP_NAME_LENGTH, "%s", className);
+    newShipType->className[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
     newShipType->baseHullStrength = baseHullStrength;
     newShipType->baseEnergyBanks = baseEnergyBanks;
     newShipType->baseShieldStrengthFront = baseShieldStrengthFront;
@@ -363,23 +364,22 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
         return false;
     }
 
-    // Set ship name
-    if (customName != NULL)
+    // Set ship name (custom or default)
+    if (customName != NULL && customName[0] != '\0')
     {
-        strncpy(playerShip->shipName, customName, MAX_SHIP_NAME_LENGTH - 1);
+        snprintf(playerShip->shipName, MAX_SHIP_NAME_LENGTH, "%s", customName);
+        playerShip->shipName[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
     }
     else
     {
-        // Default name: "My " + class name
-        char defaultName[MAX_SHIP_NAME_LENGTH] = "My ";
-        strncat(defaultName, shipType->className, MAX_SHIP_NAME_LENGTH - 4);
-        strncpy(playerShip->shipName, defaultName, MAX_SHIP_NAME_LENGTH - 1);
+        // Construct default name if no custom name is provided
+        char defaultName[MAX_SHIP_NAME_LENGTH];
+        snprintf(defaultName, sizeof(defaultName), "%s Class", shipType->className);
+        snprintf(playerShip->shipName, MAX_SHIP_NAME_LENGTH, "%s", defaultName);
+        playerShip->shipName[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
     }
-    playerShip->shipName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-
-    // Set ship class name
-    strncpy(playerShip->shipClassName, shipType->className, MAX_SHIP_NAME_LENGTH - 1);
-    playerShip->shipClassName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    snprintf(playerShip->shipClassName, MAX_SHIP_NAME_LENGTH, "%s", shipType->className);
+    playerShip->shipClassName[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
 
     // Set the ship type pointer
     playerShip->shipType = shipType;
@@ -397,44 +397,40 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
     playerShip->attributes.missilesLoadedHoming = 0;
     playerShip->attributes.missilesLoadedDumbfire = 0;
 
-    // Initialize equipment slots to empty
+    // Initialize equipment slots to Empty
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
-        playerShip->equipment[i].isActive = 0;
-        playerShip->equipment[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
-        playerShip->equipment[i].energyDraw = 0.0;
-        playerShip->equipment[i].damageOutput = 0.0;
-        memset(playerShip->equipment[i].name, 0, MAX_SHIP_NAME_LENGTH);
-        strncpy(playerShip->equipment[i].name, "Empty", MAX_SHIP_NAME_LENGTH - 1);
-        playerShip->equipment[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-    }
-
-    // Initialize inventory slots to empty
+        playerShip->equipment[i].isActive = false;
+        snprintf(playerShip->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
+        playerShip->equipment[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
+        playerShip->equipment[i].typeSpecific.utilityType = UTILITY_SYSTEM_TYPE_NONE; // Example default
+    }    // Initialize inventory slots to empty
     for (int i = 0; i < MAX_EQUIPMENT_INVENTORY; ++i)
     {
         playerShip->equipmentInventory[i].isActive = 0;
-        strcpy(playerShip->equipmentInventory[i].name, "Empty");
+        snprintf(playerShip->equipmentInventory[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
         playerShip->equipmentInventory[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
         playerShip->equipmentInventory[i].energyDraw = 0.0;
         playerShip->equipmentInventory[i].damageOutput = 0.0;
     }
 
-    // Initialize cargo slots to empty
+    // Initialize cargo holds to Empty
     for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
     {
+        snprintf(playerShip->cargo[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
+        playerShip->cargo[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
         playerShip->cargo[i].quantity = 0;
-        strncpy(playerShip->cargo[i].name, "Empty", MAX_SHIP_NAME_LENGTH - 1);
-        playerShip->cargo[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
     }
 
     // Add pulse laser if the ship type includes one
-    if (shipType->includesPulseLaser && MAX_EQUIPMENT_SLOTS > 0)
+    if (shipType->includesPulseLaser)
     {
-        strncpy(playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name, "Pulse Laser", MAX_SHIP_NAME_LENGTH - 1);
-        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].isActive = true;
+        snprintf(playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name, MAX_SHIP_NAME_LENGTH, "Pulse Laser");
+        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
+        // Set other properties for Pulse Laser as needed
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].typeSpecific.weaponType = WEAPON_TYPE_PULSE_LASER;
-        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].isActive = 1;
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].energyDraw = 10.0;  // Example
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].damageOutput = 5.0; // Example
     }
@@ -493,7 +489,6 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
            playerShip->attributes.missilePylons,
            playerShip->attributes.missilesLoadedHoming,
            playerShip->attributes.missilesLoadedDumbfire);
-    // Removed: printf("Credits: %dcr\n", playerShip->credits);    printf("\n--- Equipment ---\n");
     int hasEquipment = 0;
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -1370,10 +1365,13 @@ static inline bool AddEquipment(PlayerShip *playerShip,
     } // Check if the slot is already occupied
     if (playerShip->equipment[slotType].isActive)
     {
-        // Store the name of the equipment being replaced for better messaging
+        // Store the name of the equipment being replaced, if any
         char oldEquipName[MAX_SHIP_NAME_LENGTH];
-        strncpy(oldEquipName, playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH - 1);
-        oldEquipName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+        if (playerShip->equipment[slotType].isActive)
+        {
+            snprintf(oldEquipName, MAX_SHIP_NAME_LENGTH, "%s", playerShip->equipment[slotType].name);
+            oldEquipName[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
+        }
         // Try to store the existing equipment in inventory before replacing it
         if (RemoveEquipmentToInventory(playerShip, slotType))
         {
@@ -1383,18 +1381,15 @@ static inline bool AddEquipment(PlayerShip *playerShip,
         {
             // Failed to store in inventory - likely full or special case
             printf("Warning: Replacing existing equipment '%s' in slot %d without storing it (inventory may be full).\n",
-                   oldEquipName, slotType);
-
-            // Reset the slot manually since RemoveEquipmentToInventory failed
+                   oldEquipName, slotType);            // Reset the slot manually since RemoveEquipmentToInventory failed
             playerShip->equipment[slotType].isActive = 0;
-            strcpy(playerShip->equipment[slotType].name, "Empty");
+            snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "Empty");
         }
-    } // Add the equipment directly to the specified slot
-    strncpy(playerShip->equipment[slotType].name, equipmentName, MAX_SHIP_NAME_LENGTH - 1);
-    playerShip->equipment[slotType].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
-    playerShip->equipment[slotType].slotType = slotType;         // Store the intended slot type
-    playerShip->equipment[slotType].typeSpecific = specificType; // Use the new named union
-    playerShip->equipment[slotType].isActive = 1;
+    }    // Install the new equipment
+    playerShip->equipment[slotType].isActive = true;
+    snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "%s", equipmentName);
+    playerShip->equipment[slotType].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
+    playerShip->equipment[slotType].typeSpecific = specificType;
     playerShip->equipment[slotType].energyDraw = energyDraw;
     playerShip->equipment[slotType].damageOutput = damageOutput;
 
@@ -1424,10 +1419,10 @@ static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slo
         return false;
     }
 
-    // Save name for display
+    // Save current equipment name before removal
     char equipmentName[MAX_SHIP_NAME_LENGTH];
-    strncpy(equipmentName, playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH - 1);
-    equipmentName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    snprintf(equipmentName, MAX_SHIP_NAME_LENGTH, "%s", playerShip->equipment[slotType].name);
+    equipmentName[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
 
     // Special handling before removal
     if (playerShip->equipment[slotType].slotType >= UTILITY_SYSTEM_1 &&
@@ -1448,11 +1443,9 @@ static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slo
             // Decrease cargo capacity
             playerShip->attributes.cargoCapacityTons -= 5;
         }
-    }
-
-    // Reset the equipment slot
+    }    // Reset the equipment slot
     playerShip->equipment[slotType].isActive = 0;
-    strcpy(playerShip->equipment[slotType].name, "Empty");
+    snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "Empty");
     // Leave other fields as they are - they'll be overwritten on next install
 
     printf("Successfully removed %s from slot %d.\n", equipmentName, slotType);
@@ -1558,8 +1551,8 @@ static inline bool GetCargoItemAtIndex(const PlayerShip *playerShip, int index,
         return false;
     }
 
-    strncpy(outCargoName, playerShip->cargo[index].name, MAX_SHIP_NAME_LENGTH - 1);
-    outCargoName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+    snprintf(outCargoName, MAX_SHIP_NAME_LENGTH, "%s", playerShip->cargo[index].name);
+    // outCargoName[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
     *outQuantity = playerShip->cargo[index].quantity;
     *outPurchasePrice = playerShip->cargo[index].purchasePrice;
 

@@ -122,7 +122,7 @@ static inline double GetShipPriceMultiplier(const char *shipClassName, int syste
  * @param shipPrices Array to store ship prices (must be at least MAX_SHIPS_AT_SHIPYARD)
  * @return Number of ships available
  */
-static inline int GetAvailableShips(const char *systemName [[maybe_unused]], int systemEconomy,
+static inline int GetAvailableShips(const char *systemName, int systemEconomy,
                                     const ShipType **availableShips, double *shipPrices)
 {
     // Initialize ship registry if needed
@@ -147,6 +147,12 @@ static inline int GetAvailableShips(const char *systemName [[maybe_unused]], int
 
             shipCount++;
         }
+    }
+
+    // Log availability for debugging (uses systemName parameter)
+    if (shipCount == 0 && systemName != NULL)
+    {
+        printf("Debug: No ships available at %s shipyard (economy type: %d)\n", systemName, systemEconomy);
     }
 
     return shipCount;
@@ -426,7 +432,7 @@ static inline int TransferEquipment(PlayerShip *sourceShip, PlayerShip *targetSh
 
                 // Clear the slot in the source ship
                 sourceShip->equipment[i].isActive = 0;
-                strcpy(sourceShip->equipment[i].name, "Empty");
+                snprintf(sourceShip->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
             }
             else
             {
@@ -447,7 +453,7 @@ static inline int TransferEquipment(PlayerShip *sourceShip, PlayerShip *targetSh
                 {
                     // Clear the slot in the source ship
                     sourceShip->equipment[i].isActive = 0;
-                    strcpy(sourceShip->equipment[i].name, "Empty");
+                    snprintf(sourceShip->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
                 }
                 else
                 {
@@ -479,7 +485,7 @@ static inline int TransferEquipment(PlayerShip *sourceShip, PlayerShip *targetSh
             {
                 // Clear the slot in the source ship
                 sourceShip->equipmentInventory[i].isActive = 0;
-                strcpy(sourceShip->equipmentInventory[i].name, "Empty");
+                snprintf(sourceShip->equipmentInventory[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
             }
             else
             {
@@ -550,9 +556,11 @@ static inline int TransferCargo(PlayerShip *sourceShip, PlayerShip *targetShip)
                     // If it's an empty slot, copy the cargo details
                     if (targetShip->cargo[targetSlot].quantity == 0)
                     {
-                        strncpy(targetShip->cargo[targetSlot].name, sourceShip->cargo[i].name, MAX_SHIP_NAME_LENGTH - 1);
-                        targetShip->cargo[targetSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+                        // Copy cargo details
+                        targetShip->cargo[targetSlot].quantity = sourceShip->cargo[i].quantity;
                         targetShip->cargo[targetSlot].purchasePrice = sourceShip->cargo[i].purchasePrice;
+                        snprintf(targetShip->cargo[targetSlot].name, MAX_SHIP_NAME_LENGTH, "%s", sourceShip->cargo[i].name);
+                        targetShip->cargo[targetSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
                     }
 
                     // Update quantities
@@ -603,9 +611,11 @@ static inline int TransferCargo(PlayerShip *sourceShip, PlayerShip *targetShip)
                     // If it's an empty slot, copy the cargo details
                     if (targetShip->cargo[targetSlot].quantity == 0)
                     {
-                        strncpy(targetShip->cargo[targetSlot].name, sourceShip->cargo[i].name, MAX_SHIP_NAME_LENGTH - 1);
-                        targetShip->cargo[targetSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+                        // Copy cargo details
+                        targetShip->cargo[targetSlot].quantity = sourceShip->cargo[i].quantity;
                         targetShip->cargo[targetSlot].purchasePrice = sourceShip->cargo[i].purchasePrice;
+                        snprintf(targetShip->cargo[targetSlot].name, MAX_SHIP_NAME_LENGTH, "%s", sourceShip->cargo[i].name);
+                        targetShip->cargo[targetSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
                     }
 
                     // Update quantities
@@ -654,8 +664,7 @@ static inline int TransferCargo(PlayerShip *sourceShip, PlayerShip *targetShip)
  * @return true if purchase successful, false otherwise
  */
 static inline bool BuyNewShip(const char *systemName, int systemEconomy,
-                              PlayerShip *playerShip, const char *newShipName,
-                              uint64_t gameTime, bool tradeIn)
+                              PlayerShip *playerShip, const char *newShipName, uint64_t gameTime, bool tradeIn)
 {
     (void)systemName; // Unused parameter
     if (playerShip == NULL || newShipName == NULL)
@@ -669,18 +678,14 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
 
     // Find the new ship type
     InitializeShipRegistry();
-    const ShipType *newShipType = GetShipTypeByName(newShipName);
-
-    if (newShipType == NULL)
+    const ShipType *newShipType = GetShipTypeByName(newShipName);    if (newShipType == NULL)
     {
         printf("Error: Ship '%s' not found.\n", newShipName);
         return false;
-    }
-
-    // Check if the ship is available in this system
+    }    // Check if the ship is available in this system
     if (!IsShipAvailableInSystem(newShipType->className, systemEconomy))
     {
-        printf("Error: Ship '%s' is not available in this star system.\n", newShipName);
+        printf("Error: Ship '%s' is not available in this star system.\n", newShipType->className);
         return false;
     }
 
@@ -693,14 +698,13 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
     if (tradeIn)
     {
         tradeInValue = CalculateTradeInValue(playerShip, gameTime);
-    }
-    // Calculate net cost
+    }    // Calculate net cost
     double netCost = price - tradeInValue;
     // Check if player can afford the ship
     // Cash is stored internally as a value 10x the displayed value
     if (netCost * 10.0 > Cash)
     {
-        printf("Error: Insufficient funds to purchase %s.\n", newShipName);
+        printf("Error: Insufficient funds to purchase %s.\n", newShipType->className);
         printf("Ship price: %.1f CR, Trade-in value: %.1f CR, Net cost: %.1f CR, Your cash: %.1f CR\n",
                price, tradeInValue, netCost, (double)Cash / 10.0);
         return false;
@@ -862,8 +866,8 @@ static inline bool GetShipNameByID(const char *systemName, int systemEconomy, in
     }
 
     // Copy the ship name to the buffer
-    strncpy(shipName, availableShips[shipIndex]->className, shipNameSize - 1);
-    shipName[shipNameSize - 1] = '\0';
+    snprintf(shipName, shipNameSize, "%s", availableShips[shipIndex]->className);
+    shipName[shipNameSize - 1] = '\0'; // Ensure null termination
 
     return true;
 }
@@ -912,7 +916,7 @@ static inline bool BuyShipCommand(const char *arguments)
     if (space != NULL)
     {
         size_t nameLen = space - arguments;
-        strncpy(shipNameOrID, arguments, nameLen < 63 ? nameLen : 63);
+        snprintf(shipNameOrID, sizeof(shipNameOrID), "%.*s", (int)nameLen, arguments);
         shipNameOrID[nameLen < 63 ? nameLen : 63] = '\0';
 
         // Check for 'notrade' flag in the remaining part
@@ -924,8 +928,8 @@ static inline bool BuyShipCommand(const char *arguments)
     else
     {
         // No space, just copy the entire argument
-        strncpy(shipNameOrID, arguments, 63);
-        shipNameOrID[63] = '\0';
+        snprintf(shipNameOrID, sizeof(shipNameOrID), "%s", arguments);
+        // shipNameOrID[63] = \'\\0\'; // snprintf handles null termination
     }
 
     // Check if the argument is a number (ID) or a string (ship name)
@@ -957,8 +961,8 @@ static inline bool BuyShipCommand(const char *arguments)
     else
     {
         // The argument is a ship name, just copy it
-        strncpy(actualShipName, shipNameOrID, MAX_SHIP_NAME_LENGTH - 1);
-        actualShipName[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+        snprintf(actualShipName, sizeof(actualShipName), "%.63s", shipNameOrID);
+        actualShipName[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null-termination
     }
 
     // Buy the new ship

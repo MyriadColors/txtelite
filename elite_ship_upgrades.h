@@ -1185,12 +1185,34 @@ static inline bool UpgradeCommand(const char *arguments)
     int quantity = 1; // Default quantity
 
     // Try to parse as "upgrade <ID> [quantity]"
-    if (sscanf(arguments, "%d %d", &upgradeId, &quantity) < 1)
+    char *endptr;
+    char *args = (char*)arguments; // Cast away const for parsing
+    
+    // Parse upgrade ID
+    upgradeId = (int)strtol(args, &endptr, 10);
+    if (endptr == args || upgradeId <= 0)
     {
         printf("Error: Invalid upgrade command format.\n");
         printf("Usage: upgrade [ID] [quantity]\n");
         printf("Example: upgrade 2 3 (to buy 3 shield enhancements)\n");
         return false;
+    }
+    
+    // Skip whitespace after upgrade ID
+    while (*endptr == ' ' || *endptr == '\t')
+    {
+        endptr++;
+    }
+    
+    // Parse optional quantity if present
+    if (*endptr != '\0')
+    {
+        char *qty_endptr;
+        long qty_val = strtol(endptr, &qty_endptr, 10);
+        if (qty_endptr != endptr && qty_val > 0)
+        {
+            quantity = (int)qty_val;
+        }
     }
 
     // Make sure quantity is positive

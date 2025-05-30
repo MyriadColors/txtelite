@@ -174,8 +174,8 @@ static inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int q
         }
 
         // Add new cargo type
-        strncpy(playerShip->cargo[cargoSlot].name, cargoName, MAX_SHIP_NAME_LENGTH - 1);
-        playerShip->cargo[cargoSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+        snprintf(playerShip->cargo[cargoSlot].name, MAX_SHIP_NAME_LENGTH, "%s", cargoName);
+        // playerShip->cargo[cargoSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
         playerShip->cargo[cargoSlot].quantity = quantity;
         playerShip->cargo[cargoSlot].purchasePrice = purchasePrice;
     }
@@ -227,9 +227,11 @@ static inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, in
     // If quantity is now 0, clear the slot
     if (playerShip->cargo[cargoSlot].quantity == 0)
     {
-        memset(&playerShip->cargo[cargoSlot], 0, sizeof(CargoItem));
-        strncpy(playerShip->cargo[cargoSlot].name, "Empty", MAX_SHIP_NAME_LENGTH - 1);
-        playerShip->cargo[cargoSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+        // Clear the cargo slot after removing all quantity
+        playerShip->cargo[cargoSlot].quantity = 0;
+        snprintf(playerShip->cargo[cargoSlot].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
+        // playerShip->cargo[cargoSlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
+        playerShip->cargo[cargoSlot].purchasePrice = 0;
     }
 
     printf("Removed %d tonnes of %s from cargo hold.\n", quantity, cargoName);
@@ -446,8 +448,9 @@ static inline bool JettisonAllCargo(PlayerShip *playerShip)
     {
         if (playerShip->cargo[i].quantity > 0)
         {
-            strncpy(cargoToJettison[numCargoTypes].name, playerShip->cargo[i].name, MAX_SHIP_NAME_LENGTH - 1);
-            cargoToJettison[numCargoTypes].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+            // Store information about this cargo type for jettisoning
+            snprintf(cargoToJettison[numCargoTypes].name, MAX_SHIP_NAME_LENGTH, "%s", playerShip->cargo[i].name);
+            // cargoToJettison[numCargoTypes].name[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
             cargoToJettison[numCargoTypes].quantity = playerShip->cargo[i].quantity;
             numCargoTypes++;
             totalJettisoned += playerShip->cargo[i].quantity;
@@ -505,7 +508,8 @@ static inline bool JettisonAllCargo(PlayerShip *playerShip)
     for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
     {
         playerShip->cargo[i].quantity = 0;
-        strcpy(playerShip->cargo[i].name, "Empty");
+        snprintf(playerShip->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
+        // playerShip->cargo[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
         playerShip->cargo[i].purchasePrice = 0;
     }
 

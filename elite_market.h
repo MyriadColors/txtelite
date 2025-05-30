@@ -4,7 +4,7 @@
 #include "elite_utils.h"      // For minimum_value
 #include "elite_ship_types.h" // For PlayerShip structure
 #include <math.h>             // For floor (used in execute_buy_order)
-#include <string.h>           // For string operations (strcpy, strncpy)
+#include <string.h>           // For string operations (snprintf, strcmp, etc.)
 
 // Define constants for market modifiers if not already defined elsewhere
 // These represent a 25% change.
@@ -143,11 +143,9 @@ static inline void init_tradnames(void)
     uint16_t i;
     // Copy names from the Commodities array
     for (i = 0; i < NUM_STANDARD_COMMODITIES; i++)
-    {
-        if (i < (sizeof(Commodities) / sizeof(Commodities[0])))
+    {        if (i < (sizeof(Commodities) / sizeof(Commodities[0])))
         {
-            strncpy(tradnames[i], Commodities[i].name, MAX_LEN - 1);
-            tradnames[i][MAX_LEN - 1] = '\0'; // Ensure null termination
+            snprintf(tradnames[i], MAX_LEN, "%s", Commodities[i].name);
         }
         else
         {
@@ -315,7 +313,7 @@ static inline bool SynchronizeCargoSystems(struct PlayerShip *playerShip)
     for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
     {
         playerShip->cargo[i].quantity = 0;
-        strcpy(playerShip->cargo[i].name, "Empty");
+        snprintf(playerShip->cargo[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
         playerShip->cargo[i].purchasePrice = 0;
     }
 
@@ -339,10 +337,8 @@ static inline bool SynchronizeCargoSystems(struct PlayerShip *playerShip)
             }
 
             if (emptySlot >= 0)
-            {
-                // Copy the cargo into the player ship
-                strncpy(playerShip->cargo[emptySlot].name, tradnames[i], MAX_SHIP_NAME_LENGTH - 1);
-                playerShip->cargo[emptySlot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
+            {                // Copy the cargo into the player ship
+                snprintf(playerShip->cargo[emptySlot].name, MAX_SHIP_NAME_LENGTH, "%s", tradnames[i]);
                 playerShip->cargo[emptySlot].quantity = ShipHold[i];
 
                 // For simplicity, use the current market price as the purchase price

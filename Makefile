@@ -1,53 +1,64 @@
-CC = gcc
+CC = clang
 SRC = txtelite.c
-TARGET = main
+TARGET_BASENAME = main
 
-# Common compiler flags and linker flags
+# Common compiler flags
 CFLAGS_COMMON = -std=c23
-LDFLAGS_COMMON = -lm
+# LDFLAGS_COMMON will be for flags common to ALL OS, -lm is OS-specific
+LDFLAGS_COMMON =
 
-# Debug specific flags (as per your command)
+# OS-specific settings
+EXEEXT =
+RM = rm -f
+LDFLAGS_OS = -lm # Default to Linux-like (e.g., for math library)
+RUN_PREFIX = ./
+
+ifeq ($(OS),Windows_NT)
+    # Windows specific settings
+    EXEEXT = .exe
+    LDFLAGS_OS =
+    RM = del /F /Q
+    RUN_PREFIX = .\
+endif
+
+TARGET = $(TARGET_BASENAME)$(EXEEXT)
+
+# Debug specific flags
 DEBUG_SPECIFIC_FLAGS = -Wall -Werror -Wextra
 
 # Combine flags for different build types
 # Debug build flags
 CFLAGS_DEBUG = $(CFLAGS_COMMON) $(DEBUG_SPECIFIC_FLAGS)
-# Release build flags (omitting -Wall -Werror -Wextra)
+# Release build flags
 CFLAGS_RELEASE = $(CFLAGS_COMMON)
 
 # Default target: build with debug flags
 all: $(TARGET)
 
 # Rule to build $(TARGET) with debug flags
-# This is the default rule for building the target 'main'
 $(TARGET): $(SRC)
-	@echo "Compiling $(SRC) with debug flags..."
-	$(CC) $(CFLAGS_DEBUG) $(SRC) -o $(TARGET) $(LDFLAGS_COMMON)
+	@echo "Compiling $(SRC) with debug flags for $(OS)..."
+	$(CC) $(CFLAGS_DEBUG) $(SRC) -o $(TARGET) $(LDFLAGS_COMMON) $(LDFLAGS_OS)
 	@echo "Build complete: $(TARGET) (debug mode)"
 
-# Target to build for release (no debug flags)
-# This will re-compile $(TARGET) using release flags
+# Target to build for release
 release:
-	@echo "Compiling $(SRC) for release..."
-	$(CC) $(CFLAGS_RELEASE) $(SRC) -o $(TARGET) $(LDFLAGS_COMMON)
+	@echo "Compiling $(SRC) for release for $(OS)..."
+	$(CC) $(CFLAGS_RELEASE) $(SRC) -o $(TARGET) $(LDFLAGS_COMMON) $(LDFLAGS_OS)
 	@echo "Build complete: $(TARGET) (release mode)"
 
 # Target to run the compiled program
-# This depends on $(TARGET). If $(TARGET) is not present or outdated,
-# it will be rebuilt using the default (debug) rule.
-# If 'make release' was run previously and $(TARGET) is up-to-date, it runs that version.
 run: $(TARGET)
 	@echo "Running $(TARGET)..."
-	.\$(TARGET)
+	$(RUN_PREFIX)$(TARGET)
 
 # Target to clean build artifacts
 clean:
 	@echo "Cleaning up..."
-	# rm -f is common in Makefiles and works with MinGW/MSYS environments on Windows
-	rm -f $(TARGET)
-	# Adding .exe just in case, though -o $(TARGET) should prevent it
-	rm -f $(TARGET).exe
+	$(RM) $(TARGET_BASENAME)$(EXEEXT)
+	$(RM) $(TARGET_BASENAME) # Also try to remove without extension, just in case
 	@echo "Clean complete."
 
-# Declare phony targets (targets that are not files)
+# Declare phony targets
 .PHONY: all release run clean
+endif

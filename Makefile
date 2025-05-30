@@ -5,7 +5,7 @@ TARGET_BASENAME = main
 # Common compiler flags
 CFLAGS_COMMON = -std=c23
 # LDFLAGS_COMMON will be for flags common to ALL OS, -lm is OS-specific
-LDFLAGS_COMMON =
+LDFLAGS_COMMON = -ferror-limit=100
 
 # OS-specific settings
 EXEEXT =

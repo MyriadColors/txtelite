@@ -179,11 +179,9 @@ static inline void initialize_star_system_for_current_planet(void)
 
 /**
  * @brief Displays a brief summary of the player's ship status
- *
- * This function prints a concise status line containing:
+ * * This function prints a concise status line containing:
  * - Ship name and class
  * - Hull integrity as percentage of base strength
- * - Energy bank level (with one decimal place)
  * - Fuel level in light years (converted from liters)
  * - Cargo hold utilization (current/maximum capacity)
  *
@@ -208,9 +206,6 @@ static inline void display_ship_status_brief(void)
     // Calculate hull percentage
     int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / PlayerShipPtr->shipType->baseHullStrength;
     printf("Hull: %d%% - ", hullPercentage);
-    // Round energy to one decimal place
-    printf("Energy: %.1f - ", PlayerShipPtr->attributes.energyBanks);
-
     // Display fuel information including consumption rate
     double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
     double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;

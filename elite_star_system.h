@@ -1233,26 +1233,15 @@ static inline bool travel_to_celestial(StarSystem *system,
 
   default:
     fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
-    return false;
-  } // Calculate travel time
+    return false;  } // Calculate travel time
   uint32_t travelTime = calculate_travel_time(
-      startDistance, endDistance); // Calculate energy requirement for travel
+      startDistance, endDistance); // Calculate fuel requirement for travel
   double distanceDelta = fabs(endDistance - startDistance);
-  double energyRequired = calculate_travel_energy_requirement(distanceDelta);
   double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-  // Check if player ship has enough energy and fuel
+  // Check if player ship has enough fuel
   extern struct PlayerShip *PlayerShipPtr;
   if (PlayerShipPtr != NULL) {
-    // Check if there's enough energy
-    if (PlayerShipPtr->attributes.energyBanks < energyRequired) {
-      fprintf(stderr, "Error: Insufficient energy for travel.\n");
-      printf("\nTravel aborted: Insufficient energy.\n");
-      printf("Required: %.1f, Available: %.1f\n", energyRequired,
-             PlayerShipPtr->attributes.energyBanks);
-      return false;
-    }
-
     // Check if there's enough fuel
     if (PlayerShipPtr->attributes.fuelLiters < fuelRequired) {
       fprintf(stderr, "Error: Insufficient fuel for travel.\n");
@@ -1260,8 +1249,7 @@ static inline bool travel_to_celestial(StarSystem *system,
       printf("Required: %.3f liters, Available: %.1f liters\n", fuelRequired,
              PlayerShipPtr->attributes.fuelLiters);
       return false;
-    } // Consume energy
-    PlayerShipPtr->attributes.energyBanks -= energyRequired;
+    }
 
     // Consume fuel using ConsumeFuel function
     if (!ConsumeFuel(fuelRequired, true)) {
@@ -1270,7 +1258,6 @@ static inline bool travel_to_celestial(StarSystem *system,
       return false;
     }
 
-    printf("\nTravel energy consumed: %.1f units", energyRequired);
     printf("\nTravel fuel consumed: %.3f liters (%.5f LY)", fuelRequired,
            fuelRequired / 100.0);
   }

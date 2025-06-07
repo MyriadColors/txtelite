@@ -121,31 +121,6 @@ static inline bool ShipRepair(int repairAmount, bool useCash)
 }
 
 /**
- * Recharges energy banks and shields
- * 
- * @param rechargeAmount Amount of energy to recharge
- * @param rechargeFully If true, recharges to maximum regardless of amount
- * @return true if recharge was successful
- */
-static inline bool ShipRechargeEnergy(double rechargeAmount, bool rechargeFully)
-{
-    if (PlayerShipPtr == NULL) {
-        return false;
-    }
-
-    // If rechargeFully is true, we need to calculate the amount to reach max energy.
-    double amountToRecharge = rechargeAmount;
-    if (rechargeFully) {
-        amountToRecharge = PlayerShipPtr->attributes.maxEnergyBanks - PlayerShipPtr->attributes.energyBanks;
-        if (amountToRecharge < 0) amountToRecharge = 0; // Already full or overfull
-    }
-
-    double energyRecharged = RechargeEnergy(PlayerShipPtr, amountToRecharge, true, 0.0, true);
-
-    return energyRecharged > 0.0;
-}
-
-/**
  * Gets the fuel cost per unit based on ship type
  * This is an inline declaration of the function from txtelite.c
  *

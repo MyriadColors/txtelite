@@ -33,13 +33,7 @@ typedef struct NavigationState
     double distanceFromStar; // Current distance from system's star in AU
 } NavigationState;
 
-// Calculates energy requirement for in-system travel based on distance
-static inline double calculate_travel_energy_requirement(double distanceInAU)
-{
-    // Base energy requirement: 1 energy unit per 0.1 AU
-    // This is an example formula that can be adjusted for game balance
-    return distanceInAU * 10.0;
-}
+
 
 // Calculates fuel requirement for in-system travel based on distance
 static inline double calculate_travel_fuel_requirement(double distanceInAU)

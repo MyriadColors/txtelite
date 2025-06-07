@@ -18,7 +18,6 @@ static inline bool AddEquipment(PlayerShip *playerShip,
                          EquipmentSlotType slotType,
                          const char *equipmentName,
                          EquipmentTypeSpecifics specificType,
-                         double energyDraw,
                          double damageOutput);
 
 static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType);
@@ -40,7 +39,6 @@ static inline void MapEquipmentIndices(PlayerShip *playerShip);
 #define COST_MISSILE_DUMBFIRE 200
 #define COST_REAR_LASER 1500
 #define COST_ECM 600
-#define COST_EXTRA_ENERGY_UNIT 1500
 #define COST_ESCAPE_POD 1000
 #define COST_FUEL_SCOOPS 525
 #define COST_CARGO_BAY_EXTENSION 400
@@ -51,15 +49,10 @@ static inline void MapEquipmentIndices(PlayerShip *playerShip);
 #define CARGO_BAY_EXTENSION_CAPACITY 4  // 4 tonnes per cargo bay extension
 #define MISSILE_PYLON_CAPACITY 4        // 4 missiles per pylon
 #define SHIELD_UPGRADE_AMOUNT 25.0      // 25 additional shield points per upgrade
-#define EXTRA_ENERGY_UNIT_CAPACITY 50.0 // 50 additional energy bank capacity
 
 // Upgrade costs (credits)
 #define COST_HULL_REINFORCEMENT 2500 // Cost per point of hull reinforcement
 #define COST_SHIELD_ENHANCEMENT 4000 // Cost per shield upgrade level
-// Redefine COST_EXTRA_ENERGY_UNIT for ship upgrades
-#undef COST_EXTRA_ENERGY_UNIT
-#define COST_EXTRA_ENERGY_UNIT 2500             // Cost per energy unit upgrade
-#define COST_ENERGY_UNIT COST_EXTRA_ENERGY_UNIT // Alias for backward compatibility
 // Update cargo bay extension cost
 #undef COST_CARGO_BAY_EXTENSION
 #define COST_CARGO_BAY_EXTENSION 800 // Cost per cargo bay extension
@@ -68,7 +61,6 @@ static inline void MapEquipmentIndices(PlayerShip *playerShip);
 // Maximum upgrade levels
 #define MAX_HULL_UPGRADE 50         // Maximum hull reinforcement level
 #define MAX_SHIELD_UPGRADE 10       // Maximum shield enhancement level
-#define MAX_ENERGY_UPGRADE 5        // Maximum energy unit upgrades
 #define MAX_CARGO_UPGRADE 5         // Maximum cargo bay extensions
 #define MAX_MISSILE_PYLON_UPGRADE 3 // Maximum missile pylon upgrades
 
@@ -77,7 +69,6 @@ typedef enum ShipUpgradeType
 {
     UPGRADE_TYPE_HULL_REINFORCEMENT,
     UPGRADE_TYPE_SHIELD_ENHANCEMENT,
-    UPGRADE_TYPE_ENERGY_UNIT,
     UPGRADE_TYPE_CARGO_BAY,
     UPGRADE_TYPE_MISSILE_PYLON
 } ShipUpgradeType;
@@ -91,12 +82,10 @@ typedef struct ShipUpgradeParameters
     const char *shipClass;              // Ship class name this applies to
     float hullUpgradeCostMultiplier;    // Multiplier for hull upgrade cost
     float shieldUpgradeCostMultiplier;  // Multiplier for shield upgrade cost
-    float energyUpgradeCostMultiplier;  // Multiplier for energy upgrade cost
     float cargoUpgradeCostMultiplier;   // Multiplier for cargo upgrade cost
     float missileUpgradeCostMultiplier; // Multiplier for missile pylon upgrade cost
     int maxHullUpgrade;                 // Maximum hull upgrade level for this ship
     int maxShieldUpgrade;               // Maximum shield upgrade level for this ship
-    int maxEnergyUpgrade;               // Maximum energy unit upgrade level for this ship
     int maxCargoUpgrade;                // Maximum cargo bay extension level for this ship
     int maxMissilePylonUpgrade;         // Maximum missile pylon upgrade level for this ship
 } ShipUpgradeParameters;
@@ -104,10 +93,9 @@ typedef struct ShipUpgradeParameters
 // Default upgrade parameters
 static const ShipUpgradeParameters DEFAULT_UPGRADE_PARAMS = {
     "Default",
-    1.0f, 1.0f, 1.0f, 1.0f, 1.0f, // Cost multipliers (1.0 = standard)
+    1.0f, 1.0f, 1.0f, 1.0f, // Cost multipliers (1.0 = standard)
     MAX_HULL_UPGRADE,
     MAX_SHIELD_UPGRADE,
-    MAX_ENERGY_UPGRADE,
     MAX_CARGO_UPGRADE,
     MAX_MISSILE_PYLON_UPGRADE};
 
@@ -116,20 +104,20 @@ static const ShipUpgradeParameters SHIP_UPGRADE_PARAMS[] = {
     // Cobra Mk III - baseline ship
     {
         "Cobra Mk III",
-        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, // Standard costs
-        40, 8, 4, 5, 3                // Moderate max levels
+        1.0f, 1.0f, 1.0f, 1.0f, // Standard costs
+        40, 8, 5, 3             // Moderate max levels
     },
     // Viper - combat-focused ship
     {
         "Viper",
-        0.9f, 0.9f, 1.1f, 1.3f, 0.8f, // Cheaper combat upgrades, expensive cargo
-        35, 10, 5, 3, 4               // High shield and missile capacity, limited cargo
+        0.9f, 0.9f, 1.3f, 0.8f, // Cheaper combat upgrades, expensive cargo
+        35, 10, 3, 4            // High shield and missile capacity, limited cargo
     },
     // Asp Mk II - higher tier ship with better upgrade potential
     {
         "Asp Mk II",
-        1.1f, 1.1f, 0.9f, 0.9f, 1.0f, // More expensive hull/shields, cheaper utilities
-        50, 12, 6, 6, 4               // Higher maximum levels overall
+        1.1f, 1.1f, 0.9f, 1.0f, // More expensive hull/shields, cheaper utilities
+        50, 12, 6, 4            // Higher maximum levels overall
     }};
 
 #define NUM_SHIP_UPGRADE_PARAMS (sizeof(SHIP_UPGRADE_PARAMS) / sizeof(ShipUpgradeParameters))
@@ -172,18 +160,13 @@ static inline int GetUpgradeCost(ShipUpgradeType upgradeType, const ShipUpgradeP
     if (shipParameters == NULL)
     {
         return 0;
-    }
-
-    switch (upgradeType)
+    }    switch (upgradeType)
     {
     case UPGRADE_TYPE_HULL_REINFORCEMENT:
         return (int)(COST_HULL_REINFORCEMENT * shipParameters->hullUpgradeCostMultiplier);
 
     case UPGRADE_TYPE_SHIELD_ENHANCEMENT:
         return (int)(COST_SHIELD_ENHANCEMENT * shipParameters->shieldUpgradeCostMultiplier);
-
-    case UPGRADE_TYPE_ENERGY_UNIT:
-        return (int)(COST_EXTRA_ENERGY_UNIT * shipParameters->energyUpgradeCostMultiplier);
 
     case UPGRADE_TYPE_CARGO_BAY:
         return (int)(COST_CARGO_BAY_EXTENSION * shipParameters->cargoUpgradeCostMultiplier);
@@ -208,18 +191,13 @@ static inline int GetMaxUpgradeLevel(ShipUpgradeType upgradeType, const ShipUpgr
     if (shipParameters == NULL)
     {
         return 0;
-    }
-
-    switch (upgradeType)
+    }    switch (upgradeType)
     {
     case UPGRADE_TYPE_HULL_REINFORCEMENT:
         return shipParameters->maxHullUpgrade;
 
     case UPGRADE_TYPE_SHIELD_ENHANCEMENT:
         return shipParameters->maxShieldUpgrade;
-
-    case UPGRADE_TYPE_ENERGY_UNIT:
-        return shipParameters->maxEnergyUpgrade;
 
     case UPGRADE_TYPE_CARGO_BAY:
         return shipParameters->maxCargoUpgrade;
@@ -308,33 +286,8 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
             return false;
         }
         // Increase shield strength
-        playerShip->attributes.shieldStrengthFront += (double)upgradeLevel * (SHIELD_UPGRADE_AMOUNT / 2.0);
-        playerShip->attributes.shieldStrengthAft += (double)upgradeLevel * (SHIELD_UPGRADE_AMOUNT / 2.0);
+        playerShip->attributes.shieldStrengthFront += (double)upgradeLevel * (SHIELD_UPGRADE_AMOUNT / 2.0);        playerShip->attributes.shieldStrengthAft += (double)upgradeLevel * (SHIELD_UPGRADE_AMOUNT / 2.0);
         upgrade_name = "Shield Enhancement";
-        upgrade_success = true;
-        break;
-    }
-
-    case UPGRADE_TYPE_ENERGY_UNIT:
-    {
-        // Get ship-specific max upgrade level
-        const ShipUpgradeParameters *shipParams = GetShipUpgradeParameters(playerShip->shipClassName);
-        int maxLevel = shipParams->maxEnergyUpgrade;
-
-        // Calculate current energy level
-        int currentLevel = (int)((playerShip->attributes.energyBanks -
-                                  playerShip->shipType->baseEnergyBanks) /
-                                 EXTRA_ENERGY_UNIT_CAPACITY);
-        // Check if at max level
-        if (currentLevel + upgradeLevel > maxLevel)
-        {
-            printf("Error: Maximum energy bank level reached. Max: %d, Current: %d\n",
-                   maxLevel, currentLevel);
-            return false;
-        }
-        // Increase energy banks capacity
-        playerShip->attributes.energyBanks += (double)upgradeLevel * EXTRA_ENERGY_UNIT_CAPACITY;
-        upgrade_name = "Energy Bank Expansion";
         upgrade_success = true;
         break;
     }
@@ -440,63 +393,40 @@ static inline bool ConfigureCombatLoadout(PlayerShip *playerShip)
     }
 
     // Add military-grade weapons
-    EquipmentTypeSpecifics equipType; // Use the new named union
-
-    // Forward military laser
+    EquipmentTypeSpecifics equipType; // Use the new named union    // Forward military laser
     equipType.weaponType = WEAPON_TYPE_MILITARY_LASER;
     bool success = AddEquipment(
         playerShip,
         EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Military Laser",
         equipType,
-        15.0, // Higher energy draw
         10.0  // Higher damage output
-    );
-    // Rear-mounted beam laser
+    );    // Rear-mounted beam laser
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
     success &= AddEquipment(
         playerShip,
         EQUIPMENT_SLOT_TYPE_AFT_WEAPON,
         "Beam Laser (Aft)",
         equipType,
-        12.0, // Energy draw
         7.5   // Damage output
-    );
-
-    // ECM System    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
+    );    // ECM System    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
     success &= AddEquipment(
         playerShip,
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1,
-        "ECM System",
+        EQUIPMENT_SLOT_TYPE_DEFENSIVE_1,        "ECM System",
         equipType,
-        5.0, // Energy draw
         0.0  // No damage (defensive)
     );
-    // Extra Energy Unit
-    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT;
-    success &= AddEquipment(
-        playerShip,
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_2,
-        "Extra Energy Unit",
-        equipType,
-        0.0, // No ongoing draw (it provides energy)
-        0.0  // No damage (defensive)
-    );
-
-    // Escape Pod    equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
+    // Escape Pod
+    equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
     success &= AddEquipment(
         playerShip,
         UTILITY_SYSTEM_1,
         "Escape Pod",
         equipType,
-        0.0, // No energy draw
         0.0  // No damage (utility)
-    );
-
-    // Apply core upgrades for combat
+    );    // Apply core upgrades for combat
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 2, 0, false);  // Improved shields
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 20, 0, false); // Reinforced hull
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_ENERGY_UNIT, 2, 0, false);         // Extra energy capacity
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_MISSILE_PYLON, 2, 0, false);       // Missile pylons
 
     // Add a full complement of missiles
@@ -544,53 +474,44 @@ static inline bool ConfigureTradingLoadout(PlayerShip *playerShip)
 
     // Add trading-focused equipment
     EquipmentTypeSpecifics equipType; // Use the new named union
-                                      // Forward beam laser (better than pulse, less energy than military)
+                                  // Forward beam laser (better than pulse, less energy than military)
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
     bool success = AddEquipment(
         playerShip,
         EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Beam Laser",
         equipType,
-        12.0, // Energy draw
         7.5   // Damage output
-    );
-    // ECM System for missile defense
+    );    // ECM System for missile defense
     equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
     success &= AddEquipment(
         playerShip,
         EQUIPMENT_SLOT_TYPE_DEFENSIVE_1,
         "ECM System",
         equipType,
-        5.0, // Energy draw
         0.0  // No damage (defensive)
-    );
-    // Docking Computer for easier station docking
+    );    // Docking Computer for easier station docking
     equipType.utilityType = UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER;
     success &= AddEquipment(
         playerShip,
         UTILITY_SYSTEM_1,
         "Docking Computer",
         equipType,
-        2.0, // Small energy draw
         0.0  // No damage (utility)
-    );
-    // Cargo Bay Extension in Utility Slot 2
+    );    // Cargo Bay Extension in Utility Slot 2
     equipType.utilityType = UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION;
     success &= AddEquipment(
         playerShip,
         UTILITY_SYSTEM_2,
         "Cargo Bay Extension",
         equipType,
-        0.0, // No energy draw
         0.0  // No damage (utility)
-    );
-    // Cargo Bay Extension in Utility Slot 3
+    );    // Cargo Bay Extension in Utility Slot 3
     success &= AddEquipment(
         playerShip,
         UTILITY_SYSTEM_3,
         "Cargo Bay Extension",
         equipType,
-        0.0, // No energy draw
         0.0  // No damage (utility)
     );
 
@@ -637,24 +558,21 @@ static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
 
     // Add explorer-focused equipment
     EquipmentTypeSpecifics equipType; // Use the new named union
-                                      // Forward pulse laser (standard)
+                                  // Forward pulse laser (standard)
     equipType.weaponType = WEAPON_TYPE_PULSE_LASER;
     bool success = AddEquipment(
         playerShip,
         EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Pulse Laser",
         equipType,
-        10.0, // Energy draw
         5.0   // Damage output
-    );
-    // Fuel Scoops - essential for explorers
+    );    // Fuel Scoops - essential for explorers
     equipType.utilityType = UTILITY_SYSTEM_TYPE_FUEL_SCOOPS;
     success &= AddEquipment(
         playerShip,
         UTILITY_SYSTEM_1,
         "Fuel Scoops",
         equipType,
-        3.0, // Energy when scooping
         0.0  // No damage (utility)
     );       // Scanner Upgrade
     equipType.utilityType = UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE;
@@ -663,7 +581,6 @@ static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
         UTILITY_SYSTEM_2,
         "Advanced Scanner",
         equipType,
-        4.0, // Energy draw
         0.0  // No damage (utility)
     );       // Escape Pod for safety
     equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
@@ -672,12 +589,8 @@ static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
         UTILITY_SYSTEM_3,
         "Escape Pod",
         equipType,
-        0.0, // No energy draw
         0.0  // No damage (utility)
-    );
-
-    // Apply core upgrades for exploration
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_ENERGY_UNIT, 1, 0, false);         // Extra energy for long journeys
+    );    // Apply core upgrades for exploration
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 10, 0, false); // Some hull reinforcement
 
     // Fill fuel tanks to maximum
@@ -718,9 +631,7 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
         {
             RemoveEquipment(playerShip, (EquipmentSlotType)i);
         }
-    }
-
-    // Add mining-focused equipment
+    }    // Add mining-focused equipment
     EquipmentTypeSpecifics equipType; // Use the new named union
                                       // Forward Mining Laser - essential for asteroid mining
     equipType.weaponType = WEAPON_TYPE_MINING_LASER;
@@ -729,7 +640,6 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
         EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
         "Mining Laser",
         equipType,
-        12.0, // Energy draw
         3.0   // Less combat damage, but effective on asteroids
     );
     // Beam Laser - for defense against pirates
@@ -739,7 +649,6 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
         EQUIPMENT_SLOT_TYPE_AFT_WEAPON,
         "Beam Laser (Aft)",
         equipType,
-        12.0, // Energy draw
         7.5   // Damage output
     );
     // ECM System for defense
@@ -749,17 +658,6 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
         EQUIPMENT_SLOT_TYPE_DEFENSIVE_1,
         "ECM System",
         equipType,
-        5.0, // Energy draw
-        0.0  // No damage (defensive)
-    );
-    // Extra Energy Unit for mining operations
-    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT;
-    success &= AddEquipment(
-        playerShip,
-        EQUIPMENT_SLOT_TYPE_DEFENSIVE_2,
-        "Extra Energy Unit",
-        equipType,
-        0.0, // No ongoing draw (it provides energy)
         0.0  // No damage (defensive)
     );
     // Cargo Bay Extension in Utility Slot 1
@@ -769,7 +667,6 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
         UTILITY_SYSTEM_1,
         "Cargo Bay Extension",
         equipType,
-        0.0, // No energy draw
         0.0  // No damage (utility)
     );
     // Cargo Bay Extension in Utility Slot 2
@@ -778,12 +675,8 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
         UTILITY_SYSTEM_2,
         "Cargo Bay Extension",
         equipType,
-        0.0, // No energy draw
         0.0  // No damage (utility)
-    );
-
-    // Apply core upgrades for mining
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_ENERGY_UNIT, 2, 0, false);        // Extra energy for mining lasers
+    );    // Apply core upgrades for mining
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_CARGO_BAY, 2, 0, false);          // More cargo space for mined materials
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 1, 0, false); // Shield improvement for debris protection
 
@@ -819,7 +712,6 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
                               EquipmentTypeSpecifics specificType, // Changed to named union
                               int cost,
                               int techLevelRequired,
-                              double energyDraw,
                               double damageOutput)
 {
 
@@ -848,14 +740,12 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
         printf("Required tech level: %d, Current system tech level: %d\n",
                techLevelRequired, Galaxy[CurrentPlanet].techLev);
         return false;
-    }
-    // Try to add the equipment
+    }    // Try to add the equipment
     bool equipmentAdded = AddEquipment(
         playerShip,
         slotType,
         equipmentName,
         specificType,
-        energyDraw,
         damageOutput);
     if (equipmentAdded)
     {
@@ -895,15 +785,12 @@ static inline void DisplayUpgrades(const PlayerShip *playerShip)
     // Display upgrades header
     printf("\n=== Ship Upgrades Available ===\n");
     printf("Your current ship: %s (%s)\n", playerShip->shipName, playerShip->shipClassName);
-    printf("Available credits: %.1f CR\n\n", (double)Cash / 10.0);
-
-    // Display current ship stats
+    printf("Available credits: %.1f CR\n\n", (double)Cash / 10.0);    // Display current ship stats
     printf("Current ship specifications:\n");
     printf("  Hull Strength: %d\n", playerShip->attributes.hullStrength);
     printf("  Shield Strength: %.1f front, %.1f aft\n",
            playerShip->attributes.shieldStrengthFront,
            playerShip->attributes.shieldStrengthAft);
-    printf("  Energy Banks: %.1f\n", playerShip->attributes.energyBanks);
     printf("  Cargo Capacity: %d/%d tonnes\n",
            playerShip->attributes.currentCargoTons,
            playerShip->attributes.cargoCapacityTons);
@@ -929,24 +816,13 @@ static inline void DisplayUpgrades(const PlayerShip *playerShip)
                                    (SHIELD_UPGRADE_AMOUNT / 2.0));
     printf("%-4d %-25s %-15d %-15d +%.1f Shield\n",
            2, "Shield Enhancement", currentShieldLevel,
-           COST_SHIELD_ENHANCEMENT, SHIELD_UPGRADE_AMOUNT);
-
-    // 3. Energy Bank Expansion
-    // Calculate current energy upgrade level
-    int currentEnergyLevel = (int)((playerShip->attributes.energyBanks -
-                                    playerShip->shipType->baseEnergyBanks) /
-                                   EXTRA_ENERGY_UNIT_CAPACITY);
-    printf("%-4d %-25s %-15d %-15d +%.1f Energy\n",
-           3, "Energy Bank Expansion", currentEnergyLevel,
-           COST_ENERGY_UNIT, EXTRA_ENERGY_UNIT_CAPACITY);
-
-    // 4. Cargo Bay Extension
+           COST_SHIELD_ENHANCEMENT, SHIELD_UPGRADE_AMOUNT);    // 3. Cargo Bay Extension
     // Calculate current cargo upgrade level
     int currentCargoLevel = (playerShip->attributes.cargoCapacityTons -
                              playerShip->shipType->baseCargoCapacityTons) /
                             CARGO_BAY_EXTENSION_CAPACITY;
     printf("%-4d %-25s %-15d %-15d +%d Cargo Space\n",
-           4, "Cargo Bay Extension", currentCargoLevel,
+           3, "Cargo Bay Extension", currentCargoLevel,
            COST_CARGO_BAY_EXTENSION, CARGO_BAY_EXTENSION_CAPACITY);
 
     // 5. Missile Pylon
@@ -986,15 +862,12 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
     // Display upgrade shop header
     printf("\n=== Shipyard Upgrade Center ===\n");
     printf("Current ship: %s (%s)\n", playerShip->shipName, playerShip->shipClassName);
-    printf("Available credits: %.1f CR\n\n", playerCash);
-
-    // Display current ship stats
+    printf("Available credits: %.1f CR\n\n", playerCash);    // Display current ship stats
     printf("Current Ship Specifications:\n");
     printf("- Hull Strength: %d\n", playerShip->attributes.hullStrength);
     printf("- Shield Strength (Front/Aft): %.1f / %.1f\n",
            playerShip->attributes.shieldStrengthFront,
            playerShip->attributes.shieldStrengthAft);
-    printf("- Energy Banks: %.1f\n", playerShip->attributes.energyBanks);
     printf("- Cargo Capacity: %d tons\n", playerShip->attributes.cargoCapacityTons);
     printf("- Missile Pylons: %d\n\n", playerShip->attributes.missilePylons);
     // Display available upgrades
@@ -1022,20 +895,7 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
     int shieldCost = GetUpgradeCost(UPGRADE_TYPE_SHIELD_ENHANCEMENT, shipParams);
     printf("%-4d %-25s %-15d %-15.1f +%.1f Shield (%d max)\n",
            2, "Shield Enhancement", currentShieldLevel,
-           (double)shieldCost / 10.0, SHIELD_UPGRADE_AMOUNT, maxShieldLevel);
-
-    // 3. Energy Bank Expansion
-    // Calculate current energy upgrade level
-    int currentEnergyLevel = (int)((playerShip->attributes.energyBanks -
-                                    playerShip->shipType->baseEnergyBanks) /
-                                   EXTRA_ENERGY_UNIT_CAPACITY);
-    int maxEnergyLevel = shipParams->maxEnergyUpgrade;
-    int energyCost = GetUpgradeCost(UPGRADE_TYPE_ENERGY_UNIT, shipParams);
-    printf("%-4d %-25s %-15d %-15.1f +%.1f Energy (%d max)\n",
-           3, "Energy Bank Expansion", currentEnergyLevel,
-           (double)energyCost / 10.0, EXTRA_ENERGY_UNIT_CAPACITY, maxEnergyLevel);
-
-    // 4. Cargo Bay Extension
+           (double)shieldCost / 10.0, SHIELD_UPGRADE_AMOUNT, maxShieldLevel);    // 3. Cargo Bay Extension
     // Calculate current cargo upgrade level
     int currentCargoLevel = (playerShip->attributes.cargoCapacityTons -
                              playerShip->shipType->baseCargoCapacityTons) /
@@ -1043,10 +903,10 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
     int maxCargoLevel = shipParams->maxCargoUpgrade;
     int cargoCost = GetUpgradeCost(UPGRADE_TYPE_CARGO_BAY, shipParams);
     printf("%-4d %-25s %-15d %-15.1f +%d Cargo Space (%d max)\n",
-           4, "Cargo Bay Extension", currentCargoLevel,
+           3, "Cargo Bay Extension", currentCargoLevel,
            (double)cargoCost / 10.0, CARGO_BAY_EXTENSION_CAPACITY, maxCargoLevel);
 
-    // 5. Missile Pylon
+    // 4. Missile Pylon
     // Calculate current pylon upgrade level
     int currentPylonLevel = playerShip->attributes.missilePylons -
                             playerShip->shipType->initialMissilePylons;
@@ -1074,7 +934,7 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
  */
 static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int quantity)
 {
-    if (playerShip == NULL || upgradeId < 1 || upgradeId > 5 || quantity <= 0)
+    if (playerShip == NULL || upgradeId < 1 || upgradeId > 4 || quantity <= 0)
     {
         printf("Error: Invalid upgrade parameters.\n");
         return false;
@@ -1088,8 +948,7 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
     const char *upgradeName = "Unknown";
 
     switch (upgradeId)
-    {
-    case 1: // Hull Reinforcement
+    {    case 1: // Hull Reinforcement
         upgradeType = UPGRADE_TYPE_HULL_REINFORCEMENT;
         upgradeName = "Hull Reinforcement";
         break;
@@ -1099,17 +958,12 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
         upgradeName = "Shield Enhancement";
         break;
 
-    case 3: // Energy Bank Expansion
-        upgradeType = UPGRADE_TYPE_ENERGY_UNIT;
-        upgradeName = "Energy Bank Expansion";
-        break;
-
-    case 4: // Cargo Bay Extension
+    case 3: // Cargo Bay Extension
         upgradeType = UPGRADE_TYPE_CARGO_BAY;
         upgradeName = "Cargo Bay Extension";
         break;
 
-    case 5: // Missile Pylon
+    case 4: // Missile Pylon
         upgradeType = UPGRADE_TYPE_MISSILE_PYLON;
         upgradeName = "Missile Pylon";
         break;

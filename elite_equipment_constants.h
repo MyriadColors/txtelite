@@ -6,13 +6,12 @@
 // These are indices into the ship's equipment array for common equipment
 #define EQUIP_ECM_SYSTEM 0
 #define EQUIP_FUEL_SCOOP 1
-#define EQUIP_ENERGY_BOMB 2
-#define EQUIP_DOCKING_COMPUTER 3
-#define EQUIP_SCANNER_UPGRADE 4
-#define EQUIP_ESCAPE_POD 5
-#define EQUIP_MINING_LASER 6
-#define EQUIP_BEAM_LASER 7
-#define EQUIP_MILITARY_LASER 8
+#define EQUIP_DOCKING_COMPUTER 2
+#define EQUIP_SCANNER_UPGRADE 3
+#define EQUIP_ESCAPE_POD 4
+#define EQUIP_MINING_LASER 5
+#define EQUIP_BEAM_LASER 6
+#define EQUIP_MILITARY_LASER 7
 
 // Additional equipment status flags
 #define EQUIP_STATUS_NOT_PRESENT 0

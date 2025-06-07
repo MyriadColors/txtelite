@@ -69,26 +69,14 @@ static inline bool do_jump(char *commandArguments) {
   uint16_t fuelNeeded =
       (uint16_t)((float)d * ((float)fuelCostPerUnit /
                              2.0)); // Scale based on ship efficiency
-
   if (fuelNeeded > Fuel) {
     printf("\nJump too far - requires %d fuel units, you have %d", fuelNeeded,
            Fuel);
     return false;
   }
 
-  // Check ship energy requirements - jumps require energy
+  // Use the new ConsumeFuel function to update both global and ship fuel
   if (PlayerShipPtr != NULL) {
-    // Hyperjump requires at least 20% of max energy
-    float energyRequired = PlayerShipPtr->attributes.maxEnergyBanks * 0.2f;
-
-    if (PlayerShipPtr->attributes.energyBanks < energyRequired) {
-      printf("\nInsufficient energy for hyperspace jump");
-      return false;
-    }
-    // Consume energy for jump
-    PlayerShipPtr->attributes.energyBanks -= energyRequired;
-
-    // Use the new ConsumeFuel function to update both global and ship fuel
     if (!ConsumeFuel((double)fuelNeeded, false)) {
       printf("\nJump failed: Insufficient fuel");
       return false;
@@ -425,7 +413,7 @@ static inline bool do_help(char *commandArguments) {
     // Ship-related commands
     if (strcmp(command, "ship") == 0) {
       printf("\nSHIP - Display basic ship status information");
-      printf("\n  Shows hull integrity, energy, fuel, and cargo capacity");
+      printf("\n  Shows hull integrity, fuel, and cargo capacity");
       return true;
     } else if (strcmp(command, "shipinfo") == 0) {
       printf("\nSHIPINFO - Display detailed ship information");
@@ -445,13 +433,9 @@ static inline bool do_help(char *commandArguments) {
       printf("\n  Available equipment types:");
       printf("\n    ecm      - Electronic Counter Measures (600 CR)");
       printf("\n    fuelscoop - Fuel Scoop for collecting fuel from stars (525 "
-             "CR)");
-      printf(
+             "CR)");      printf(
           "\n    dockcomp - Docking Computer for automated docking (1500 CR)");
       printf("\n    escape   - Escape Pod for emergency escape (1000 CR)");
-      printf("\n    energy   - Extra Energy Unit for more energy capacity "
-             "(1500 CR)");
-      printf("\n    ebomb    - Energy Bomb for emergency defense (2500 CR)");
       printf(
           "\n    cargo    - Cargo Bay Extension for +4 tons capacity (400 CR)");
       printf("\n    pulse    - Pulse Laser for basic combat (400 CR)");
@@ -571,11 +555,7 @@ static inline bool do_help(char *commandArguments) {
       printf("\n  Example: travel 2    - Travel to the second planet");
       printf("\n  Example: travel 1.3  - Travel to the third station orbiting "
              "the first planet");
-      printf("\n  Example: travel N    - Travel to the Nav Beacon");
-      printf("\n  Note: Travel consumes game time based on distance and energy "
-             "based on distance.");
-      printf("\n        Energy requirements are calculated at a rate of 1 "
-             "energy unit per 0.1 AU.");
+      printf("\n  Example: travel N    - Travel to the Nav Beacon");      printf("\n  Note: Travel consumes game time based on distance.");
       printf(
           "\n        Fuel is also consumed at a rate of 0.025 liters per AU.");
       return true;
@@ -606,7 +586,7 @@ static inline bool do_help(char *commandArguments) {
     if (strcmp(command, "shipyard") == 0) {
       printf("\nSHIPYARD - View ships available for purchase");
       printf("\n  Shows a list of ships available at the current station.");
-      printf("\n  Displays hull strength, energy, cargo capacity, and price.");
+      printf("\n  Displays hull strength, cargo capacity, and price.");
       printf("\n  Includes your current ship's trade-in value.");
       printf("\n  You must be docked at a station to use this command.");
       printf("\n  No parameters required.");
@@ -617,7 +597,7 @@ static inline bool do_help(char *commandArguments) {
       printf("\nCOMPARESHIP <shipname> - Compare your ship with another ship "
              "type");
       printf("\n  Displays a side-by-side comparison of ship specifications.");
-      printf("\n  Shows differences in hull, energy, shields, cargo, etc.");
+      printf("\n  Shows differences in hull, shields, cargo, etc.");
       printf("\n  Usage: compareship <shipname> (e.g., 'compareship Viper')");
       printf("\n  Works anywhere, docking not required.");
       return true;
@@ -919,9 +899,8 @@ static inline bool do_help(char *commandArguments) {
   printf("\n  info  <planetname>      - Display information about a system");
   printf("\n\nSTAR SYSTEM NAVIGATION:");
   printf("\n  system                  - Scan system for detailed information "
-         "and points of interest");
-  printf("\n  travel [destination]    - List destinations or travel within the "
-         "system (uses energy)");
+         "and points of interest");  printf("\n  travel [destination]    - List destinations or travel within the "
+         "system (uses fuel)");
   printf("\n  dock                    - Dock with a station if at a station "
          "location");
   printf(
@@ -1169,16 +1148,12 @@ static inline bool do_system_info(char *commandArguments) {
         continue;
       } // Planet basic info
       double distToPlanet =
-          fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
-      uint32_t timeToPlanet = calculate_travel_time(
+          fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);      uint32_t timeToPlanet = calculate_travel_time(
           PlayerNavState.distanceFromStar, planet->orbitalDistance);
-      double energyToPlanet = calculate_travel_energy_requirement(distToPlanet);
       double fuelToPlanet = calculate_travel_fuel_requirement(distToPlanet);
-      printf("\n  %d. %s (%.2f AU from star, %.2f AU away, %u min travel, %.1f "
-             "energy, %.3f fuel L required)",
+      printf("\n  %d. %s (%.2f AU from star, %.2f AU away, %u min travel, %.3f fuel L required)",
              i + 1, planet->name, planet->orbitalDistance, distToPlanet,
-             timeToPlanet / 60, energyToPlanet,
-             fuelToPlanet); // Planet type and physical characteristics
+             timeToPlanet / 60, fuelToPlanet);// Planet type and physical characteristics
       if (planet->type < 4) {
         printf("\n     Type: %s", planetTypes[planet->type]);
       } else {
@@ -1234,19 +1209,15 @@ static inline bool do_system_info(char *commandArguments) {
           double stationDistAbsolute =
               planet->orbitalDistance + station->orbitalDistance;
           double distToStation =
-              fabs(PlayerNavState.distanceFromStar - stationDistAbsolute);
-          uint32_t timeToStation = calculate_travel_time(
+              fabs(PlayerNavState.distanceFromStar - stationDistAbsolute);          uint32_t timeToStation = calculate_travel_time(
               PlayerNavState.distanceFromStar, stationDistAbsolute);
-          double energyToStation =
-              calculate_travel_energy_requirement(distToStation);
           double fuelToStation =
               calculate_travel_fuel_requirement(distToStation);
 
           printf("\n     %d.%d. %s (%.3f AU from planet, %.2f AU away, %u min "
-                 "travel, %.1f energy required, %.3f fuel L required)",
+                 "travel, %.3f fuel L required)",
                  i + 1, j + 1, station->name, station->orbitalDistance,
-                 distToStation, timeToStation / 60, energyToStation,
-                 fuelToStation);
+                 distToStation, timeToStation / 60, fuelToStation);
 
           // Display station type if valid
           if (station->type < 3) {
@@ -1280,16 +1251,12 @@ static inline bool do_system_info(char *commandArguments) {
     printf("\n  (None)");
   } // Nav Beacon information
   double distToNavBeacon = fabs(PlayerNavState.distanceFromStar -
-                                CurrentStarSystem->navBeaconDistance);
-  uint32_t timeToNavBeacon = calculate_travel_time(
+                                CurrentStarSystem->navBeaconDistance);  uint32_t timeToNavBeacon = calculate_travel_time(
       PlayerNavState.distanceFromStar, CurrentStarSystem->navBeaconDistance);
-  double energyToNavBeacon =
-      calculate_travel_energy_requirement(distToNavBeacon);
   double fuelToNavBeacon = calculate_travel_fuel_requirement(distToNavBeacon);
-  printf("\n\nNav Beacon: %.2f AU from star (%.2f AU away, %u min travel, %.1f "
-         "energy required, %.3f fuel L required)",
+  printf("\n\nNav Beacon: %.2f AU from star (%.2f AU away, %u min travel, %.3f fuel L required)",
          CurrentStarSystem->navBeaconDistance, distToNavBeacon,
-         timeToNavBeacon / 60, energyToNavBeacon, fuelToNavBeacon);
+         timeToNavBeacon / 60, fuelToNavBeacon);
   printf("\n  Travel code: N");
 
   // Current player location
@@ -1298,13 +1265,10 @@ static inline bool do_system_info(char *commandArguments) {
   // Star distance and travel time (from current location)
   double distToStar = PlayerNavState.distanceFromStar;
   uint32_t timeToStar =
-      calculate_travel_time(PlayerNavState.distanceFromStar, 0.0);
-  double energyToStar = calculate_travel_energy_requirement(distToStar);
-  double fuelToStar = calculate_travel_fuel_requirement(distToStar);
-  printf("\nDistance to Star (%s): %.2f AU, %u min travel, %.1f energy "
-         "required, %.3f fuel L required",
+      calculate_travel_time(PlayerNavState.distanceFromStar, 0.0);  double fuelToStar = calculate_travel_fuel_requirement(distToStar);
+  printf("\nDistance to Star (%s): %.2f AU, %u min travel, %.3f fuel L required",
          CurrentStarSystem->centralStar.name, distToStar, timeToStar / 60,
-         energyToStar, fuelToStar);
+         fuelToStar);
   printf("\n  Travel code: 0");
 
   // Add travel hint
@@ -1405,15 +1369,13 @@ static inline bool do_travel(char *commandArguments) {
       printf("\nAlready at Nav Beacon.");
       return true;
     }
-    // Calculate energy requirement
+    // Calculate fuel requirement
     double distanceDelta = fabs(PlayerNavState.distanceFromStar -
                                 CurrentStarSystem->navBeaconDistance);
-    double energyRequired = calculate_travel_energy_requirement(distanceDelta);
     double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-    printf("\nTravelling to Nav Beacon... (Energy required: %.1f units, Fuel "
-           "required: %.3f liters)",
-           energyRequired, fuelRequired);
+    printf("\nTravelling to Nav Beacon... (Fuel required: %.3f liters)",
+           fuelRequired);
 
     // Pass a dummy non-NULL pointer for consistency with the function signature
     void *dummy = &CurrentStarSystem; // Using any valid address as a dummy
@@ -1495,19 +1457,16 @@ static inline bool do_travel(char *commandArguments) {
   // Special case for star (index 0)
   if (primaryIndex == 0) { // Check if already at star
     if (PlayerNavState.currentLocationType == CELESTIAL_STAR) {
-      printf("\nAlready at %s.", CurrentStarSystem->centralStar.name);
-      return true;
+      printf("\nAlready at %s.", CurrentStarSystem->centralStar.name);    return true;
     }
-    // Calculate energy requirement
+    // Calculate fuel requirement
     double distanceDelta =
         PlayerNavState
             .distanceFromStar; // Distance to star is just current distance
-    double energyRequired = calculate_travel_energy_requirement(distanceDelta);
     double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-    printf("\nTravelling to %s... (Energy required: %.1f units, Fuel required: "
-           "%.3f liters)",
-           CurrentStarSystem->centralStar.name, energyRequired, fuelRequired);
+    printf("\nTravelling to %s... (Fuel required: %.3f liters)",
+           CurrentStarSystem->centralStar.name, fuelRequired);
     bool result =
         travel_to_celestial(CurrentStarSystem, &PlayerNavState, CELESTIAL_STAR,
                             &CurrentStarSystem->centralStar);
@@ -1544,19 +1503,17 @@ static inline bool do_travel(char *commandArguments) {
   // If no secondary index, travel to planet
   if (secondaryIndex == -1) { // Check if already at this planet
     if (PlayerNavState.currentLocationType == CELESTIAL_PLANET &&
-        PlayerNavState.currentLocation.planet == planet) {
+    PlayerNavState.currentLocation.planet == planet) {
       printf("\nAlready at %s.", planet->name);
       return true;
     }
-    // Calculate energy requirement
+    // Calculate fuel requirement
     double distanceDelta =
         fabs(PlayerNavState.distanceFromStar - planet->orbitalDistance);
-    double energyRequired = calculate_travel_energy_requirement(distanceDelta);
     double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-    printf("\nTravelling to %s... (Energy required: %.1f units, Fuel required: "
-           "%.3f liters)",
-           planet->name, energyRequired, fuelRequired);
+    printf("\nTravelling to %s... (Fuel required: %.3f liters)",
+           planet->name, fuelRequired);
     bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState,
                                       CELESTIAL_PLANET, planet);
     if (result) {
@@ -1591,16 +1548,14 @@ static inline bool do_travel(char *commandArguments) {
     printf("\nAlready at %s.", station->name);
     return true;
   }
-  // Calculate energy requirement
+  // Calculate fuel requirement
   double stationDistance = planet->orbitalDistance + station->orbitalDistance;
   double distanceDelta =
       fabs(PlayerNavState.distanceFromStar - stationDistance);
-  double energyRequired = calculate_travel_energy_requirement(distanceDelta);
   double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
-  printf("\nTravelling to %s... (Energy required: %.1f units, Fuel required: "
-         "%.3f liters)",
-         station->name, energyRequired, fuelRequired);
+  printf("\nTravelling to %s... (Fuel required: %.3f liters)",
+         station->name, fuelRequired);
   bool result = travel_to_celestial(CurrentStarSystem, &PlayerNavState,
                                     CELESTIAL_STATION, station);
   if (result) {
@@ -1808,9 +1763,58 @@ static inline bool do_land(char *commandArguments) {
 
     return false;
   }
-
   // At this point, we're at a planet and can land
   Planet *planet = PlayerNavState.currentLocation.planet;
+
+  // Check if the planet type allows landing
+  if (planet->type == 2) { // Gas Giant
+    printf("\nCannot land on %s: Gas giants have no solid surface to land on.", planet->name);
+    printf("\nGas giants are composed primarily of gases and liquids with no accessible solid surface.");
+    printf("\nYou can only land on rocky or terrestrial planets.");
+    printf("\nUse 'travel' to navigate to a different planet, or dock at an orbital station instead.");
+    
+    // Show nearby stations around this gas giant as alternatives
+    if (planet->numStations > 0) {
+      printf("\n\nOrbital stations around %s:", planet->name);
+      for (uint8_t j = 0; j < planet->numStations; j++) {
+        Station *station = planet->stations[j];
+        if (station) {
+          double stationDist = planet->orbitalDistance + station->orbitalDistance;
+          double distToStation = fabs(PlayerNavState.distanceFromStar - stationDist);
+          printf("\n  %s (%.3f AU away) - Use 'travel %d.%d' to dock", 
+                 station->name, distToStation, 
+                 // Find planet index for this planet
+                 (int)(planet - CurrentStarSystem->planets) + 1, j + 1);
+        }
+      }
+    }
+    return false;
+  }
+  
+  if (planet->type == 3) { // Ice Giant  
+    printf("\nCannot land on %s: Ice giants have no accessible solid surface.", planet->name);
+    printf("\nIce giants are composed primarily of water, methane, and ammonia ices in a thick atmosphere.");
+    printf("\nAny solid surface is buried under thousands of kilometers of dense atmosphere and ice.");
+    printf("\nYou can only land on rocky or terrestrial planets.");
+    printf("\nUse 'travel' to navigate to a different planet, or dock at an orbital station instead.");
+    
+    // Show nearby stations around this ice giant as alternatives
+    if (planet->numStations > 0) {
+      printf("\n\nOrbital stations around %s:", planet->name);
+      for (uint8_t j = 0; j < planet->numStations; j++) {
+        Station *station = planet->stations[j];
+        if (station) {
+          double stationDist = planet->orbitalDistance + station->orbitalDistance;
+          double distToStation = fabs(PlayerNavState.distanceFromStar - stationDist);
+          printf("\n  %s (%.3f AU away) - Use 'travel %d.%d' to dock", 
+                 station->name, distToStation,
+                 // Find planet index for this planet  
+                 (int)(planet - CurrentStarSystem->planets) + 1, j + 1);
+        }
+      }
+    }
+    return false;
+  }
 
   // Landing procedure and feedback
   printf("\nLanding on %s...", planet->name);
@@ -2146,12 +2150,10 @@ static inline bool do_ship_status(char *commandArguments) {
   printf("\n=== Ship Status: %s (%s) ===", PlayerShipPtr->shipName,
          PlayerShipPtr->shipClassName);
 
-  // Display hull and energy
+    // Display hull
   int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) /
                        PlayerShipPtr->shipType->baseHullStrength;
   printf("\nHull Integrity: %d%%", hullPercentage);
-  printf("\nEnergy Banks: %.1f / %.1f", PlayerShipPtr->attributes.energyBanks,
-         PlayerShipPtr->attributes.maxEnergyBanks);
   // Display fuel
   double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
   double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
@@ -2263,12 +2265,10 @@ static inline bool do_purchase_equipment(char *commandArguments) {
   // Check if an equipment name was provided
   if (commandArguments == NULL || commandArguments[0] == '\0') {
     printf("\nUsage: equip <equipment_name>");
-    printf("\n\nAvailable Equipment:");
-    printf("\n- ecm          - Electronic Counter Measures (600 CR)");
+    printf("\n\nAvailable Equipment:");    printf("\n- ecm          - Electronic Counter Measures (600 CR)");
     printf("\n- fuelscoop    - Fuel Scoop (525 CR)");
     printf("\n- dockcomp     - Docking Computer (1500 CR)");
     printf("\n- escape       - Escape Pod (1000 CR)");
-    printf("\n- energy       - Extra Energy Unit (1500 CR)");
     printf("\n- cargo        - Cargo Bay Extension (400 CR)");
     printf("\n- pulse        - Pulse Laser (400 CR)");
     printf("\n- beam         - Beam Laser (1000 CR)");
@@ -2297,67 +2297,44 @@ static inline bool do_purchase_equipment(char *commandArguments) {
 
   // Get current system tech level (0-based index)
   int techLevel = Galaxy[CurrentPlanet].techLev;
-
   // Prepare equipment parameters for purchase
   EquipmentTypeSpecifics equipType;
   EquipmentSlotType slotType = EQUIPMENT_SLOT_TYPE_NONE;
   const char *formalName = NULL;
   int cost = 0;
   int requiredTechLevel = 0;
-  double energyDraw = 0.0;
   double damageOutput = 0.0;
 
   // Match equipment name to available options
-  if (strcmp(equipName, "ecm") == 0) {
-    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
+  if (strcmp(equipName, "ecm") == 0) {    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
     slotType = EQUIPMENT_SLOT_TYPE_DEFENSIVE_1;
     formalName = "ECM System";
     cost = COST_ECM;
     requiredTechLevel = 2;
-    energyDraw = 5.0;
   } else if (strcmp(equipName, "fuelscoop") == 0) {
     equipType.utilityType = UTILITY_SYSTEM_TYPE_FUEL_SCOOPS;
     slotType = UTILITY_SYSTEM_1;
     formalName = "Fuel Scoop";
     cost = COST_FUEL_SCOOPS;
     requiredTechLevel = 3;
-    energyDraw = 3.0;
   } else if (strcmp(equipName, "dockcomp") == 0) {
     equipType.utilityType = UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER;
     slotType = UTILITY_SYSTEM_2;
     formalName = "Docking Computer";
     cost = COST_DOCKING_COMPUTER;
     requiredTechLevel = 5;
-    energyDraw = 2.0;
   } else if (strcmp(equipName, "escape") == 0) {
     equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
     slotType = UTILITY_SYSTEM_3;
     formalName = "Escape Pod";
     cost = COST_ESCAPE_POD;
     requiredTechLevel = 5;
-    energyDraw = 0.0;
-  } else if (strcmp(equipName, "energy") == 0) {
-    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT;
-    slotType = EQUIPMENT_SLOT_TYPE_DEFENSIVE_2;
-    formalName = "Extra Energy Unit";
-    cost = COST_EXTRA_ENERGY_UNIT;
-    requiredTechLevel = 4;
-    energyDraw = 0.0;
-    // Apply the upgrade directly
-    if (PurchaseEquipment(PlayerShipPtr, formalName, slotType, equipType, cost,
-                          requiredTechLevel, energyDraw, damageOutput)) {
-      // Also increase max energy banks
-      PlayerShipPtr->attributes.maxEnergyBanks += EXTRA_ENERGY_UNIT_CAPACITY;
-      return true;
-    }
-    return false;
   } else if (strcmp(equipName, "cargo") == 0) {
     equipType.utilityType = UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION;
     slotType = UTILITY_SYSTEM_4;
     formalName = "Cargo Bay Extension";
     cost = COST_CARGO_BAY_EXTENSION;
     requiredTechLevel = 1;
-    energyDraw = 0.0;
     // Apply the cargo upgrade directly
     if (Cash < cost) {
       printf("\nInsufficient credits to purchase Cargo Bay Extension. "
@@ -2383,14 +2360,12 @@ static inline bool do_purchase_equipment(char *commandArguments) {
 
     printf("\nCargo Bay Extension installed. New capacity: %d tonnes.",
            PlayerShipPtr->attributes.cargoCapacityTons);
-    return true;
-  } else if (strcmp(equipName, "pulse") == 0) {
+    return true;  } else if (strcmp(equipName, "pulse") == 0) {
     equipType.weaponType = WEAPON_TYPE_PULSE_LASER;
     slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
     formalName = "Pulse Laser";
     cost = COST_PULSE_LASER;
     requiredTechLevel = 1;
-    energyDraw = 10.0;
     damageOutput = 5.0;
   } else if (strcmp(equipName, "beam") == 0) {
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
@@ -2398,7 +2373,6 @@ static inline bool do_purchase_equipment(char *commandArguments) {
     formalName = "Beam Laser";
     cost = COST_BEAM_LASER;
     requiredTechLevel = 3;
-    energyDraw = 12.0;
     damageOutput = 7.5;
   } else if (strcmp(equipName, "military") == 0) {
     equipType.weaponType = WEAPON_TYPE_MILITARY_LASER;
@@ -2406,7 +2380,6 @@ static inline bool do_purchase_equipment(char *commandArguments) {
     formalName = "Military Laser";
     cost = COST_MILITARY_LASER;
     requiredTechLevel = 6;
-    energyDraw = 15.0;
     damageOutput = 10.0;
   } else if (strcmp(equipName, "mining") == 0) {
     equipType.weaponType = WEAPON_TYPE_MINING_LASER;
@@ -2414,7 +2387,6 @@ static inline bool do_purchase_equipment(char *commandArguments) {
     formalName = "Mining Laser";
     cost = COST_MINING_LASER;
     requiredTechLevel = 2;
-    energyDraw = 12.0;
     damageOutput = 3.0;
   } else if (strcmp(equipName, "scanner") == 0) {
     equipType.utilityType = UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE;
@@ -2422,7 +2394,6 @@ static inline bool do_purchase_equipment(char *commandArguments) {
     formalName = "Advanced Scanner";
     cost = COST_SCANNER_UPGRADE;
     requiredTechLevel = 4;
-    energyDraw = 4.0;
   } else if (strcmp(equipName, "missile") == 0) {
     // For missiles, we just add to the count
     if (PlayerShipPtr->attributes.missilesLoadedHoming >=
@@ -2449,11 +2420,10 @@ static inline bool do_purchase_equipment(char *commandArguments) {
     printf("\nUse 'equip' without parameters to see available equipment.");
     return false;
   }
-
   // Attempt to purchase the selected equipment
   bool result =
       PurchaseEquipment(PlayerShipPtr, formalName, slotType, equipType, cost,
-                        requiredTechLevel, energyDraw, damageOutput);
+                        requiredTechLevel, damageOutput);
 
   return result;
 }

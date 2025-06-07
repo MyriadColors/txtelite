@@ -88,7 +88,6 @@ static inline bool HasDockingComputer(const PlayerShip *playerShip)
 
 /**
  * Activates ECM to destroy incoming enemy missiles.
- * Energy is required to operate the ECM.
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if ECM was successfully activated, false otherwise
@@ -102,7 +101,6 @@ static inline bool ActivateECM(PlayerShip *playerShip)
 
     // Check if ship has ECM
     bool hasECM = false;
-    double ecmEnergyCost = 0.0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -112,7 +110,6 @@ static inline bool ActivateECM(PlayerShip *playerShip)
             playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
         {
             hasECM = true;
-            ecmEnergyCost = playerShip->equipment[i].energyDraw;
             break;
         }
     }
@@ -122,17 +119,6 @@ static inline bool ActivateECM(PlayerShip *playerShip)
         printf("Error: Your ship is not equipped with ECM System.\n");
         return false;
     }
-
-    // Check if there's enough energy
-    if (playerShip->attributes.energyBanks < ecmEnergyCost)
-    {
-        printf("Error: Insufficient energy to activate ECM System.\n");
-        printf("Required: %.1f, Available: %.1f\n", ecmEnergyCost, playerShip->attributes.energyBanks);
-        return false;
-    }
-
-    // Consume energy
-    playerShip->attributes.energyBanks -= ecmEnergyCost;
 
     printf("ECM System activated! All incoming missiles have been destroyed.\n");
     return true;
@@ -154,7 +140,6 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
 
     // Check if ship has docking computer
     bool hasDockingComputer = false;
-    double dockingComputerEnergyCost = 0.0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -164,7 +149,6 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
         {
             hasDockingComputer = true;
-            dockingComputerEnergyCost = playerShip->equipment[i].energyDraw;
             break;
         }
     }
@@ -174,17 +158,6 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
         printf("Error: Your ship is not equipped with a Docking Computer.\n");
         return false;
     }
-
-    // Check if there's enough energy
-    if (playerShip->attributes.energyBanks < dockingComputerEnergyCost)
-    {
-        printf("Error: Insufficient energy to activate Docking Computer.\n");
-        printf("Required: %.1f, Available: %.1f\n", dockingComputerEnergyCost, playerShip->attributes.energyBanks);
-        return false;
-    }
-
-    // Consume energy
-    playerShip->attributes.energyBanks -= dockingComputerEnergyCost;
 
     // Calculate docking time based on distance
     // This is a placeholder - actual docking procedure would be implemented elsewhere
@@ -215,7 +188,6 @@ static inline bool UseScanner(PlayerShip *playerShip)
 
     // Check if ship has advanced scanner
     bool hasUpgradedScanner = false;
-    double scannerEnergyCost = 2.0; // Basic scanner energy cost
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -225,21 +197,9 @@ static inline bool UseScanner(PlayerShip *playerShip)
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE)
         {
             hasUpgradedScanner = true;
-            scannerEnergyCost = playerShip->equipment[i].energyDraw;
             break;
         }
     }
-
-    // Check if there's enough energy
-    if (playerShip->attributes.energyBanks < scannerEnergyCost)
-    {
-        printf("Error: Insufficient energy to power scanner.\n");
-        printf("Required: %.1f, Available: %.1f\n", scannerEnergyCost, playerShip->attributes.energyBanks);
-        return false;
-    }
-
-    // Consume energy
-    playerShip->attributes.energyBanks -= scannerEnergyCost;
 
     // Perform scan
     if (hasUpgradedScanner)
@@ -346,26 +306,4 @@ static inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlot
     return 0.0;
 }
 
-/**
- * Gets the energy draw of a specific equipment item.
- * Used to calculate energy consumption during various operations.
- *
- * @param playerShip Pointer to the PlayerShip structure
- * @param slotType The equipment slot to check
- * @return The energy draw value, or 0.0 if no equipment is installed
- */
-static inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlotType slotType)
-{
-    if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
-    {
-        return 0.0;
-    }
 
-    // Check if the slot has active equipment
-    if (playerShip->equipment[slotType].isActive)
-    {
-        return playerShip->equipment[slotType].energyDraw;
-    }
-
-    return 0.0;
-}

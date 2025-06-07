@@ -17,7 +17,6 @@ typedef struct ShipType ShipType;
 // Backward compatibility constants for Cobra Mk III
 // These will be used in places where the code still references the old constants
 #define COBRA_MK3_BASE_HULL_STRENGTH 100
-#define COBRA_MK3_BASE_ENERGY_BANKS 100.0
 #define COBRA_MK3_BASE_SHIELD_STRENGTH 50.0
 #define COBRA_MK3_MAX_FUEL_LY 7.0
 #define COBRA_MK3_BASE_CARGO_CAPACITY_TONS 20
@@ -29,7 +28,6 @@ typedef struct ShipType
 {
     char className[MAX_SHIP_NAME_LENGTH]; // e.g., "Cobra Mk III"
     int baseHullStrength;                 // Base hull strength
-    double baseEnergyBanks;               // Base energy capacity
     double baseShieldStrengthFront;       // Base front shield strength
     double baseShieldStrengthAft;         // Base aft shield strength
     double maxFuelLY;                     // Maximum fuel capacity in LY
@@ -64,8 +62,7 @@ typedef enum WeaponType
 typedef enum DefensiveSystemType
 {
     DEFENSIVE_SYSTEM_TYPE_NONE,
-    DEFENSIVE_SYSTEM_TYPE_ECM,              // Electronic Counter-Measures
-    DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT // EEU
+    DEFENSIVE_SYSTEM_TYPE_ECM              // Electronic Counter-Measures
 } DefensiveSystemType;
 
 typedef enum UtilitySystemType
@@ -104,8 +101,6 @@ typedef enum EquipmentSlotType
 typedef struct ShipCoreAttributes
 {
     int hullStrength;
-    double energyBanks;
-    double maxEnergyBanks;
     double shieldStrengthFront;
     double shieldStrengthAft;
     double fuelLiters; // Internal representation, can be converted to LY
@@ -125,7 +120,6 @@ typedef struct ShipEquipmentItem
     EquipmentTypeSpecifics typeSpecific; // Use the new named union
 
     // Common attributes
-    double energyDraw;   // Energy to use/activate
     double damageOutput; // For weapons
     // Add other common attributes: range, effect_duration, etc.
 } ShipEquipmentItem;
@@ -158,7 +152,6 @@ static ShipRegistry shipRegistry = {.registeredShipCount = 0};
  *
  * @param className Name of the ship class
  * @param baseHullStrength Base hull strength
- * @param baseEnergyBanks Base energy capacity
  * @param baseShieldStrengthFront Base front shield strength
  * @param baseShieldStrengthAft Base aft shield strength
  * @param maxFuelLY Maximum fuel capacity in LY
@@ -179,7 +172,6 @@ static ShipRegistry shipRegistry = {.registeredShipCount = 0};
 static inline const ShipType *RegisterShipType(
     const char *className,
     int baseHullStrength,
-    double baseEnergyBanks,
     double baseShieldStrengthFront,
     double baseShieldStrengthAft,
     double maxFuelLY,
@@ -204,13 +196,10 @@ static inline const ShipType *RegisterShipType(
     }
 
     // Get a reference to the new ship type slot
-    ShipType *newShipType = &shipRegistry.shipTypes[shipRegistry.registeredShipCount];
-
-    // Initialize the new ship type with provided values
+    ShipType *newShipType = &shipRegistry.shipTypes[shipRegistry.registeredShipCount];    // Initialize the new ship type with provided values
     snprintf(newShipType->className, MAX_SHIP_NAME_LENGTH, "%s", className);
     newShipType->className[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
     newShipType->baseHullStrength = baseHullStrength;
-    newShipType->baseEnergyBanks = baseEnergyBanks;
     newShipType->baseShieldStrengthFront = baseShieldStrengthFront;
     newShipType->baseShieldStrengthAft = baseShieldStrengthAft;
     newShipType->maxFuelLY = maxFuelLY;
@@ -242,12 +231,10 @@ static inline void InitializeShipRegistry(void)
     // Only initialize if the registry is empty
     if (shipRegistry.registeredShipCount > 0)
     {
-        return;
-    } // Register Cobra Mk III
+        return;    } // Register Cobra Mk III
     RegisterShipType(
         "Cobra Mk III", // className
         100,            // baseHullStrength
-        100.0,          // baseEnergyBanks
         50.0,           // baseShieldStrengthFront
         50.0,           // baseShieldStrengthAft
         7.0,            // maxFuelLY
@@ -263,12 +250,10 @@ static inline void InitializeShipRegistry(void)
         true,           // hasStandardHyperdrive
         true,           // hasStandardShields
         true            // includesPulseLaser
-    );
-    // Register Viper
+    );    // Register Viper
     RegisterShipType(
         "Viper", // className
         80,      // baseHullStrength
-        80.0,    // baseEnergyBanks
         40.0,    // baseShieldStrengthFront
         40.0,    // baseShieldStrengthAft
         5.0,     // maxFuelLY
@@ -284,12 +269,10 @@ static inline void InitializeShipRegistry(void)
         true,    // hasStandardHyperdrive
         true,    // hasStandardShields
         true     // includesPulseLaser
-    );
-    // Register Asp Mk II
+    );    // Register Asp Mk II
     RegisterShipType(
         "Asp Mk II", // className
         120,         // baseHullStrength
-        120.0,       // baseEnergyBanks
         60.0,        // baseShieldStrengthFront
         60.0,        // baseShieldStrengthAft
         8.0,         // maxFuelLY
@@ -382,12 +365,8 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
     playerShip->shipClassName[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
 
     // Set the ship type pointer
-    playerShip->shipType = shipType;
-
-    // Initialize core attributes based on ship type
+    playerShip->shipType = shipType;    // Initialize core attributes based on ship type
     playerShip->attributes.hullStrength = shipType->baseHullStrength;
-    playerShip->attributes.energyBanks = shipType->baseEnergyBanks;
-    playerShip->attributes.maxEnergyBanks = shipType->baseEnergyBanks;
     playerShip->attributes.shieldStrengthFront = shipType->baseShieldStrengthFront;
     playerShip->attributes.shieldStrengthAft = shipType->baseShieldStrengthAft;
     playerShip->attributes.fuelLiters = shipType->maxFuelLY * 100.0; // Assuming 100 liters per LY
@@ -408,9 +387,7 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
     for (int i = 0; i < MAX_EQUIPMENT_INVENTORY; ++i)
     {
         playerShip->equipmentInventory[i].isActive = 0;
-        snprintf(playerShip->equipmentInventory[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
-        playerShip->equipmentInventory[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
-        playerShip->equipmentInventory[i].energyDraw = 0.0;
+        snprintf(playerShip->equipmentInventory[i].name, MAX_SHIP_NAME_LENGTH, "Empty");        playerShip->equipmentInventory[i].slotType = EQUIPMENT_SLOT_TYPE_NONE;
         playerShip->equipmentInventory[i].damageOutput = 0.0;
     }
 
@@ -427,11 +404,9 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
     {
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].isActive = true;
         snprintf(playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name, MAX_SHIP_NAME_LENGTH, "Pulse Laser");
-        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
-        // Set other properties for Pulse Laser as needed
+        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination        // Set other properties for Pulse Laser as needed
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].typeSpecific.weaponType = WEAPON_TYPE_PULSE_LASER;
-        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].energyDraw = 10.0;  // Example
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].damageOutput = 5.0; // Example
     }
 
@@ -462,25 +437,20 @@ static inline void InitializeCobraMkIII(PlayerShip *playerShip)
 
 // Displays the current status of the player's ship.
 static inline void DisplayShipStatus(const PlayerShip *playerShip)
-{
-    bool ecmFound = false; // Moved declaration here
+{    bool ecmFound = false; // Moved declaration here
     bool escapePodFound = false;
     bool fuelScoopsFound = false;
     bool dockingComputerFound = false;
     bool scannerUpgradeFound = false;
     bool rearLaserFound = false;
     bool forwardPulseLaserFound = false;
-    bool energyEnhancementFound = false;
 
     if (playerShip == NULL)
     {
         printf("Error: Ship data is NULL.\n");
         return;
-    }
-
-    printf("\n--- %s (%s) Status ---\n", playerShip->shipName, playerShip->shipClassName);
+    }    printf("\n--- %s (%s) Status ---\n", playerShip->shipName, playerShip->shipClassName);
     printf("Hull Strength: %d / %d\n", playerShip->attributes.hullStrength, playerShip->shipType->baseHullStrength);
-    printf("Energy Banks: %.2f / %.2f\n", playerShip->attributes.energyBanks, playerShip->shipType->baseEnergyBanks);
     printf("Shields (F/A): %.2f / %.2f\n", playerShip->attributes.shieldStrengthFront, playerShip->attributes.shieldStrengthAft);
     // Convert Liters to LY for display, assuming 1 LY = 100 Liters (example factor)
     printf("Fuel: %.2f LY (%.0f Liters)\n", playerShip->attributes.fuelLiters / 100.0, playerShip->attributes.fuelLiters);
@@ -574,9 +544,7 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
                     printf("- Rear-mounted Laser\n");
                     rearLaserFound = true;
                 }
-            }
-
-            // Defensive Systems
+            }            // Defensive Systems
             if (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
                 playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2)
             {
@@ -584,11 +552,6 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
                 {
                     printf("- ECM Unit\n");
                     ecmFound = true;
-                }
-                else if (playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT && !energyEnhancementFound)
-                {
-                    printf("- Energy Enhancement Unit\n");
-                    energyEnhancementFound = true;
                 }
             }
 
@@ -834,7 +797,6 @@ static inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool 
 
 /**
  * Activates ECM to destroy incoming enemy missiles.
- * Energy is required to operate the ECM.
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @return true if ECM was successfully activated, false otherwise
@@ -848,7 +810,6 @@ static inline bool ActivateECM(PlayerShip *playerShip)
 
     // Check if ship has ECM
     bool hasECM = false;
-    double ecmEnergyCost = 0.0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -858,7 +819,6 @@ static inline bool ActivateECM(PlayerShip *playerShip)
             playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
         {
             hasECM = true;
-            ecmEnergyCost = playerShip->equipment[i].energyDraw;
             break;
         }
     }
@@ -868,17 +828,6 @@ static inline bool ActivateECM(PlayerShip *playerShip)
         printf("Error: Your ship is not equipped with ECM System.\n");
         return false;
     }
-
-    // Check if there's enough energy
-    if (playerShip->attributes.energyBanks < ecmEnergyCost)
-    {
-        printf("Error: Insufficient energy to activate ECM System.\n");
-        printf("Required: %.1f, Available: %.1f\n", ecmEnergyCost, playerShip->attributes.energyBanks);
-        return false;
-    }
-
-    // Consume energy
-    playerShip->attributes.energyBanks -= ecmEnergyCost;
 
     printf("ECM System activated! All incoming missiles have been destroyed.\n");
     return true;
@@ -900,7 +849,6 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
 
     // Check if ship has docking computer
     bool hasDockingComputer = false;
-    double dockingComputerEnergyCost = 0.0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -910,7 +858,6 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
         {
             hasDockingComputer = true;
-            dockingComputerEnergyCost = playerShip->equipment[i].energyDraw;
             break;
         }
     }
@@ -920,17 +867,6 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
         printf("Error: Your ship is not equipped with a Docking Computer.\n");
         return false;
     }
-
-    // Check if there's enough energy
-    if (playerShip->attributes.energyBanks < dockingComputerEnergyCost)
-    {
-        printf("Error: Insufficient energy to activate Docking Computer.\n");
-        printf("Required: %.1f, Available: %.1f\n", dockingComputerEnergyCost, playerShip->attributes.energyBanks);
-        return false;
-    }
-
-    // Consume energy
-    playerShip->attributes.energyBanks -= dockingComputerEnergyCost;
 
     // Calculate docking time based on distance
     // This is a placeholder - actual docking procedure would be implemented elsewhere
@@ -961,7 +897,6 @@ static inline bool UseScanner(PlayerShip *playerShip)
 
     // Check if ship has advanced scanner
     bool hasUpgradedScanner = false;
-    double scannerEnergyCost = 2.0; // Basic scanner energy cost
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -971,21 +906,9 @@ static inline bool UseScanner(PlayerShip *playerShip)
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE)
         {
             hasUpgradedScanner = true;
-            scannerEnergyCost = playerShip->equipment[i].energyDraw;
             break;
         }
     }
-
-    // Check if there's enough energy
-    if (playerShip->attributes.energyBanks < scannerEnergyCost)
-    {
-        printf("Error: Insufficient energy to power scanner.\n");
-        printf("Required: %.1f, Available: %.1f\n", scannerEnergyCost, playerShip->attributes.energyBanks);
-        return false;
-    }
-
-    // Consume energy
-    playerShip->attributes.energyBanks -= scannerEnergyCost;
 
     // Perform scan
     if (hasUpgradedScanner)
@@ -1075,30 +998,6 @@ static inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlot
     if (playerShip->equipment[slotType].isActive)
     {
         return playerShip->equipment[slotType].damageOutput;
-    }
-
-    return 0.0;
-}
-
-/**
- * Gets the energy draw of a specific equipment item.
- * Used to calculate energy consumption during various operations.
- *
- * @param playerShip Pointer to the PlayerShip structure
- * @param slotType The equipment slot to check
- * @return The energy draw value, or 0.0 if no equipment is installed
- */
-static inline double GetEquipmentEnergyDraw(const PlayerShip *playerShip, EquipmentSlotType slotType)
-{
-    if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
-    {
-        return 0.0;
-    }
-
-    // Check if the slot has active equipment
-    if (playerShip->equipment[slotType].isActive)
-    {
-        return playerShip->equipment[slotType].energyDraw;
     }
 
     return 0.0;
@@ -1231,115 +1130,12 @@ static inline int RepairHull(PlayerShip *playerShip, int repairAmount, int costP
 }
 
 /**
- * Recharges the ship's energy banks and shields.
- *
- * @param playerShip Pointer to the PlayerShip structure
- * @param rechargeAmount Amount of energy to recharge (if 0, fully recharge)
- * @param rechargeShields Whether to recharge shields as well
- * @param costPerPoint Cost in credits per point of energy (if using externalSync)
- * @param externalSync If true, deduct cost from global Cash
- *
- * @return The actual amount of energy recharged
- */
-static inline double RechargeEnergy(PlayerShip *playerShip, double rechargeAmount, bool rechargeShields, double costPerPoint, bool externalSync)
-{
-    if (playerShip == NULL)
-    {
-        return 0.0;
-    }
-
-    // Check current energy levels
-    double energyNeeded = playerShip->shipType->baseEnergyBanks - playerShip->attributes.energyBanks;
-    double shieldFrontNeeded = 0.0;
-    double shieldAftNeeded = 0.0;
-
-    if (rechargeShields)
-    {
-        shieldFrontNeeded = playerShip->shipType->baseShieldStrengthFront - playerShip->attributes.shieldStrengthFront;
-        shieldAftNeeded = playerShip->shipType->baseShieldStrengthAft - playerShip->attributes.shieldStrengthAft;
-    }
-
-    // Calculate total energy needed
-    double totalNeeded = energyNeeded + shieldFrontNeeded + shieldAftNeeded;
-
-    // If nothing needs recharging
-    if (totalNeeded <= 0.0)
-    {
-        printf("Energy banks and shields are already fully charged.\n");
-        return 0.0;
-    }
-
-    // Determine amount to recharge
-    double effectiveRecharge = (rechargeAmount <= 0.0 || rechargeAmount > totalNeeded) ? totalNeeded : rechargeAmount;
-
-    // Calculate cost
-    double totalCost = effectiveRecharge * costPerPoint;
-
-    // Check if we can afford it and deduct cost if using external sync
-    if (externalSync)
-    {
-        extern int32_t Cash;
-
-        if ((int)totalCost > Cash)
-        {
-            // Calculate how much we can afford
-            effectiveRecharge = Cash / costPerPoint;
-            totalCost = effectiveRecharge * costPerPoint;
-
-            if (effectiveRecharge <= 0.0)
-            {
-                printf("Insufficient credits for energy recharge.\n");
-                return 0.0;
-            }
-        }
-
-        // Deduct cost
-        Cash -= (int)totalCost;
-    }
-
-    // Apply recharge prioritizing energy banks, then front shields, then aft shields
-    double remainingCharge = effectiveRecharge;
-
-    // Recharge energy banks first
-    if (energyNeeded > 0.0)
-    {
-        double energyCharge = (remainingCharge > energyNeeded) ? energyNeeded : remainingCharge;
-        playerShip->attributes.energyBanks += energyCharge;
-        remainingCharge -= energyCharge;
-    }
-
-    // Then recharge shields if requested
-    if (rechargeShields && remainingCharge > 0.0)
-    {
-        // Front shields
-        if (shieldFrontNeeded > 0.0)
-        {
-            double frontCharge = (remainingCharge > shieldFrontNeeded) ? shieldFrontNeeded : remainingCharge;
-            playerShip->attributes.shieldStrengthFront += frontCharge;
-            remainingCharge -= frontCharge;
-        }
-
-        // Aft shields
-        if (shieldAftNeeded > 0.0 && remainingCharge > 0.0)
-        {
-            double aftCharge = (remainingCharge > shieldAftNeeded) ? shieldAftNeeded : remainingCharge;
-            playerShip->attributes.shieldStrengthAft += aftCharge;
-            remainingCharge -= aftCharge;
-        }
-    }
-
-    printf("Recharged %.1f energy units for %.0f credits.\n", effectiveRecharge, totalCost);
-    return effectiveRecharge;
-}
-
-/**
  * Adds equipment to the player's ship.
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param equipmentName Name of the equipment
  * @param slotType The type of slot this equipment will be installed in
  * @param specificType A union containing the type-specific data
- * @param energyDraw How much energy this equipment draws
  * @param damageOutput How much damage this equipment does (for weapons)
  *
  * @return true if equipment was added successfully, false otherwise
@@ -1348,7 +1144,6 @@ static inline bool AddEquipment(PlayerShip *playerShip,
                          EquipmentSlotType slotType,
                          const char *equipmentName,
                          EquipmentTypeSpecifics specificType, // Changed to named union
-                         double energyDraw,
                          double damageOutput)
 { // damageOutput is 0 for non-weapons
     if (playerShip == NULL || equipmentName == NULL)
@@ -1390,7 +1185,6 @@ static inline bool AddEquipment(PlayerShip *playerShip,
     snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "%s", equipmentName);
     playerShip->equipment[slotType].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
     playerShip->equipment[slotType].typeSpecific = specificType;
-    playerShip->equipment[slotType].energyDraw = energyDraw;
     playerShip->equipment[slotType].damageOutput = damageOutput;
 
     printf("%s added to slot %d.\n", equipmentName, slotType);
@@ -1640,8 +1434,6 @@ static inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type)
     {
     case DEFENSIVE_SYSTEM_TYPE_ECM:
         return "ECM System";
-    case DEFENSIVE_SYSTEM_TYPE_EXTRA_ENERGY_UNIT:
-        return "Extra Energy Unit";
     case DEFENSIVE_SYSTEM_TYPE_NONE:
     default:
         return "None";

@@ -231,11 +231,10 @@ static inline void DisplayShipyard(const char *systemName, int systemEconomy,
     printf("Your current ship: %s (%s)\n", playerShip->shipName, playerShip->shipClassName);
     printf("Trade-in value: %.1f CR\n\n", tradeInValue);
     // Display available ships
-    printf("Available Ships:\n");
-    printf("%-4s %-15s %-8s %-8s %-6s %-7s %-8s %-10s\n",
-           "ID", "Ship Class", "Hull", "Energy", "Cargo", "Cost", "Net Cost", "Status");
-    printf("%-4s %-15s %-8s %-8s %-6s %-7s %-8s %-10s\n",
-           "--", "----------", "----", "------", "-----", "----", "--------", "------");
+    printf("Available Ships:\n");    printf("%-4s %-15s %-8s %-6s %-7s %-8s %-10s\n",
+           "ID", "Ship Class", "Hull", "Cargo", "Cost", "Net Cost", "Status");
+    printf("%-4s %-15s %-8s %-6s %-7s %-8s %-10s\n",
+           "--", "----------", "----", "-----", "----", "--------", "------");
 
     for (int i = 0; i < shipCount; i++)
     {
@@ -245,13 +244,10 @@ static inline void DisplayShipyard(const char *systemName, int systemEconomy,
 
         // Determine if the player can afford this ship        extern int32_t Cash; // Access to player's cash from elite_state.h
         // Cash is stored internally as a value 10x the displayed value
-        bool canAfford = (netCost * 10.0 <= Cash);
-
-        printf("[%d] %-15s %-8d %-8.1f %-6d %-7.1f %-8.1f %s\n",
+        bool canAfford = (netCost * 10.0 <= Cash);        printf("[%d] %-15s %-8d %-6d %-7.1f %-8.1f %s\n",
                i + 1, // Use 1-based indexing for user-friendliness
                ship->className,
                ship->baseHullStrength,
-               ship->baseEnergyBanks,
                ship->baseCargoCapacityTons,
                price,
                netCost,
@@ -300,15 +296,7 @@ static inline void CompareShips(const PlayerShip *playerShip, const char *compar
     printf("%-20s %-15d %-15d %+d\n", "Hull Strength",
            playerShip->shipType->baseHullStrength,
            compareShip->baseHullStrength,
-           compareShip->baseHullStrength - playerShip->shipType->baseHullStrength);
-
-    // Compare energy banks
-    printf("%-20s %-15.1f %-15.1f %+.1f\n", "Energy Banks",
-           playerShip->shipType->baseEnergyBanks,
-           compareShip->baseEnergyBanks,
-           compareShip->baseEnergyBanks - playerShip->shipType->baseEnergyBanks);
-
-    // Compare shield strength
+           compareShip->baseHullStrength - playerShip->shipType->baseHullStrength);    // Compare shield strength
     printf("%-20s %-15.1f %-15.1f %+.1f\n", "Shield (Front)",
            playerShip->shipType->baseShieldStrengthFront,
            compareShip->baseShieldStrengthFront,

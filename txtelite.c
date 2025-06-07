@@ -1,6 +1,11 @@
 /* txtelite.c  1.5 */
 /* Textual version of Elite trading (C implementation) */
-/* Converted by Ian Bell from 6502 Elite sources.
+/* Converted by Ian Bell from 6502 Elite s      if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ECM))
+        safe_strcat(equipmentStatus, sizeof(equipmentStatus), "ECM ");
+      if (CheckEquipmentActive(PlayerShipPtr, EQUIP_FUEL_SCOOP))
+        safe_strcat(equipmentStatus, sizeof(equipmentStatus), "FuelScoop ");
+      if (CheckEquipmentActive(PlayerShipPtr, EQUIP_DOCKING_COMPUTER))
+        safe_strcat(equipmentStatus, sizeof(equipmentStatus), "DockCmp ");
    Original 6502 Elite by Ian Bell & David Braben. */
 
 /* ----------------------------------------------------------------------
@@ -111,54 +116,21 @@ int main(int argc, char *argv[]) {
   PARSER("help");
 
 #undef PARSER
-
-  // Track last time energy was regenerated
-  uint64_t lastEnergyRegenTime = currentGameTimeSeconds;
-
   for (;;) {
     char locBuffer[MAX_LEN];
     get_current_location_name(&PlayerNavState, locBuffer, sizeof(locBuffer));
 
     // Periodically update all markets in the system as time passes
-    update_all_system_markets();
-    // Regenerate ship energy over time
-    if (PlayerShipPtr != NULL && currentGameTimeSeconds > lastEnergyRegenTime) {
-      // Calculate time elapsed since last regeneration
-      uint64_t timeElapsed = currentGameTimeSeconds - lastEnergyRegenTime;
-
-      // Regenerate energy at a rate of 1 unit per 5 seconds, up to max
-      if (timeElapsed >= 5) {
-        float energyToAdd = timeElapsed / 5.0f;
-
-        // Add energy, but don't exceed maximum
-        PlayerShipPtr->attributes.energyBanks =
-            (PlayerShipPtr->attributes.energyBanks + energyToAdd >
-             PlayerShipPtr->attributes.maxEnergyBanks)
-                ? PlayerShipPtr->attributes.maxEnergyBanks
-                : PlayerShipPtr->attributes.energyBanks + energyToAdd;
-
-        // Update last regeneration time
-        lastEnergyRegenTime = currentGameTimeSeconds;
-      }
-    }
-
-    // Enhanced status display with ship information
+    update_all_system_markets();    // Enhanced status display with ship information
     if (PlayerShipPtr != NULL) { // Calculate hull percentage
       int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) /
                            PlayerShipPtr->shipType->baseHullStrength;
-      // Calculate energy percentage
-	  int energyPercentage =
-          (int)((PlayerShipPtr->attributes.energyBanks * 100) /
-                PlayerShipPtr->attributes
-                    .maxEnergyBanks);
       // Prepare equipment status string
       char equipmentStatus[MAX_LEN] = "";
       if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ECM_SYSTEM))
         safe_strcat(equipmentStatus, sizeof(equipmentStatus), "ECM ");
       if (CheckEquipmentActive(PlayerShipPtr, EQUIP_FUEL_SCOOP))
         safe_strcat(equipmentStatus, sizeof(equipmentStatus), "FuelScoop ");
-      if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ENERGY_BOMB))
-        safe_strcat(equipmentStatus, sizeof(equipmentStatus), "E-Bomb ");
       if (CheckEquipmentActive(PlayerShipPtr, EQUIP_DOCKING_COMPUTER))
         safe_strcat(equipmentStatus, sizeof(equipmentStatus), "DockCmp ");
       if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MINING_LASER))
@@ -173,11 +145,11 @@ int main(int argc, char *argv[]) {
         safe_strcat(equipmentStatus, sizeof(equipmentStatus), "EscPod ");
       if (strlen(equipmentStatus) == 0)
         snprintf(equipmentStatus, sizeof(equipmentStatus), "None");
-
+      
       printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | "
-             "Energy: %d%% | Equip: %s| Time: %" PRIu64 " seconds > ",
+             "Equip: %s | Time: %" PRIu64 " seconds > ",
              locBuffer, ((float)Cash) / 10.0f, ((float)Fuel) / 10.0f,
-             hullPercentage, energyPercentage, equipmentStatus,
+             hullPercentage, equipmentStatus,
              currentGameTimeSeconds);
     } else {
       printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %" PRIu64

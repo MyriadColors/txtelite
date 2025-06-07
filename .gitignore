@@ -8,3 +8,7 @@ design.md
 !readme.md
 output.txt
 main
+__pycache__
+.mypy_cache
+merge.py
+tests

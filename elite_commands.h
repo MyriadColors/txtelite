@@ -23,7 +23,6 @@
 #include <string.h>          // For string operations
 #include <time.h>            // For time functions
 
-
 static inline bool do_tweak_random_native(char *commandArguments) {
   (void)commandArguments; // Mark 's' as unused
   NativeRand ^= 1;
@@ -1140,15 +1139,20 @@ static inline bool do_system_info(char *commandArguments) {
   printf("\nGovernment: %s", GovNames[CurrentStarSystem->planSys->govType]);
   printf("\nTech Level: %d", CurrentStarSystem->planSys->techLev + 1);
   printf("\nPopulation: %u Billion",
-         (CurrentStarSystem->planSys->population) >> 3);
-  // Star information with spectral classification
+         (CurrentStarSystem->planSys->population) >>
+             3); // Star information with spectral classification
   const char *spectralClasses[] = {"O", "B", "A", "F", "G", "K", "M"};
   printf("\n\nStar: %s", CurrentStarSystem->centralStar.name);
   if (CurrentStarSystem->centralStar.spectralClass < 7) {
-    printf("\n  Class: %s (%.1f solar masses, %.1f luminosity)",
+    printf("\n  Class: %s (%.1f solar masses, %.1f luminosity, %.0f K)",
            spectralClasses[CurrentStarSystem->centralStar.spectralClass],
            CurrentStarSystem->centralStar.mass,
-           CurrentStarSystem->centralStar.luminosity);
+           CurrentStarSystem->centralStar.luminosity,
+           CurrentStarSystem->centralStar.temperature);
+    printf("\n  Age: %.1f billion years", CurrentStarSystem->centralStar.age);
+    printf("\n  Habitable Zone: %.2f - %.2f AU",
+           CurrentStarSystem->centralStar.habitableZoneInner,
+           CurrentStarSystem->centralStar.habitableZoneOuter);
   }
 
   // Planets information
@@ -1173,16 +1177,49 @@ static inline bool do_system_info(char *commandArguments) {
       printf("\n  %d. %s (%.2f AU from star, %.2f AU away, %u min travel, %.1f "
              "energy, %.3f fuel L required)",
              i + 1, planet->name, planet->orbitalDistance, distToPlanet,
-             timeToPlanet / 60, energyToPlanet, fuelToPlanet);
-
-      // Planet type and physical characteristics
+             timeToPlanet / 60, energyToPlanet,
+             fuelToPlanet); // Planet type and physical characteristics
       if (planet->type < 4) {
         printf("\n     Type: %s", planetTypes[planet->type]);
       } else {
         printf("\n     Type: Unknown");
       }
-      printf("\n     Radius: %.0f km",
-             planet->radius); // Station information for this planet
+      printf("\n     Radius: %.0f km", planet->radius);
+      printf("\n     Surface Temperature: %.0f K (%.0f C)",
+             planet->surfaceTemperature, planet->surfaceTemperature - 273.15);
+
+      // Enhanced habitability analysis
+      double habitabilityScore =
+          calculate_habitability_score(planet, &CurrentStarSystem->centralStar);
+      const char *habitabilityRating =
+          get_habitability_rating(habitabilityScore);
+      const char *tempCategory =
+          get_temperature_category(planet->surfaceTemperature);
+      bool hasAtmosphere = check_planetary_atmosphere_potential(
+          planet, &CurrentStarSystem->centralStar);
+      bool tidallyLocked =
+          check_tidal_locking(planet, &CurrentStarSystem->centralStar);
+      double radiationLevel =
+          calculate_radiation_exposure(planet, &CurrentStarSystem->centralStar);
+
+      printf("\n     Habitability: %.1f/100 (%s)", habitabilityScore,
+             habitabilityRating);
+      printf("\n     Temperature: %s", tempCategory);
+      printf("\n     Atmosphere: %s", hasAtmosphere ? "Potential" : "Unlikely");
+      printf("\n     Rotation: %s",
+             tidallyLocked ? "Tidally Locked" : "Normal");
+      printf("\n     Radiation: %.1fx Earth levels", radiationLevel);
+
+      if (planet->isInHabitableZone) {
+        printf("\n     Status: In Habitable Zone *");
+      } else if (planet->surfaceTemperature > 273.15 &&
+                 planet->surfaceTemperature < 373.15) {
+        printf("\n     Status: Potentially habitable temperature");
+      } else if (planet->surfaceTemperature < 200.0) {
+        printf("\n     Status: Frozen world");
+      } else if (planet->surfaceTemperature > 500.0) {
+        printf("\n     Status: Scorched world");
+      } // Station information for this planet
       if (planet->numStations > 0) {
         printf("\n     Stations: %d", planet->numStations);
 
@@ -2503,8 +2540,9 @@ static inline bool do_equip_from_inventory(char *commandArguments) {
            "slot 1)\n");
     printf("\nUse 'inv' command to view your inventory and 'shipinfo' to see "
            "available slots.\n");
-    return false;  } // Parse the arguments - we need two numbers: inventory index and slot
-    // number
+    return false;
+  } // Parse the arguments - we need two numbers: inventory index and slot
+  // number
   char arg1[MAX_LEN];
   char arg2[MAX_LEN];
   int invIndex = -1;

@@ -293,11 +293,11 @@ static inline MarketType GeneratePlanetaryMarket(Planet *planet,
   // headers (e.g., elite_state.h)
   planet->lastMarketUpdate = game_time_get_seconds();
 
-  // 4. Set planet->planetaryMarket.isInitialized = true
+  // 4. Set planet->planetaryMarket.isInitialized = 1
   // This is done here as per step III.4 of the plan.
   // The caller (e.g., initialize_star_system) will assign the returned market
   // to planet->planetaryMarket.market.
-  planet->planetaryMarket.isInitialized = true;
+  planet->planetaryMarket.isInitialized = 1;
 
   // 5. Return the modified market
   return baseMarket;
@@ -880,7 +880,7 @@ static inline void initialize_star_system(StarSystem *system,
           (shipyardBonus && (planSysEntry->goatSoupSeed.c + j) % 3 == 0) ||
           ((planSysEntry->goatSoupSeed.c + j) % 4 == 0);
 
-      station->hasMarket = true; // All stations have markets
+      station->hasMarket = 1; // All stations have markets
 
       // Missions more common in populated (habitable) systems
       bool missionBonus = planet->isInHabitableZone;
@@ -1053,11 +1053,11 @@ static inline void initialize_star_system(StarSystem *system,
 
           // Initialize all station services for populated systems
           newStation->hasDockingComputer =
-              true; // High population areas need docking computers
+              1; // High population areas need docking computers
           newStation->hasShipyard =
-              true; // Major population centers have shipyards
-          newStation->hasMarket = true;   // All stations have markets
-          newStation->hasMissions = true; // Populated areas have missions
+              1; // Major population centers have shipyards
+          newStation->hasMarket = 1;   // All stations have markets
+          newStation->hasMissions = 1; // Populated areas have missions
 
           // Set specialization based on planet type
           // Planet types: 0=Rocky, 1=Terrestrial, 2=Gas Giant, 3=Ice Giant
@@ -1151,18 +1151,18 @@ static inline bool travel_to_celestial(StarSystem *system,
                                        void *targetBody) {
   if (!system) {
     fprintf(stderr, "Error: Invalid star system data for travel.\n");
-    return false;
+    return 0;
   }
 
   if (!navState) {
     fprintf(stderr, "Error: Invalid navigation state for travel.\n");
-    return false;
+    return 0;
   }
 
   // For non-NavBeacon targets, we need a valid body pointer
   if (targetType != CELESTIAL_NAV_BEACON && !targetBody) {
     fprintf(stderr, "Error: Invalid target body for travel destination.\n");
-    return false;
+    return 0;
   }
 
   double startDistance = navState->distanceFromStar;
@@ -1178,10 +1178,10 @@ static inline bool travel_to_celestial(StarSystem *system,
     Planet *targetPlanet = (Planet *)targetBody;
 
     // Validate the planet is part of this system
-    bool planetFound = false;
+    bool planetFound = 0;
     for (int i = 0; i < system->numPlanets; i++) {
       if (&system->planets[i] == targetPlanet) {
-        planetFound = true;
+        planetFound = 1;
         break;
       }
     }
@@ -1189,7 +1189,7 @@ static inline bool travel_to_celestial(StarSystem *system,
     if (!planetFound) {
       fprintf(stderr,
               "Error: Target planet is not part of the current star system.\n");
-      return false;
+      return 0;
     }
 
     endDistance = targetPlanet->orbitalDistance;
@@ -1218,7 +1218,7 @@ static inline bool travel_to_celestial(StarSystem *system,
     if (!parentPlanet) {
       fprintf(stderr,
               "Error: Could not find parent planet for target station.\n");
-      return false;
+      return 0;
     }
 
     // Station distance is planet distance plus orbital offset
@@ -1233,7 +1233,7 @@ static inline bool travel_to_celestial(StarSystem *system,
 
   default:
     fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
-    return false;  } // Calculate travel time
+    return 0;  } // Calculate travel time
   uint32_t travelTime = calculate_travel_time(
       startDistance, endDistance); // Calculate fuel requirement for travel
   double distanceDelta = fabs(endDistance - startDistance);
@@ -1248,14 +1248,14 @@ static inline bool travel_to_celestial(StarSystem *system,
       printf("\nTravel aborted: Insufficient fuel.\n");
       printf("Required: %.3f liters, Available: %.1f liters\n", fuelRequired,
              PlayerShipPtr->attributes.fuelLiters);
-      return false;
+      return 0;
     }
 
     // Consume fuel using ConsumeFuel function
-    if (!ConsumeFuel(fuelRequired, true)) {
+    if (!ConsumeFuel(fuelRequired, 1)) {
       fprintf(stderr, "Error: Failed to consume fuel for travel.\n");
       printf("\nTravel aborted: Insufficient fuel for operation.\n");
-      return false;
+      return 0;
     }
 
     printf("\nTravel fuel consumed: %.3f liters (%.5f LY)", fuelRequired,
@@ -1293,7 +1293,7 @@ static inline bool travel_to_celestial(StarSystem *system,
 
   navState->distanceFromStar = endDistance;
 
-  return true;
+  return 1;
 }
 
 // Function to convert celestial type to string for display
@@ -1491,19 +1491,19 @@ static inline bool check_planetary_atmosphere_potential(Planet *planet,
                                                         Star *star) {
   // Planets need sufficient mass/size to retain atmosphere
   if (planet->radius < 2000) {
-    return false; // Too small to retain significant atmosphere
+    return 0; // Too small to retain significant atmosphere
   }
 
   // Check if planet is not too close to star (atmosphere stripped)
   double escapeDistance =
       0.1 * sqrt(star->luminosity); // Simplified calculation
   if (planet->orbitalDistance < escapeDistance) {
-    return false; // Too close, atmosphere likely stripped
+    return 0; // Too close, atmosphere likely stripped
   }
 
   // Gas giants and ice giants have atmospheres by definition
   if (planet->type >= 2) {
-    return true;
+    return 1;
   }
 
   // Terrestrial and rocky planets depend on size and distance

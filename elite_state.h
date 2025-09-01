@@ -292,4 +292,4 @@ int CurrentSystemEconomy = 0;        // Default economy type
 int PlayerLocationType = 0;          // 0 = in space, 10 = docked at station
 
 // Combat state
-bool InCombat = false;
+bool InCombat = 0;

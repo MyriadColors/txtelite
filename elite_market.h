@@ -300,13 +300,13 @@ static inline uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount)
  * This ensures that both systems have consistent cargo information.
  *
  * @param playerShip Pointer to the PlayerShip structure to synchronize with
- * @return true if synchronization was successful, false otherwise
+ * @return 1 if synchronization was successful, 0 otherwise
  */
 static inline bool SynchronizeCargoSystems(struct PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Clear current cargo in the PlayerShip structure
@@ -354,10 +354,10 @@ static inline bool SynchronizeCargoSystems(struct PlayerShip *playerShip)
             {
                 // This should not happen if MAX_CARGO_SLOTS is large enough
                 printf("Warning: Not enough cargo slots to synchronize cargo.\n");
-                return false;
+                return 0;
             }
         }
     }
 
-    return true;
+    return 1;
 }

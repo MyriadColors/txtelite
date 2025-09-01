@@ -202,7 +202,7 @@ static inline void goat_soup(const char *sourceString, struct PlanSys *planetSys
  * - A descriptive sentence generated using the goat_soup function
  *
  * @param planetSystemInfo The planetary system information structure to be displayed
- * @param useCompressedOutput If true, outputs in single-line format; if false, outputs in detailed format
+ * @param useCompressedOutput If 1, outputs in single-line format; if 0, outputs in detailed format
  *
  * @note Relies on global arrays EconNames and GovNames from elite_globals.h
  * @note When using detailed format, modifies the global RndSeed variable for goat_soup generation

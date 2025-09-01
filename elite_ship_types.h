@@ -247,9 +247,9 @@ static inline void InitializeShipRegistry(void)
         1,              // defaultWeaponSlots
         1,              // defaultDefensiveSlots
         2,              // defaultUtilitySlots
-        true,           // hasStandardHyperdrive
-        true,           // hasStandardShields
-        true            // includesPulseLaser
+        1,           // hasStandardHyperdrive
+        1,           // hasStandardShields
+        1            // includesPulseLaser
     );    // Register Viper
     RegisterShipType(
         "Viper", // className
@@ -266,9 +266,9 @@ static inline void InitializeShipRegistry(void)
         2,       // defaultWeaponSlots
         1,       // defaultDefensiveSlots
         1,       // defaultUtilitySlots
-        true,    // hasStandardHyperdrive
-        true,    // hasStandardShields
-        true     // includesPulseLaser
+        1,    // hasStandardHyperdrive
+        1,    // hasStandardShields
+        1     // includesPulseLaser
     );    // Register Asp Mk II
     RegisterShipType(
         "Asp Mk II", // className
@@ -285,9 +285,9 @@ static inline void InitializeShipRegistry(void)
         2,           // defaultWeaponSlots
         2,           // defaultDefensiveSlots
         2,           // defaultUtilitySlots
-        true,        // hasStandardHyperdrive
-        true,        // hasStandardShields
-        true         // includesPulseLaser
+        1,        // hasStandardHyperdrive
+        1,        // hasStandardShields
+        1         // includesPulseLaser
     );
 }
 
@@ -339,12 +339,12 @@ typedef struct PlayerShip
 // @param playerShip Pointer to the PlayerShip structure to initialize
 // @param shipType Pointer to the ShipType to use
 // @param customName Custom name for the ship (or NULL to use default)
-// @return true if successful, false otherwise
+// @return 1 if successful, 0 otherwise
 static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipType, const char *customName)
 {
     if (playerShip == NULL || shipType == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Set ship name (custom or default)
@@ -379,7 +379,7 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
     // Initialize equipment slots to Empty
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
-        playerShip->equipment[i].isActive = false;
+        playerShip->equipment[i].isActive = 0;
         snprintf(playerShip->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
         playerShip->equipment[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
         playerShip->equipment[i].typeSpecific.utilityType = UTILITY_SYSTEM_TYPE_NONE; // Example default
@@ -402,7 +402,7 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
     // Add pulse laser if the ship type includes one
     if (shipType->includesPulseLaser)
     {
-        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].isActive = true;
+        playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].isActive = 1;
         snprintf(playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name, MAX_SHIP_NAME_LENGTH, "Pulse Laser");
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination        // Set other properties for Pulse Laser as needed
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
@@ -410,7 +410,7 @@ static inline bool InitializeShip(PlayerShip *playerShip, const ShipType *shipTy
         playerShip->equipment[EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON].damageOutput = 5.0; // Example
     }
 
-    return true;
+    return 1;
 }
 
 // Initializes a PlayerShip to Cobra Mk III default specifications.
@@ -437,13 +437,13 @@ static inline void InitializeCobraMkIII(PlayerShip *playerShip)
 
 // Displays the current status of the player's ship.
 static inline void DisplayShipStatus(const PlayerShip *playerShip)
-{    bool ecmFound = false; // Moved declaration here
-    bool escapePodFound = false;
-    bool fuelScoopsFound = false;
-    bool dockingComputerFound = false;
-    bool scannerUpgradeFound = false;
-    bool rearLaserFound = false;
-    bool forwardPulseLaserFound = false;
+{    bool ecmFound = 0; // Moved declaration here
+    bool escapePodFound = 0;
+    bool fuelScoopsFound = 0;
+    bool dockingComputerFound = 0;
+    bool scannerUpgradeFound = 0;
+    bool rearLaserFound = 0;
+    bool forwardPulseLaserFound = 0;
 
     if (playerShip == NULL)
     {
@@ -531,7 +531,7 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
                         printf("- Standard Forward Pulse Laser\n");
                     else
                         printf("- Forward Pulse Laser\n");
-                    forwardPulseLaserFound = true;
+                    forwardPulseLaserFound = 1;
                 }
             } // Rear-mounted Laser
             if (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON &&
@@ -542,7 +542,7 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
                 if (!rearLaserFound)
                 {
                     printf("- Rear-mounted Laser\n");
-                    rearLaserFound = true;
+                    rearLaserFound = 1;
                 }
             }            // Defensive Systems
             if (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
@@ -551,7 +551,7 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
                 if (playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM && !ecmFound)
                 {
                     printf("- ECM Unit\n");
-                    ecmFound = true;
+                    ecmFound = 1;
                 }
             }
 
@@ -565,28 +565,28 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
                     if (!escapePodFound)
                     {
                         printf("- Escape Pod\n");
-                        escapePodFound = true;
+                        escapePodFound = 1;
                     }
                     break;
                 case UTILITY_SYSTEM_TYPE_FUEL_SCOOPS:
                     if (!fuelScoopsFound)
                     {
                         printf("- Fuel Scoops\n");
-                        fuelScoopsFound = true;
+                        fuelScoopsFound = 1;
                     }
                     break;
                 case UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER:
                     if (!dockingComputerFound)
                     {
                         printf("- Docking Computer\n");
-                        dockingComputerFound = true;
+                        dockingComputerFound = 1;
                     }
                     break;
                 case UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE:
                     if (!scannerUpgradeFound)
                     {
                         printf("- Scanner Upgrade\n");
-                        scannerUpgradeFound = true;
+                        scannerUpgradeFound = 1;
                     }
                     break;
                 default:
@@ -634,13 +634,13 @@ static inline void DisplayShipStatus(const PlayerShip *playerShip)
  * Checks if the ship has fuel scoops installed
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if the ship has fuel scoops, false otherwise
+ * @return 1 if the ship has fuel scoops, 0 otherwise
  */
 static inline bool HasFuelScoops(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
@@ -650,11 +650,11 @@ static inline bool HasFuelScoops(const PlayerShip *playerShip)
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS)
         {
-            return true;
+            return 1;
         }
     }
 
-    return false;
+    return 0;
 }
 
 /**
@@ -663,8 +663,8 @@ static inline bool HasFuelScoops(const PlayerShip *playerShip)
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param fuelAmountLY Amount of fuel requested in light-years (as float, e.g. 3.5 LY)
- * @param useFuelScoops If true, attempt to use ship's fuel scoops instead of paying
- * @param externalSync If true, synchronize with the global state values for
+ * @param useFuelScoops If 1, attempt to use ship's fuel scoops instead of paying
+ * @param externalSync If 1, synchronize with the global state values for
  *                     Cash and Fuel in elite_state.h
  *
  * @return The actual amount of fuel added to the ship in light-years
@@ -799,17 +799,17 @@ static inline float RefuelShip(PlayerShip *playerShip, float fuelAmountLY, bool 
  * Activates ECM to destroy incoming enemy missiles.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if ECM was successfully activated, false otherwise
+ * @return 1 if ECM was successfully activated, 0 otherwise
  */
 static inline bool ActivateECM(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has ECM
-    bool hasECM = false;
+    bool hasECM = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -818,7 +818,7 @@ static inline bool ActivateECM(PlayerShip *playerShip)
              playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) &&
             playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
         {
-            hasECM = true;
+            hasECM = 1;
             break;
         }
     }
@@ -826,11 +826,11 @@ static inline bool ActivateECM(PlayerShip *playerShip)
     if (!hasECM)
     {
         printf("Error: Your ship is not equipped with ECM System.\n");
-        return false;
+        return 0;
     }
 
     printf("ECM System activated! All incoming missiles have been destroyed.\n");
-    return true;
+    return 1;
 }
 
 /**
@@ -838,17 +838,17 @@ static inline bool ActivateECM(PlayerShip *playerShip)
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param distance The distance to the station (used to determine docking time)
- * @return true if docking computer was activated successfully, false otherwise
+ * @return 1 if docking computer was activated successfully, 0 otherwise
  */
 static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has docking computer
-    bool hasDockingComputer = false;
+    bool hasDockingComputer = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -857,7 +857,7 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
         {
-            hasDockingComputer = true;
+            hasDockingComputer = 1;
             break;
         }
     }
@@ -865,7 +865,7 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
     if (!hasDockingComputer)
     {
         printf("Error: Your ship is not equipped with a Docking Computer.\n");
-        return false;
+        return 0;
     }
 
     // Calculate docking time based on distance
@@ -878,7 +878,7 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
     // Here we'd normally advance the game time by dockingTimeSeconds
     // and trigger the actual docking process
 
-    return true;
+    return 1;
 }
 
 /**
@@ -886,17 +886,17 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
  * The quality and range of information depends on whether a scanner upgrade is installed.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if scan was successful, false otherwise
+ * @return 1 if scan was successful, 0 otherwise
  */
 static inline bool UseScanner(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has advanced scanner
-    bool hasUpgradedScanner = false;
+    bool hasUpgradedScanner = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -905,7 +905,7 @@ static inline bool UseScanner(PlayerShip *playerShip)
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE)
         {
-            hasUpgradedScanner = true;
+            hasUpgradedScanner = 1;
             break;
         }
     }
@@ -923,7 +923,7 @@ static inline bool UseScanner(PlayerShip *playerShip)
         // Basic scanner would provide standard information
     }
 
-    return true;
+    return 1;
 }
 
 /**
@@ -932,17 +932,17 @@ static inline bool UseScanner(PlayerShip *playerShip)
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param criticalDamage Whether the ship has taken critical damage
- * @return true if escape pod was successfully deployed, false otherwise
+ * @return 1 if escape pod was successfully deployed, 0 otherwise
  */
 static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has escape pod
-    bool hasEscapePod = false;
+    bool hasEscapePod = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -951,7 +951,7 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD)
         {
-            hasEscapePod = true;
+            hasEscapePod = 1;
             break;
         }
     }
@@ -959,14 +959,14 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
     if (!hasEscapePod)
     {
         printf("Error: Your ship is not equipped with an Escape Pod.\n");
-        return false;
+        return 0;
     }
 
     // Only allow escape pod use if ship is critically damaged or override for testing
     if (!criticalDamage)
     {
         printf("Escape pod can only be deployed in case of critical ship damage.\n");
-        return false;
+        return 0;
     }
 
     printf("EMERGENCY: Escape pod deployed! You have been safely ejected from your ship.\n");
@@ -975,7 +975,7 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
     // This would normally trigger game logic to handle the aftermath
     // such as losing the ship and cargo, but preserving the player's life and credits
 
-    return true;
+    return 1;
 }
 
 /**
@@ -1010,13 +1010,13 @@ static inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlot
  * @param playerShip Pointer to the PlayerShip structure
  * @param slotType The type of slot to check (e.g., EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON)
  * @param specificType The specific type to check (EquipmentTypeSpecifics union)
- * @return true if the equipment is installed, false otherwise
+ * @return 1 if the equipment is installed, 0 otherwise
  */
 static inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType slotType, EquipmentTypeSpecifics specificType)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
@@ -1036,7 +1036,7 @@ static inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType 
             case EQUIPMENT_SLOT_TYPE_AFT_WEAPON:
                 if (playerShip->equipment[i].typeSpecific.weaponType == specificType.weaponType)
                 {
-                    return true;
+                    return 1;
                 }
                 break;
 
@@ -1044,7 +1044,7 @@ static inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType 
             case EQUIPMENT_SLOT_TYPE_DEFENSIVE_2:
                 if (playerShip->equipment[i].typeSpecific.defensiveType == specificType.defensiveType)
                 {
-                    return true;
+                    return 1;
                 }
                 break;
 
@@ -1054,7 +1054,7 @@ static inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType 
             case UTILITY_SYSTEM_4:
                 if (playerShip->equipment[i].typeSpecific.utilityType == specificType.utilityType)
                 {
-                    return true;
+                    return 1;
                 }
                 break;
 
@@ -1064,7 +1064,7 @@ static inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType 
         }
     }
 
-    return false;
+    return 0;
 }
 
 /**
@@ -1073,7 +1073,7 @@ static inline bool HasEquipment(const PlayerShip *playerShip, EquipmentSlotType 
  * @param playerShip Pointer to the PlayerShip structure
  * @param repairAmount Amount of hull strength to repair
  * @param costPerPoint Cost in credits per point of hull strength (if using externalSync)
- * @param externalSync If true, deduct cost from global Cash
+ * @param externalSync If 1, deduct cost from global Cash
  *
  * @return The actual amount of hull strength repaired
  */
@@ -1138,7 +1138,7 @@ static inline int RepairHull(PlayerShip *playerShip, int repairAmount, int costP
  * @param specificType A union containing the type-specific data
  * @param damageOutput How much damage this equipment does (for weapons)
  *
- * @return true if equipment was added successfully, false otherwise
+ * @return 1 if equipment was added successfully, 0 otherwise
  */
 static inline bool AddEquipment(PlayerShip *playerShip,
                          EquipmentSlotType slotType,
@@ -1148,7 +1148,7 @@ static inline bool AddEquipment(PlayerShip *playerShip,
 { // damageOutput is 0 for non-weapons
     if (playerShip == NULL || equipmentName == NULL)
     {
-        return false;
+        return 0;
     } // Check if the slot is valid and available (or if we are replacing existing)
     // The slotType directly corresponds to the array index in the equipment array
 
@@ -1156,7 +1156,7 @@ static inline bool AddEquipment(PlayerShip *playerShip,
     if (slotType < 0 || slotType >= MAX_EQUIPMENT_SLOTS)
     {
         printf("Error: Invalid equipment slot type %d.\n", slotType);
-        return false;
+        return 0;
     } // Check if the slot is already occupied
     if (playerShip->equipment[slotType].isActive)
     {
@@ -1181,14 +1181,14 @@ static inline bool AddEquipment(PlayerShip *playerShip,
             snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "Empty");
         }
     }    // Install the new equipment
-    playerShip->equipment[slotType].isActive = true;
+    playerShip->equipment[slotType].isActive = 1;
     snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "%s", equipmentName);
     playerShip->equipment[slotType].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
     playerShip->equipment[slotType].typeSpecific = specificType;
     playerShip->equipment[slotType].damageOutput = damageOutput;
 
     printf("%s added to slot %d.\n", equipmentName, slotType);
-    return true;
+    return 1;
 }
 
 /**
@@ -1197,20 +1197,20 @@ static inline bool AddEquipment(PlayerShip *playerShip,
  * @param playerShip Pointer to the PlayerShip structure
  * @param slotType The slot to remove equipment from
  *
- * @return true if equipment was removed successfully, false otherwise
+ * @return 1 if equipment was removed successfully, 0 otherwise
  */
 static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
     {
-        return false;
+        return 0;
     }
 
     // Check if there's actually equipment installed
     if (!playerShip->equipment[slotType].isActive)
     {
         printf("Error: No equipment installed in slot %d.\n", slotType);
-        return false;
+        return 0;
     }
 
     // Save current equipment name before removal
@@ -1231,7 +1231,7 @@ static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slo
             {
                 printf("Error: Can't remove cargo bay extension while cargo hold contains more than %d tons.\n",
                        playerShip->attributes.cargoCapacityTons - 5);
-                return false;
+                return 0;
             }
 
             // Decrease cargo capacity
@@ -1243,7 +1243,7 @@ static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slo
     // Leave other fields as they are - they'll be overwritten on next install
 
     printf("Successfully removed %s from slot %d.\n", equipmentName, slotType);
-    return true;
+    return 1;
 }
 
 /**
@@ -1325,24 +1325,24 @@ static inline int GetCargoItemCount(const PlayerShip *playerShip)
  * @param outQuantity Pointer to store the quantity
  * @param outPurchasePrice Pointer to store the purchase price
  *
- * @return true if successful, false if index is out of range or no cargo at index
+ * @return 1 if successful, 0 if index is out of range or no cargo at index
  */
 static inline bool GetCargoItemAtIndex(const PlayerShip *playerShip, int index,
                                 char *outCargoName, int *outQuantity, int *outPurchasePrice)
 {
     if (playerShip == NULL || outCargoName == NULL || outQuantity == NULL || outPurchasePrice == NULL)
     {
-        return false;
+        return 0;
     }
 
     if (index < 0 || index >= MAX_CARGO_SLOTS)
     {
-        return false;
+        return 0;
     }
 
     if (playerShip->cargo[index].quantity <= 0)
     {
-        return false;
+        return 0;
     }
 
     snprintf(outCargoName, MAX_SHIP_NAME_LENGTH, "%s", playerShip->cargo[index].name);
@@ -1350,7 +1350,7 @@ static inline bool GetCargoItemAtIndex(const PlayerShip *playerShip, int index,
     *outQuantity = playerShip->cargo[index].quantity;
     *outPurchasePrice = playerShip->cargo[index].purchasePrice;
 
-    return true;
+    return 1;
 }
 
 /**

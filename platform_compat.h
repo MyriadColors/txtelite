@@ -327,7 +327,7 @@ static inline bool platform_find_first_file(DirectoryIterator* iter,
   iter->pattern[MAX_PATH - 1] = '\0'; // Ensure null termination
 
   iter->handle = FindFirstFileA(iter->pattern, &iter->findData); // Use A for char*
-  iter->firstCall = true;
+  iter->firstCall = 1;
   return iter->handle != INVALID_HANDLE_VALUE;
 }
 

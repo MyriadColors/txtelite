@@ -34,7 +34,7 @@
  * @param filename The base filename for the save
  * @param fullPath Buffer to store the full path
  * @param size Size of the fullPath buffer
- * @return true if the directory exists or was created successfully, false otherwise
+ * @return 1 if the directory exists or was created successfully, 0 otherwise
  */
 static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t size)
 {
@@ -45,7 +45,7 @@ static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t 
         if (MKDIR(SAVE_DIRECTORY) != 0)
         {
             printf("Error: Could not create directory '%s'.\n", SAVE_DIRECTORY);
-            return false;
+            return 0;
         }
     }
 
@@ -61,7 +61,7 @@ static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t 
         platform_make_path(fullPath, size, SAVE_DIRECTORY, filename);
     }
 
-    return true;
+    return 1;
 }
 
 // Structure for the save file header
@@ -115,7 +115,7 @@ typedef struct
  * @param filename The path to the save file to be created
  * @param description Optional custom description for the save (pass NULL for automatic description)
  *
- * @return true if the save operation succeeded, false if any error occurred
+ * @return 1 if the save operation succeeded, 0 if any error occurred
  */
 static inline bool save_game(const char *filename, const char *description)
 {
@@ -124,13 +124,13 @@ static inline bool save_game(const char *filename, const char *description)
     // Get the full path with save directory
     if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
     {
-        return false;
+        return 0;
     }
       FILE *file = safe_fopen(fullPath, "wb");
     if (!file)
     {
         printf("Error: Could not open file '%s' for writing.\n", fullPath);
-        return false;
+        return 0;
     }
     // Prepare header
     SaveHeader header;
@@ -164,7 +164,7 @@ static inline bool save_game(const char *filename, const char *description)
     {
         printf("Error: Failed to write save header.\n");
         fclose(file);
-        return false;
+        return 0;
     }
 
     // Prepare game state
@@ -226,12 +226,12 @@ static inline bool save_game(const char *filename, const char *description)
     {
         printf("Error: Failed to write game state.\n");
         fclose(file);
-        return false;
+        return 0;
     }
 
     fclose(file);
     printf("Game saved to '%s'.\n", filename);
-    return true;
+    return 1;
 }
 
 /**
@@ -251,7 +251,7 @@ static inline bool save_game(const char *filename, const char *description)
  * 7. Displays information about the loaded save
  *
  * @param filename Path to the save file to load
- * @return true if the game was successfully loaded, false if any error occurred
+ * @return 1 if the game was successfully loaded, 0 if any error occurred
  */
 static inline bool load_game(const char *filename)
 {
@@ -260,14 +260,14 @@ static inline bool load_game(const char *filename)
     // Get the full path with save directory
     if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
     {
-        return false;
+        return 0;
     }
     
     FILE *file = safe_fopen(fullPath, "rb");
     if (!file)
     {
         printf("Error: Could not open file '%s' for reading.\n", fullPath);
-        return false;
+        return 0;
     }
     // Read header
     SaveHeader header;
@@ -275,7 +275,7 @@ static inline bool load_game(const char *filename)
     {
         printf("Error: Failed to read save header.\n");
         fclose(file);
-        return false;
+        return 0;
     }
 
     // Verify signature
@@ -284,7 +284,7 @@ static inline bool load_game(const char *filename)
         printf("Error: Invalid save file format. Expected '%s', found '%.7s'.\n",
                SAVE_SIGNATURE, header.signature);
         fclose(file);
-        return false;
+        return 0;
     }
 
     // Verify version
@@ -293,7 +293,7 @@ static inline bool load_game(const char *filename)
         printf("Error: Incompatible save file version %d (expected %d).\n",
                header.version, SAVE_VERSION);
         fclose(file);
-        return false;
+        return 0;
     }
 
     // Read game state
@@ -302,7 +302,7 @@ static inline bool load_game(const char *filename)
     {
         printf("Error: Failed to read game state.\n");
         fclose(file);
-        return false;
+        return 0;
     }
 
     fclose(file);
@@ -398,7 +398,7 @@ static inline bool load_game(const char *filename)
            (unsigned long long)((currentGameTimeSeconds / 60) % 60),
            (unsigned long long)(currentGameTimeSeconds % 60));
 
-    return true;
+    return 1;
 }
 
 /**
@@ -414,7 +414,7 @@ static inline bool load_game(const char *filename)
  * 4. Formats and displays the save information
  *
  * @param filename Path to the save file to display information about
- * @return true if the save information was successfully displayed, false if an error occurred
+ * @return 1 if the save information was successfully displayed, 0 if an error occurred
  *
  * @note The function handles its own error messages, printing them to stdout
  */
@@ -425,14 +425,14 @@ static inline bool show_save_info(const char *filename)
     // Get the full path with save directory
     if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
     {
-        return false;
+        return 0;
     }
     
     FILE *file = safe_fopen(fullPath, "rb");
     if (!file)
     {
         printf("Error: Could not open file '%s' for reading.\n", fullPath);
-        return false;
+        return 0;
     }
     // Read header
     SaveHeader header;
@@ -440,7 +440,7 @@ static inline bool show_save_info(const char *filename)
     {
         printf("Error: Failed to read save header.\n");
         fclose(file);
-        return false;
+        return 0;
     }
 
     // Verify signature
@@ -449,7 +449,7 @@ static inline bool show_save_info(const char *filename)
         printf("Error: Invalid save file format. Expected '%s', found '%.7s'.\n",
                SAVE_SIGNATURE, header.signature);
         fclose(file);
-        return false;
+        return 0;
     }    // Display information
     char timeStr[32];
     struct tm timeBuffer;
@@ -467,7 +467,7 @@ static inline bool show_save_info(const char *filename)
     printf("Description: %s\n", header.description);
 
     fclose(file);
-    return true;
+    return 1;
 }
 
 // GetSaveFilePath function has been moved to the top of the file
@@ -491,7 +491,7 @@ static inline void get_default_save_filename(char *buffer, size_t size)
  * This function checks if the directory for saving files exists, and creates it if necessary.
  * It is used to ensure that the save directory is available before attempting to save a game.
  *
- * @return true if the directory exists or was created successfully, false if an error occurred
+ * @return 1 if the directory exists or was created successfully, 0 if an error occurred
  */
 static inline bool create_save_directory()
 {
@@ -502,10 +502,10 @@ static inline bool create_save_directory()
         if (MKDIR(SAVE_DIRECTORY) != 0)
         {
             printf("Error: Failed to create save directory '%s'.\n", SAVE_DIRECTORY);
-            return false;
+            return 0;
         }
     }
-    return true;
+    return 1;
 }
 
 /**

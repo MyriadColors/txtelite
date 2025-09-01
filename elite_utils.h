@@ -92,13 +92,13 @@ static inline bool string_begins_with(const char *prefixString, const char *full
 	{
 		// Check if fullString is long enough
 		if (strlen(fullString) < l)
-			return false;
+			return 0;
 		while ((i < l) & (toupper(prefixString[i]) == toupper(fullString[i])))
 			i++;
 		if (i == l)
-			return true;
+			return 1;
 	}
-	return false;
+	return 0;
 }
 
 /*

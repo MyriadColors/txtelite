@@ -10,13 +10,13 @@
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param equipment The equipment item to store
- * @return true if equipment was successfully stored, false if inventory is full
+ * @return 1 if equipment was successfully stored, 0 if inventory is full
  */
 static inline bool StoreEquipmentInInventory(PlayerShip *playerShip, ShipEquipmentItem equipment)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Find first free inventory slot
@@ -28,12 +28,12 @@ static inline bool StoreEquipmentInInventory(PlayerShip *playerShip, ShipEquipme
             playerShip->equipmentInventory[i] = equipment;
             playerShip->equipmentInventory[i].isActive = 1; // Mark as active in inventory
             printf("Stored %s in inventory slot %d.\n", equipment.name, i);
-            return true;
+            return 1;
         }
     }
 
     printf("Error: Equipment inventory is full. Cannot store %s.\n", equipment.name);
-    return false;
+    return 0;
 }
 
 /**
@@ -41,20 +41,20 @@ static inline bool StoreEquipmentInInventory(PlayerShip *playerShip, ShipEquipme
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param slotType The slot to remove equipment from
- * @return true if equipment was successfully removed and stored, false otherwise
+ * @return 1 if equipment was successfully removed and stored, 0 otherwise
  */
 static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS)
     {
-        return false;
+        return 0;
     }
 
     // Check if there's actually equipment installed
     if (!playerShip->equipment[slotType].isActive)
     {
         printf("Error: No equipment installed in slot %d.\n", slotType);
-        return false;
+        return 0;
     }
 
     // Save current equipment to add to inventory
@@ -74,7 +74,7 @@ static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentS
             {
                 printf("Error: Can't remove cargo bay extension while cargo hold contains more than %d tons.\n",
                        playerShip->attributes.cargoCapacityTons - 5);
-                return false;
+                return 0;
             }
 
             // Decrease cargo capacity
@@ -85,7 +85,7 @@ static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentS
     // Store equipment in inventory
     if (!StoreEquipmentInInventory(playerShip, equipToStore))
     {
-        return false; // Failed to store in inventory (inventory full)
+        return 0; // Failed to store in inventory (inventory full)
     }
 
     // Reset the equipment slot
@@ -98,7 +98,7 @@ static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentS
     // Update equipment mapping for quick access
     MapEquipmentIndices(playerShip);
 
-    return true;
+    return 1;
 }
 
 /**
@@ -107,27 +107,27 @@ static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentS
  * @param playerShip Pointer to the PlayerShip structure
  * @param inventoryIndex Index of the equipment in inventory
  * @param slotType The slot to equip the item to
- * @return true if equipment was successfully equipped, false otherwise
+ * @return 1 if equipment was successfully equipped, 0 otherwise
  */
 static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex, EquipmentSlotType slotType)
 {
     if (playerShip == NULL || inventoryIndex < 0 || inventoryIndex >= MAX_EQUIPMENT_INVENTORY || slotType < 0 || slotType >= MAX_EQUIPMENT_SLOTS)
     {
-        return false;
+        return 0;
     }
 
     // Check if the inventory slot has equipment
     if (!playerShip->equipmentInventory[inventoryIndex].isActive)
     {
         printf("Error: No equipment in inventory slot %d.\n", inventoryIndex);
-        return false;
+        return 0;
     }
 
     // Get the inventory equipment
     ShipEquipmentItem inventoryEquipment = playerShip->equipmentInventory[inventoryIndex];
 
     // Verify equipment compatibility with the target slot
-    bool isCompatible = false;
+    bool isCompatible = 0;
 
     // Check if the target slot and the equipment slot type are compatible
     // We organize the slot types by category and verify they are in the same category
@@ -137,7 +137,7 @@ static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex
         if (inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON ||
             inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON)
         {
-            isCompatible = true;
+            isCompatible = 1;
         }
     }
     else if (slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 || slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2)
@@ -146,7 +146,7 @@ static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex
         if (inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
             inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2)
         {
-            isCompatible = true;
+            isCompatible = 1;
         }
     }
     else if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4)
@@ -155,7 +155,7 @@ static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex
         if (inventoryEquipment.slotType >= UTILITY_SYSTEM_1 &&
             inventoryEquipment.slotType <= UTILITY_SYSTEM_4)
         {
-            isCompatible = true;
+            isCompatible = 1;
         }
     }
 
@@ -163,7 +163,7 @@ static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex
     {
         printf("Error: %s cannot be installed in slot %d. Incorrect slot type.\n",
                inventoryEquipment.name, slotType);
-        return false;
+        return 0;
     }
 
     // Check if the target slot is already occupied
@@ -173,7 +173,7 @@ static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex
         if (!RemoveEquipmentToInventory(playerShip, slotType))
         {
             // If we couldn't store the current equipment (inventory full), abort
-            return false;
+            return 0;
         }
     }
 
@@ -196,7 +196,7 @@ static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex
     // Update equipment mapping for quick access
     MapEquipmentIndices(playerShip);
 
-    return true;
+    return 1;
 }
 
 /**
@@ -213,12 +213,12 @@ static inline void ListEquipmentInventory(const PlayerShip *playerShip)
 
     printf("\n--- Equipment Inventory ---\n");
 
-    bool hasInventory = false;
+    bool hasInventory = 0;
     for (int i = 0; i < MAX_EQUIPMENT_INVENTORY; ++i)
     {
         if (playerShip->equipmentInventory[i].isActive)
         {
-            hasInventory = true;
+            hasInventory = 1;
 
             // Determine item type for better display
             char itemType[20] = "Unknown";

@@ -6,13 +6,13 @@
  * Check if the player's ship has fuel scoops installed.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if fuel scoops are installed, false otherwise
+ * @return 1 if fuel scoops are installed, 0 otherwise
  */
 static inline bool HasFuelScoops(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Iterate through equipment slots
@@ -23,24 +23,24 @@ static inline bool HasFuelScoops(const PlayerShip *playerShip)
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS)
         {
-            return true;
+            return 1;
         }
     }
 
-    return false;
+    return 0;
 }
 
 /**
  * Check if the player's ship has an ECM system installed.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if ECM is installed, false otherwise
+ * @return 1 if ECM is installed, 0 otherwise
  */
 static inline bool HasECM(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Iterate through equipment slots
@@ -51,24 +51,24 @@ static inline bool HasECM(const PlayerShip *playerShip)
              playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) &&
             playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
         {
-            return true;
+            return 1;
         }
     }
 
-    return false;
+    return 0;
 }
 
 /**
  * Check if the player's ship has a docking computer installed.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if docking computer is installed, false otherwise
+ * @return 1 if docking computer is installed, 0 otherwise
  */
 static inline bool HasDockingComputer(const PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Iterate through equipment slots
@@ -79,28 +79,28 @@ static inline bool HasDockingComputer(const PlayerShip *playerShip)
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
         {
-            return true;
+            return 1;
         }
     }
 
-    return false;
+    return 0;
 }
 
 /**
  * Activates ECM to destroy incoming enemy missiles.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if ECM was successfully activated, false otherwise
+ * @return 1 if ECM was successfully activated, 0 otherwise
  */
 static inline bool ActivateECM(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has ECM
-    bool hasECM = false;
+    bool hasECM = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -109,7 +109,7 @@ static inline bool ActivateECM(PlayerShip *playerShip)
              playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) &&
             playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
         {
-            hasECM = true;
+            hasECM = 1;
             break;
         }
     }
@@ -117,11 +117,11 @@ static inline bool ActivateECM(PlayerShip *playerShip)
     if (!hasECM)
     {
         printf("Error: Your ship is not equipped with ECM System.\n");
-        return false;
+        return 0;
     }
 
     printf("ECM System activated! All incoming missiles have been destroyed.\n");
-    return true;
+    return 1;
 }
 
 /**
@@ -129,17 +129,17 @@ static inline bool ActivateECM(PlayerShip *playerShip)
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param distance The distance to the station (used to determine docking time)
- * @return true if docking computer was activated successfully, false otherwise
+ * @return 1 if docking computer was activated successfully, 0 otherwise
  */
 static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has docking computer
-    bool hasDockingComputer = false;
+    bool hasDockingComputer = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -148,7 +148,7 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
         {
-            hasDockingComputer = true;
+            hasDockingComputer = 1;
             break;
         }
     }
@@ -156,7 +156,7 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
     if (!hasDockingComputer)
     {
         printf("Error: Your ship is not equipped with a Docking Computer.\n");
-        return false;
+        return 0;
     }
 
     // Calculate docking time based on distance
@@ -169,7 +169,7 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
     // Here we'd normally advance the game time by dockingTimeSeconds
     // and trigger the actual docking process
 
-    return true;
+    return 1;
 }
 
 /**
@@ -177,17 +177,17 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
  * The quality and range of information depends on whether a scanner upgrade is installed.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if scan was successful, false otherwise
+ * @return 1 if scan was successful, 0 otherwise
  */
 static inline bool UseScanner(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has advanced scanner
-    bool hasUpgradedScanner = false;
+    bool hasUpgradedScanner = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -196,7 +196,7 @@ static inline bool UseScanner(PlayerShip *playerShip)
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE)
         {
-            hasUpgradedScanner = true;
+            hasUpgradedScanner = 1;
             break;
         }
     }
@@ -214,7 +214,7 @@ static inline bool UseScanner(PlayerShip *playerShip)
         // Basic scanner would provide standard information
     }
 
-    return true;
+    return 1;
 }
 
 /**
@@ -223,17 +223,17 @@ static inline bool UseScanner(PlayerShip *playerShip)
  *
  * @param playerShip Pointer to the PlayerShip structure
  * @param criticalDamage Whether the ship has taken critical damage
- * @return true if escape pod was successfully deployed, false otherwise
+ * @return 1 if escape pod was successfully deployed, 0 otherwise
  */
 static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if ship has escape pod
-    bool hasEscapePod = false;
+    bool hasEscapePod = 0;
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
     {
@@ -242,7 +242,7 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD)
         {
-            hasEscapePod = true;
+            hasEscapePod = 1;
             break;
         }
     }
@@ -250,14 +250,14 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
     if (!hasEscapePod)
     {
         printf("Error: Your ship is not equipped with an Escape Pod.\n");
-        return false;
+        return 0;
     }
 
     // Only allow escape pod use if ship is critically damaged or override for testing
     if (!criticalDamage)
     {
         printf("Escape pod can only be deployed in case of critical ship damage.\n");
-        return false;
+        return 0;
     }
     printf("EMERGENCY: Escape pod deployed! You have been safely ejected from your ship.\n");
     printf("Your ship and cargo have been lost, but you have survived.\n");
@@ -265,7 +265,7 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
     // This would normally trigger game logic to handle the aftermath
     // such as losing the ship and cargo, but preserving the player's life and credits
 
-    return true;
+    return 1;
 }
 
 /**
@@ -278,7 +278,7 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
     printf("Galactic Hyperspace Drive activated!\n");
     printf("Jumping to %s system...\n", targetSystemName);
 
-    return true;
+    return 1;
 }
 
 /**

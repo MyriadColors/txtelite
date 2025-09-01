@@ -15,7 +15,7 @@ by buying (and selling(?))
 Almost all operations are one byte only and overflow "errors" are
 extremely frequent and exploited.
 
-Trade Item prices are held internally in a single byte=true value/4.
+Trade Item prices are held internally in a single byte=1 value/4.
 The decimal point in prices is introduced only when printing them.
 Internally, all prices are integers.
 The player's cash is held in four bytes. 

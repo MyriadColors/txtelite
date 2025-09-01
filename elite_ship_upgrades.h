@@ -218,15 +218,15 @@ static inline int GetMaxUpgradeLevel(ShipUpgradeType upgradeType, const ShipUpgr
  * @param upgradeType The type of upgrade to apply
  * @param upgradeLevel The level/amount to upgrade (interpretation depends on upgradeType)
  * @param cost The cost of the upgrade in credits
- * @param externalSync If true, deduct cost from global Cash
+ * @param externalSync If 1, deduct cost from global Cash
  *
- * @return true if upgrade was successful, false otherwise
+ * @return 1 if upgrade was successful, 0 otherwise
  */
 static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeType, int upgradeLevel, int cost, bool externalSync)
 {
     if (playerShip == NULL || upgradeLevel <= 0)
     {
-        return false;
+        return 0;
     }
 
     // Check if we have enough cash to pay for the upgrade
@@ -238,11 +238,11 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         if (cost > Cash)
         {
             printf("Insufficient credits for upgrade. Required: %d, Available: %d\n", cost, Cash);
-            return false;
+            return 0;
         }
     }
 
-    bool upgrade_success = false;
+    bool upgrade_success = 0;
     const char *upgrade_name = "Unknown"; // Apply upgrade based on type
     switch (upgradeType)
     {
@@ -259,12 +259,12 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         {
             printf("Error: Maximum hull reinforcement level reached. Max: %d, Current: %d\n",
                    maxLevel, currentLevel);
-            return false;
+            return 0;
         }
         // Increase hull strength
         playerShip->attributes.hullStrength += upgradeLevel;
         upgrade_name = "Hull Reinforcement";
-        upgrade_success = true;
+        upgrade_success = 1;
         break;
     }
 
@@ -283,12 +283,12 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         {
             printf("Error: Maximum shield enhancement level reached. Max: %d, Current: %d\n",
                    maxLevel, currentLevel);
-            return false;
+            return 0;
         }
         // Increase shield strength
         playerShip->attributes.shieldStrengthFront += (double)upgradeLevel * (SHIELD_UPGRADE_AMOUNT / 2.0);        playerShip->attributes.shieldStrengthAft += (double)upgradeLevel * (SHIELD_UPGRADE_AMOUNT / 2.0);
         upgrade_name = "Shield Enhancement";
-        upgrade_success = true;
+        upgrade_success = 1;
         break;
     }
 
@@ -307,12 +307,12 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         {
             printf("Error: Maximum cargo bay level reached. Max: %d, Current: %d\n",
                    maxLevel, currentLevel);
-            return false;
+            return 0;
         }
         // Increase cargo capacity
         playerShip->attributes.cargoCapacityTons += upgradeLevel * CARGO_BAY_EXTENSION_CAPACITY;
         upgrade_name = "Cargo Bay Extension";
-        upgrade_success = true;
+        upgrade_success = 1;
         break;
     }
 
@@ -330,18 +330,18 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         {
             printf("Error: Maximum missile pylon level reached. Max: %d, Current: %d\n",
                    maxLevel, currentLevel);
-            return false;
+            return 0;
         }
         // Add missile pylons (capacity for missiles)
         playerShip->attributes.missilePylons += upgradeLevel;
         upgrade_name = "Missile Pylon";
-        upgrade_success = true;
+        upgrade_success = 1;
         break;
     }
 
     default:
         printf("Error: Unknown upgrade type.\n");
-        return false;
+        return 0;
     }
 
     // If upgrade succeeded and we're syncing with external state
@@ -374,13 +374,13 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
  * defensive systems, and energy management.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if loadout was successfully applied, false otherwise
+ * @return 1 if loadout was successfully applied, 0 otherwise
  */
 static inline bool ConfigureCombatLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
@@ -425,9 +425,9 @@ static inline bool ConfigureCombatLoadout(PlayerShip *playerShip)
         equipType,
         0.0  // No damage (utility)
     );    // Apply core upgrades for combat
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 2, 0, false);  // Improved shields
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 20, 0, false); // Reinforced hull
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_MISSILE_PYLON, 2, 0, false);       // Missile pylons
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 2, 0, 0);  // Improved shields
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 20, 0, 0); // Reinforced hull
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_MISSILE_PYLON, 2, 0, 0);       // Missile pylons
 
     // Add a full complement of missiles
     if (success)
@@ -454,13 +454,13 @@ static inline bool ConfigureCombatLoadout(PlayerShip *playerShip)
  * and quality-of-life improvements for traders.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if loadout was successfully applied, false otherwise
+ * @return 1 if loadout was successfully applied, 0 otherwise
  */
 static inline bool ConfigureTradingLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
@@ -516,8 +516,8 @@ static inline bool ConfigureTradingLoadout(PlayerShip *playerShip)
     );
 
     // Apply core upgrades for trading
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_CARGO_BAY, 3, 0, false);          // Maximized cargo space
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 1, 0, false); // Basic shield improvement
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_CARGO_BAY, 3, 0, 0);          // Maximized cargo space
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 1, 0, 0); // Basic shield improvement
 
     if (success)
     {
@@ -538,13 +538,13 @@ static inline bool ConfigureTradingLoadout(PlayerShip *playerShip)
  * for long journeys through space.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if loadout was successfully applied, false otherwise
+ * @return 1 if loadout was successfully applied, 0 otherwise
  */
 static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
@@ -591,7 +591,7 @@ static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
         equipType,
         0.0  // No damage (utility)
     );    // Apply core upgrades for exploration
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 10, 0, false); // Some hull reinforcement
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 10, 0, 0); // Some hull reinforcement
 
     // Fill fuel tanks to maximum
     playerShip->attributes.fuelLiters = playerShip->shipType->maxFuelLY * 100.0; // Assuming 100L = 1LY
@@ -615,13 +615,13 @@ static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip)
  * and defensive equipment for protection in asteroid fields.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if loadout was successfully applied, false otherwise
+ * @return 1 if loadout was successfully applied, 0 otherwise
  */
 static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
@@ -677,8 +677,8 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
         equipType,
         0.0  // No damage (utility)
     );    // Apply core upgrades for mining
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_CARGO_BAY, 2, 0, false);          // More cargo space for mined materials
-    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 1, 0, false); // Shield improvement for debris protection
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_CARGO_BAY, 2, 0, 0);          // More cargo space for mined materials
+    success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 1, 0, 0); // Shield improvement for debris protection
 
     if (success)
     {
@@ -704,7 +704,7 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip)
  * @param cost The cost of the equipment in credits
  * @param techLevelRequired The minimum tech level required for the equipment
  *
- * @return true if purchase successful, false otherwise
+ * @return 1 if purchase successful, 0 otherwise
  */
 static inline bool PurchaseEquipment(PlayerShip *playerShip,
                               const char *equipmentName,
@@ -717,7 +717,7 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
 
     if (playerShip == NULL || equipmentName == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Get external variables
@@ -730,7 +730,7 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
     {
         printf("Insufficient credits to purchase %s. Required: %d, Available: %d\n",
                equipmentName, cost, Cash);
-        return false;
+        return 0;
     }
 
     // Check if the current system has the required tech level
@@ -739,7 +739,7 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
         printf("This equipment is not available at this technology level.\n");
         printf("Required tech level: %d, Current system tech level: %d\n",
                techLevelRequired, Galaxy[CurrentPlanet].techLev);
-        return false;
+        return 0;
     }    // Try to add the equipment
     bool equipmentAdded = AddEquipment(
         playerShip,
@@ -757,12 +757,12 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
 #include "elite_equipment_constants.h"
         MapEquipmentIndices(playerShip);
 
-        return true;
+        return 1;
     }
     else
     {
         printf("Failed to install %s. Make sure the slot is empty.\n", equipmentName);
-        return false;
+        return 0;
     }
 }
 
@@ -842,14 +842,14 @@ static inline void DisplayUpgrades(const PlayerShip *playerShip)
  * Display available ship upgrades at the current station
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if upgrades were displayed successfully
+ * @return 1 if upgrades were displayed successfully
  */
 static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
         printf("Error: Invalid ship data.\n");
-        return false;
+        return 0;
     }
 
     // Access to player's cash
@@ -921,7 +921,7 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
     printf("Quantity is optional and defaults to 1 if not specified.\n");
     // Show ships have different upgrade capabilities    printf("\nNote: Different ship classes have different upgrade capabilities and costs.\n");
 
-    return true;
+    return 1;
 }
 
 /**
@@ -930,14 +930,14 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @param upgradeId ID of the upgrade to purchase (1-5)
  * @param quantity Quantity of the upgrade to purchase
- * @return true if purchase was successful
+ * @return 1 if purchase was successful
  */
 static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int quantity)
 {
     if (playerShip == NULL || upgradeId < 1 || upgradeId > 4 || quantity <= 0)
     {
         printf("Error: Invalid upgrade parameters.\n");
-        return false;
+        return 0;
     }
 
     // Get ship-specific upgrade parameters
@@ -970,7 +970,7 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
 
     default:
         printf("Error: Invalid upgrade ID.\n");
-        return false;
+        return 0;
     }
 
     // Get ship-specific cost per unit using the GetUpgradeCost function
@@ -989,11 +989,11 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
         printf("Error: Insufficient credits for %s x%d.\n", upgradeName, quantity);
         printf("Required: %.1f CR, Available: %.1f CR\n",
                (double)totalCost / 10.0, playerCash);
-        return false;
+        return 0;
     }
 
     // Apply the upgrade
-    bool success = ApplyUpgrade(playerShip, upgradeType, quantity, totalCost, true);
+    bool success = ApplyUpgrade(playerShip, upgradeType, quantity, totalCost, 1);
 
     if (success)
     {
@@ -1011,7 +1011,7 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
  * Allows the player to view available upgrades and purchase them
  *
  * @param arguments Command arguments (upgrade ID and optional quantity)
- * @return true if command handled successfully
+ * @return 1 if command handled successfully
  */
 static inline bool UpgradeCommand(const char *arguments)
 {
@@ -1022,7 +1022,7 @@ static inline bool UpgradeCommand(const char *arguments)
     if (PlayerLocationType != 10)
     {
         printf("Error: You must be docked at a station to access ship upgrades.\n");
-        return false;
+        return 0;
     }
 
     // Get player ship
@@ -1049,7 +1049,7 @@ static inline bool UpgradeCommand(const char *arguments)
         printf("Error: Invalid upgrade command format.\n");
         printf("Usage: upgrade [ID] [quantity]\n");
         printf("Example: upgrade 2 3 (to buy 3 shield enhancements)\n");
-        return false;
+        return 0;
     }
     
     // Skip whitespace after upgrade ID

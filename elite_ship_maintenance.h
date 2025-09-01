@@ -16,8 +16,8 @@ extern int32_t Cash;
  * Used for both hyperspace jumps and in-system travel
  *
  * @param fuelAmount Amount of fuel to consume in tenths of LY for jumps, or liters for local travel
- * @param isLocalTravel If true, converts from liters to LY units for in-system travel
- * @return true if consumption was successful, false if insufficient fuel
+ * @param isLocalTravel If 1, converts from liters to LY units for in-system travel
+ * @return 1 if consumption was successful, 0 if insufficient fuel
  */
 static inline bool ConsumeFuel(double fuelAmount, bool isLocalTravel)
 {
@@ -37,7 +37,7 @@ static inline bool ConsumeFuel(double fuelAmount, bool isLocalTravel)
     
     // Check if we have enough fuel
     if (Fuel < fuelToConsume) {
-        return false;
+        return 0;
     }
     
     // Consume the fuel from the global variable
@@ -55,7 +55,7 @@ static inline bool ConsumeFuel(double fuelAmount, bool isLocalTravel)
         Fuel = (uint16_t)(PlayerShipPtr->attributes.fuelLiters / 10.0);
     }
     
-    return true;
+    return 1;
 }
 
 /**
@@ -63,18 +63,18 @@ static inline bool ConsumeFuel(double fuelAmount, bool isLocalTravel)
  * This function maintains compatibility with the updated system
  *
  * @param amount Amount of fuel to add in LY units
- * @param useCash If true, deducts cash; if false, attempts to use fuel scoops
- * @return true if refueling was successful, false otherwise
+ * @param useCash If 1, deducts cash; if 0, attempts to use fuel scoops
+ * @return 1 if refueling was successful, 0 otherwise
  */
 static inline bool ShipRefuel(double amount, bool useCash)
 {
     if (PlayerShipPtr == NULL) {
-        return false;
+        return 0;
     }
     
     // The isEmergency parameter was part of the original signature but not used in the call to RefuelShip.
-    // RefuelShip from elite_ship_types.h takes: PlayerShip*, amount, useFuelScoops (true if !useCash), allowEmergencyRefuel (always true here)
-    float result = RefuelShip(PlayerShipPtr, (float)amount, !useCash, true);
+    // RefuelShip from elite_ship_types.h takes: PlayerShip*, amount, useFuelScoops (1 if !useCash), allowEmergencyRefuel (always 1 here)
+    float result = RefuelShip(PlayerShipPtr, (float)amount, !useCash, 1);
     return result > 0.0f;
 }
 
@@ -83,30 +83,30 @@ static inline bool ShipRefuel(double amount, bool useCash)
  * Usually used for fuel scooping from stars or gas giants
  * 
  * @param amount Amount to try scooping in LY units
- * @return true if scooping was successful
+ * @return 1 if scooping was successful
  */
 static inline bool UseFuelScoops(double amount)
 {
     if (PlayerShipPtr == NULL) {
-        return false;
+        return 0;
     }
     
     // Call the ship-specific RefuelShip with appropriate parameters
-    RefuelShip(PlayerShipPtr, (float)amount, true, true);
-    return true;
+    RefuelShip(PlayerShipPtr, (float)amount, 1, 1);
+    return 1;
 }
 
 /**
  * Interface to the existing RepairHull function in elite_ship_types.h
  * 
  * @param repairAmount Amount of hull strength to repair
- * @param useCash If true, deducts cash; if false, attempts emergency repair 
- * @return true if repair was successful, false otherwise
+ * @param useCash If 1, deducts cash; if 0, attempts emergency repair 
+ * @return 1 if repair was successful, 0 otherwise
  */
 static inline bool ShipRepair(int repairAmount, bool useCash)
 {
     if (PlayerShipPtr == NULL) {
-        return false;
+        return 0;
     }
     
     // Standard cost per hull point is 5 credits
@@ -115,7 +115,7 @@ static inline bool ShipRepair(int repairAmount, bool useCash)
     // If not using cash, we use the emergency repair mode which is
     // handled differently by the underlying function
     int result = RepairHull(PlayerShipPtr, repairAmount, 
-                           useCash ? costPerPoint : 0, true);
+                           useCash ? costPerPoint : 0, 1);
                            
     return result > 0;
 }

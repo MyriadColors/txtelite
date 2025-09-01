@@ -28,13 +28,13 @@ typedef struct TempShipStorage
 } TempShipStorage;
 
 // Global temporary storage for ship during trade-in
-static TempShipStorage tradeInStorage = {.isActive = false};
+static TempShipStorage tradeInStorage = {.isActive = 0};
 
 // --- Ship Availability Database ---
 static const ShipAvailability shipAvailabilityDB[] = {
-    {"Cobra Mk III", true, true, true, 1.0}, // Available everywhere at standard price
-    {"Viper", false, false, true, 0.9},      // Available in military systems, slightly cheaper
-    {"Asp Mk II", true, false, true, 1.1},   // Available in industrial and military, slightly more expensive
+    {"Cobra Mk III", 1, 1, 1, 1.0}, // Available everywhere at standard price
+    {"Viper", 0, 0, 1, 0.9},      // Available in military systems, slightly cheaper
+    {"Asp Mk II", 1, 0, 1, 1.1},   // Available in industrial and military, slightly more expensive
     // Additional ships can be added here
 };
 
@@ -47,7 +47,7 @@ static const ShipAvailability shipAvailabilityDB[] = {
  *
  * @param shipClassName Name of the ship class to check
  * @param systemEconomy Economy of the current system
- * @return true if ship is available, false otherwise
+ * @return 1 if ship is available, 0 otherwise
  */
 static inline bool IsShipAvailableInSystem(const char *shipClassName, int systemEconomy)
 {
@@ -74,7 +74,7 @@ static inline bool IsShipAvailableInSystem(const char *shipClassName, int system
     }
 
     // If not found, assume not available
-    return false;
+    return 0;
 }
 
 /**
@@ -387,7 +387,7 @@ static inline int TransferEquipment(PlayerShip *sourceShip, PlayerShip *targetSh
             }
 
             // Check if slot is valid for the target ship
-            bool validSlot = false;
+            bool validSlot = 0;
             switch (slotType)
             {
             case EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON:
@@ -408,7 +408,7 @@ static inline int TransferEquipment(PlayerShip *sourceShip, PlayerShip *targetSh
                 break;
 
             default:
-                validSlot = false;
+                validSlot = 0;
                 break;
             }
 
@@ -425,13 +425,13 @@ static inline int TransferEquipment(PlayerShip *sourceShip, PlayerShip *targetSh
             else
             {
                 // Store in inventory if slot not available
-                bool stored = false;
+                bool stored = 0;
                 for (int j = 0; j < MAX_EQUIPMENT_INVENTORY; j++)
                 {
                     if (!targetShip->equipmentInventory[j].isActive)
                     {
                         targetShip->equipmentInventory[j] = sourceShip->equipment[i];
-                        stored = true;
+                        stored = 1;
                         transferCount++;
                         break;
                     }
@@ -457,13 +457,13 @@ static inline int TransferEquipment(PlayerShip *sourceShip, PlayerShip *targetSh
     {
         if (sourceShip->equipmentInventory[i].isActive)
         {
-            bool stored = false;
+            bool stored = 0;
             for (int j = 0; j < MAX_EQUIPMENT_INVENTORY; j++)
             {
                 if (!targetShip->equipmentInventory[j].isActive)
                 {
                     targetShip->equipmentInventory[j] = sourceShip->equipmentInventory[i];
-                    stored = true;
+                    stored = 1;
                     transferCount++;
                     break;
                 }
@@ -649,7 +649,7 @@ static inline int TransferCargo(PlayerShip *sourceShip, PlayerShip *targetShip)
  * @param newShipName Name of the ship to buy
  * @param gameTime Current game time in seconds
  * @param tradeIn Whether to trade in the current ship
- * @return true if purchase successful, false otherwise
+ * @return 1 if purchase successful, 0 otherwise
  */
 static inline bool BuyNewShip(const char *systemName, int systemEconomy,
                               PlayerShip *playerShip, const char *newShipName, uint64_t gameTime, bool tradeIn)
@@ -658,7 +658,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
     if (playerShip == NULL || newShipName == NULL)
     {
         printf("Error: Invalid ship data.\n");
-        return false;
+        return 0;
     }
 
     // Access to player's cash from elite_state.h
@@ -669,12 +669,12 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
     const ShipType *newShipType = GetShipTypeByName(newShipName);    if (newShipType == NULL)
     {
         printf("Error: Ship '%s' not found.\n", newShipName);
-        return false;
+        return 0;
     }    // Check if the ship is available in this system
     if (!IsShipAvailableInSystem(newShipType->className, systemEconomy))
     {
         printf("Error: Ship '%s' is not available in this star system.\n", newShipType->className);
-        return false;
+        return 0;
     }
 
     // Calculate the price with system-specific multiplier
@@ -695,7 +695,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
         printf("Error: Insufficient funds to purchase %s.\n", newShipType->className);
         printf("Ship price: %.1f CR, Trade-in value: %.1f CR, Net cost: %.1f CR, Your cash: %.1f CR\n",
                price, tradeInValue, netCost, (double)Cash / 10.0);
-        return false;
+        return 0;
     }
 
     // If trading in, store the current ship temporarily
@@ -703,7 +703,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
     {
         // Store the current ship
         tradeInStorage.ship = *playerShip;
-        tradeInStorage.isActive = true;
+        tradeInStorage.isActive = 1;
     }
 
     // Create the new ship
@@ -719,10 +719,10 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
         {
             // Restore the old ship
             *playerShip = tradeInStorage.ship;
-            tradeInStorage.isActive = false;
+            tradeInStorage.isActive = 0;
         }
 
-        return false;
+        return 0;
     }
     // Transfer equipment if trading in
     int equipmentTransferred = 0;
@@ -733,7 +733,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
         cargoLost = TransferCargo(&tradeInStorage.ship, playerShip);
 
         // Clear the trade-in storage
-        tradeInStorage.isActive = false;
+        tradeInStorage.isActive = 0;
     }
     // Deduct the cost from player's cash
     Cash -= (int32_t)netCost;
@@ -757,7 +757,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
     printf("Net cost: %.1f CR\n", netCost);
     printf("Remaining cash: %.1f CR\n", (double)Cash / 10.0);
 
-    return true;
+    return 1;
 }
 
 // Command handler functions to be included in elite_commands.h
@@ -767,7 +767,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
  * Shows ships available for purchase at the current station
  *
  * @param arguments Command arguments (unused)
- * @return true if command handled successfully
+ * @return 1 if command handled successfully
  */
 static inline bool ShipyardCommand(const char *arguments)
 {
@@ -780,7 +780,7 @@ static inline bool ShipyardCommand(const char *arguments)
     if (PlayerNavState.currentLocationType != CELESTIAL_STATION || PlayerLocationType != 10)
     {
         printf("Error: You must be docked at a station to access the shipyard.\n");
-        return false;
+        return 0;
     }
 
     // Get current system info
@@ -792,7 +792,7 @@ static inline bool ShipyardCommand(const char *arguments)
     // Display the shipyard
     DisplayShipyard(CurrentSystemName, CurrentSystemEconomy, PlayerShipPtr, currentGameTimeSeconds);
 
-    return true;
+    return 1;
 }
 
 /**
@@ -800,7 +800,7 @@ static inline bool ShipyardCommand(const char *arguments)
  * Compares the player's current ship with a ship available for purchase
  *
  * @param arguments Name of the ship to compare with
- * @return true if command handled successfully
+ * @return 1 if command handled successfully
  */
 static inline bool CompareShipCommand(const char *arguments)
 {
@@ -809,7 +809,7 @@ static inline bool CompareShipCommand(const char *arguments)
     {
         printf("Error: Please specify a ship to compare with.\n");
         printf("Usage: compare <shipname>\n");
-        return false;
+        return 0;
     }
 
     // Get player ship
@@ -818,7 +818,7 @@ static inline bool CompareShipCommand(const char *arguments)
     // Compare ships
     CompareShips(PlayerShipPtr, arguments);
 
-    return true;
+    return 1;
 }
 
 /**
@@ -829,14 +829,14 @@ static inline bool CompareShipCommand(const char *arguments)
  * @param shipID ID of the ship (1-based index as shown in the shipyard)
  * @param shipName Buffer to store the ship name (must be pre-allocated)
  * @param shipNameSize Size of the shipName buffer
- * @return true if the ship was found, false otherwise
+ * @return 1 if the ship was found, 0 otherwise
  */
 static inline bool GetShipNameByID(const char *systemName, int systemEconomy, int shipID,
                                    char *shipName, size_t shipNameSize)
 {
     if (shipID < 1 || shipName == NULL || shipNameSize < 1)
     {
-        return false;
+        return 0;
     }
 
     // Get list of available ships
@@ -850,14 +850,14 @@ static inline bool GetShipNameByID(const char *systemName, int systemEconomy, in
     // Check if the shipID is valid
     if (shipIndex < 0 || shipIndex >= shipCount)
     {
-        return false;
+        return 0;
     }
 
     // Copy the ship name to the buffer
     snprintf(shipName, shipNameSize, "%s", availableShips[shipIndex]->className);
     shipName[shipNameSize - 1] = '\0'; // Ensure null termination
 
-    return true;
+    return 1;
 }
 
 /**
@@ -865,7 +865,7 @@ static inline bool GetShipNameByID(const char *systemName, int systemEconomy, in
  * Buys a new ship, optionally trading in the current ship
  *
  * @param arguments Ship ID or name to buy, with optional 'notrade' flag
- * @return true if command handled successfully
+ * @return 1 if command handled successfully
  */
 static inline bool BuyShipCommand(const char *arguments)
 {
@@ -877,7 +877,7 @@ static inline bool BuyShipCommand(const char *arguments)
     if (PlayerNavState.currentLocationType != CELESTIAL_STATION || PlayerLocationType != 10)
     {
         printf("Error: You must be docked at a station to purchase a ship.\n");
-        return false;
+        return 0;
     }
 
     // Check if arguments are provided
@@ -886,7 +886,7 @@ static inline bool BuyShipCommand(const char *arguments)
         printf("Error: Please specify a ship to buy.\n");
         printf("Usage: buyship <ID or shipname> [notrade]\n");
         printf("Example: buyship 1  or  buyship \"Cobra Mk III\"\n");
-        return false;
+        return 0;
     }
 
     // Get current system info and player ship
@@ -897,7 +897,7 @@ static inline bool BuyShipCommand(const char *arguments)
 
     // Parse arguments
     char shipNameOrID[64] = {0};
-    bool tradeIn = true;
+    bool tradeIn = 1;
 
     // Copy the first part of the arguments (up to the first space)
     const char *space = strchr(arguments, ' ');
@@ -910,7 +910,7 @@ static inline bool BuyShipCommand(const char *arguments)
         // Check for 'notrade' flag in the remaining part
         if (strstr(space + 1, "notrade") != NULL)
         {
-            tradeIn = false;
+            tradeIn = 0;
         }
     }
     else
@@ -922,14 +922,14 @@ static inline bool BuyShipCommand(const char *arguments)
 
     // Check if the argument is a number (ID) or a string (ship name)
     char actualShipName[MAX_SHIP_NAME_LENGTH] = {0};
-    bool isID = true;
+    bool isID = 1;
 
     // Check if shipNameOrID is a number
     for (size_t i = 0; i < strlen(shipNameOrID); i++)
     {
         if (!isdigit(shipNameOrID[i]))
         {
-            isID = false;
+            isID = 0;
             break;
         }
     }
@@ -943,7 +943,7 @@ static inline bool BuyShipCommand(const char *arguments)
         if (!GetShipNameByID(CurrentSystemName, CurrentSystemEconomy, shipID, actualShipName, MAX_SHIP_NAME_LENGTH))
         {
             printf("Error: Invalid ship ID: %d\n", shipID);
-            return false;
+            return 0;
         }
     }
     else

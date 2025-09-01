@@ -32,11 +32,11 @@ static inline bool parse_and_execute_command(char *commandString)
 	char c[MAX_LEN];
 	commandString = strip_leading_trailing_spaces(commandString);
 	if (strlen(commandString) == 0)
-		return false;
+		return 0;
 	split_string_at_first_space(commandString, c);
 	i = match_string_in_array(c, commands, NUM_COMMANDS);
 	if (i)
 		return (*comfuncs[i - 1])(commandString);
 	printf("\nBad command (%s)", c);
-	return false;
+	return 0;
 }

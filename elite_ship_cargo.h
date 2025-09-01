@@ -129,13 +129,13 @@ static inline int FindEmptyCargoSlot(const PlayerShip *playerShip)
  * @param cargoName Name of the cargo/commodity to add
  * @param quantity Amount of cargo to add (in tonnes)
  * @param purchasePrice Price per tonne (for player's reference)
- * @return true if cargo was successfully added, false if there was no space
+ * @return 1 if cargo was successfully added, 0 if there was no space
  */
 static inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int purchasePrice)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0)
     {
-        return false;
+        return 0;
     }
 
     // Check if there's enough cargo capacity
@@ -144,7 +144,7 @@ static inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int q
         printf("Error: Not enough cargo space. Available: %d tonnes, Needed: %d tonnes\n",
                playerShip->attributes.cargoCapacityTons - playerShip->attributes.currentCargoTons,
                quantity);
-        return false;
+        return 0;
     }
 
     // Check if we already have this cargo type
@@ -170,7 +170,7 @@ static inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int q
         if (cargoSlot < 0)
         {
             printf("Error: No available cargo slots. Maximum different cargo types reached.\n");
-            return false;
+            return 0;
         }
 
         // Add new cargo type
@@ -184,7 +184,7 @@ static inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int q
     playerShip->attributes.currentCargoTons += quantity;
 
     printf("Added %d tonnes of %s to cargo hold.\n", quantity, cargoName);
-    return true;
+    return 1;
 }
 
 /**
@@ -193,13 +193,13 @@ static inline bool AddCargo(PlayerShip *playerShip, const char *cargoName, int q
  * @param playerShip Pointer to the PlayerShip structure
  * @param cargoName Name of the cargo/commodity to remove
  * @param quantity Amount of cargo to remove (in tonnes)
- * @return true if cargo was successfully removed, false if the ship doesn't have that cargo
+ * @return 1 if cargo was successfully removed, 0 if the ship doesn't have that cargo
  */
 static inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, int quantity)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0)
     {
-        return false;
+        return 0;
     }
     // Find the cargo slot
     int cargoSlot = FindCargoSlot(playerShip, cargoName);
@@ -207,7 +207,7 @@ static inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, in
     if (cargoSlot < 0)
     {
         printf("\nError: %s not found in cargo hold.", cargoName);
-        return false;
+        return 0;
     }
 
     // Check if we have enough of this cargo
@@ -215,7 +215,7 @@ static inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, in
     {
         printf("\nError: Not enough %s in cargo hold. Available: %d tonnes, Requested: %d tonnes",
                cargoName, playerShip->cargo[cargoSlot].quantity, quantity);
-        return false;
+        return 0;
     }
 
     // Remove the cargo
@@ -235,7 +235,7 @@ static inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, in
     }
 
     printf("Removed %d tonnes of %s from cargo hold.\n", quantity, cargoName);
-    return true;
+    return 1;
 }
 
 /**
@@ -245,20 +245,20 @@ static inline bool RemoveCargo(PlayerShip *playerShip, const char *cargoName, in
  * @param cargoName Name of the cargo/commodity to sell
  * @param quantity Amount of cargo to sell (in tonnes)
  * @param salePrice Price per tonne that will be paid
- * @param externalSync If true, synchronize with the global state (Cash)
- * @return true if cargo was successfully sold, false if there was an error
+ * @param externalSync If 1, synchronize with the global state (Cash)
+ * @return 1 if cargo was successfully sold, 0 if there was an error
  */
 static inline bool SellCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int salePrice, bool externalSync)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0 || salePrice < 0)
     {
-        return false;
+        return 0;
     }
 
     // Try to remove the cargo
     if (!RemoveCargo(playerShip, cargoName, quantity))
     {
-        return false;
+        return 0;
     }
 
     // Calculate the total sale amount
@@ -272,7 +272,7 @@ static inline bool SellCargo(PlayerShip *playerShip, const char *cargoName, int 
     }
 
     printf("Sold %d tonnes of %s for %d credits.\n", quantity, cargoName, totalSale);
-    return true;
+    return 1;
 }
 
 /**
@@ -282,14 +282,14 @@ static inline bool SellCargo(PlayerShip *playerShip, const char *cargoName, int 
  * @param cargoName Name of the cargo/commodity to buy
  * @param quantity Amount of cargo to buy (in tonnes)
  * @param purchasePrice Price per tonne that must be paid
- * @param externalSync If true, synchronize with the global state (Cash)
- * @return true if cargo was successfully purchased, false if there was an error
+ * @param externalSync If 1, synchronize with the global state (Cash)
+ * @return 1 if cargo was successfully purchased, 0 if there was an error
  */
 static inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int quantity, int purchasePrice, bool externalSync)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0 || purchasePrice < 0)
     {
-        return false;
+        return 0;
     }
 
     // Calculate the total cost
@@ -303,14 +303,14 @@ static inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int q
         if (Cash < totalCost)
         {
             printf("Error: Not enough credits. Available: %d, Required: %d\n", Cash, totalCost);
-            return false;
+            return 0;
         }
     }
 
     // Try to add the cargo
     if (!AddCargo(playerShip, cargoName, quantity, purchasePrice))
     {
-        return false;
+        return 0;
     }
 
     // If everything successful and we need to sync, deduct the cash
@@ -321,7 +321,7 @@ static inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int q
     }
 
     printf("Purchased %d tonnes of %s for %d credits.\n", quantity, cargoName, totalCost);
-    return true;
+    return 1;
 }
 
 /**
@@ -340,12 +340,12 @@ static inline void ListCargo(const PlayerShip *playerShip)
            playerShip->attributes.currentCargoTons,
            playerShip->attributes.cargoCapacityTons);
 
-    bool hasCargo = false;
+    bool hasCargo = 0;
     for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
     {
         if (playerShip->cargo[i].quantity > 0)
         {
-            hasCargo = true;
+            hasCargo = 1;
             printf("- %s: %d tonnes (Purchased at: %d cr/tonne)\n",
                    playerShip->cargo[i].name,
                    playerShip->cargo[i].quantity,
@@ -391,23 +391,23 @@ static inline int GetCargoQuantity(const PlayerShip *playerShip, const char *car
  * @param playerShip Pointer to the PlayerShip structure
  * @param cargoName Name of the cargo/commodity to jettison
  * @param quantity Amount of cargo to jettison (in tonnes)
- * @return true if cargo was successfully jettisoned, false if there was an error
+ * @return 1 if cargo was successfully jettisoned, 0 if there was an error
  */
 static inline bool JettisonCargo(PlayerShip *playerShip, const char *cargoName, int quantity)
 {
     if (playerShip == NULL || cargoName == NULL || quantity <= 0)
     {
-        return false;
+        return 0;
     }
 
     // This simply removes cargo but with a different message
     if (RemoveCargo(playerShip, cargoName, quantity))
     {
         printf("\nJettisoned %d tonnes of %s into space.", quantity, cargoName);
-        return true;
+        return 1;
     }
 
-    return false;
+    return 0;
 }
 
 /**
@@ -415,20 +415,20 @@ static inline bool JettisonCargo(PlayerShip *playerShip, const char *cargoName, 
  * Useful in emergencies such as being chased by authorities or in combat situations.
  *
  * @param playerShip Pointer to the PlayerShip structure
- * @return true if cargo was successfully jettisoned, false if there was an error
+ * @return 1 if cargo was successfully jettisoned, 0 if there was an error
  */
 static inline bool JettisonAllCargo(PlayerShip *playerShip)
 {
     if (playerShip == NULL)
     {
-        return false;
+        return 0;
     }
 
     // Check if the ship has any cargo at all
     if (playerShip->attributes.currentCargoTons <= 0)
     {
         printf("\nNo cargo to jettison.");
-        return false;
+        return 0;
     }
 
     int totalJettisoned = 0;
@@ -461,7 +461,7 @@ static inline bool JettisonAllCargo(PlayerShip *playerShip)
     if (numCargoTypes == 0)
     {
         printf("\nNo cargo to jettison.");
-        return false;
+        return 0;
     }
 
     // Now jettison each cargo item
@@ -469,7 +469,7 @@ static inline bool JettisonAllCargo(PlayerShip *playerShip)
     {
         // Find cargo index in global tradnames array for ShipHold update
         uint16_t cargoIndex = 0;
-        bool cargoFound = false;
+        bool cargoFound = 0;
 
         // Find the cargo index in the global tradnames array
         for (uint16_t j = 0; j <= LAST_TRADE; j++)
@@ -477,7 +477,7 @@ static inline bool JettisonAllCargo(PlayerShip *playerShip)
             if (StringCompareIgnoreCase(tradnames[j], cargoToJettison[i].name) == 0)
             {
                 cargoIndex = j;
-                cargoFound = true;
+                cargoFound = 1;
                 break;
             }
         }
@@ -519,5 +519,5 @@ static inline bool JettisonAllCargo(PlayerShip *playerShip)
     // Print summary
     printf("\nAll cargo jettisoned: %d tonnes total.", totalJettisoned);
 
-    return true;
+    return 1;
 }

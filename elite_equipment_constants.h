@@ -24,13 +24,13 @@
  *
  * @param playerShip Pointer to the player's ship
  * @param equipIndex Equipment index to check
- * @return true if equipment is present and active, false otherwise
+ * @return 1 if equipment is present and active, 0 otherwise
  */
 static inline bool CheckEquipmentActive(const PlayerShip *playerShip, int equipIndex)
 {
     if (playerShip == NULL || equipIndex < 0 || equipIndex >= MAX_EQUIPMENT_SLOTS)
     {
-        return false;
+        return 0;
     }
 
     return playerShip->equipment[equipIndex].isActive;

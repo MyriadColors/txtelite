@@ -57,7 +57,7 @@ static inline void initialize_player_state(void)
     RndSeed.c = (uint8_t)((randSeed >> 16) & 0xFF);
     RndSeed.d = (uint8_t)((randSeed >> 24) & 0xFF);
 
-    NativeRand = false; // Set to false as per original logic for predictable generation initially
+    NativeRand = 0; // Set to 0 as per original logic for predictable generation initially
     GalaxyNum = 1;      // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed

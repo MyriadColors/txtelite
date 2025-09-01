@@ -1,5 +1,9 @@
 #pragma once
 
+#define KGRN  "\x1b[32m"
+#define KRED  "\x1b[31m"
+#define KNRM  "\x1b[0m"
+
 // Include headers for necessary typedefs and forward declarations
 #include "elite_star_system.h" // For Star, Planet, Station, etc.
 
@@ -22,6 +26,176 @@
 #include <stdlib.h>          // For atoi, atof
 #include <string.h>          // For string operations
 #include <time.h>            // For time functions
+#include <strings.h>
+
+// Command help structure
+typedef struct {
+    const char *command;
+    const char *aliases;  // Space-separated list of aliases or NULL
+    const char *short_description;
+    const char *long_description;
+    const char *category;
+    bool (*is_available)(void); // Function to check if the command is available
+} CommandHelp;
+
+// Availability checks for commands
+static inline bool is_always_available(void) { return 1; }
+static inline bool is_docked(void) { return PlayerLocationType == 10; }
+static inline bool is_not_docked(void) { return PlayerLocationType != 10; }
+static inline bool is_at_planet(void) { return PlayerNavState.currentLocationType == CELESTIAL_PLANET; }
+static inline bool is_at_station(void) { return PlayerNavState.currentLocationType == CELESTIAL_STATION; }
+
+// Command help data
+static const CommandHelp command_help[] = {
+    // TRADING COMMANDS
+    {"buy", "b", "Purchase goods from the market", 
+     "BUY <good> <amount> - Purchase goods from the market\n" "  <good>   - Type of trade good (e.g., Food, Computers)\n" "  <amount> - Quantity to buy (default: 1)\n" "  Example: buy Food 5\n" "  Note: You must be docked at a station with a market to buy goods.", "TRADING COMMANDS", is_docked},
+    
+    {"sell", "s", "Sell goods to the market", 
+     "SELL <good> <amount> - Sell goods to the market\n" "  <good>   - Type of trade good (e.g., Food, Computers)\n" "  <amount> - Quantity to sell (default: 1)\n" "  Example: sell Computers 3\n" "  Note: You must be docked at a station with a market to sell goods.", "TRADING COMMANDS", is_docked},
+
+    {"mkt", "m", "Display market information", 
+     "MKT - Display market information\n" "  Shows current market prices, cash, fuel level, and cargo status.\n" "  No parameters required.\n" "  Note: Market prices vary between systems based on economy type.", "TRADING COMMANDS", is_docked},
+
+    {"compare", NULL, "Compare markets across different stations in the system", 
+     "COMPARE - Compare markets across different stations in the system\n" "  Shows price differences and profit opportunities between stations.\n" "  Lists all stations in the system with their distance from you.\n" "  Highlights best commodities to buy or sell at each station.\n" "  Shows estimated travel times to other stations.\n" "  Note: You must be docked at a station to use this command.", "TRADING COMMANDS", is_docked},
+
+    // INTERSTELLAR NAVIGATION
+    {"jump", "j", "Jump to another star system", 
+     "JUMP <planetname> - Jump to another star system\n" "  <planetname> - Name of the destination system\n" "  Example: jump Lave\n" "  Note: Requires fuel equal to the distance in light years.\n" "        Use 'local' to see systems within jump range.", "INTERSTELLAR NAVIGATION", is_not_docked},
+
+    {"local", "l", "List star systems within jump range", 
+     "LOCAL - List star systems within jump range\n" "  Systems marked with * are within current fuel range.\n" "  Systems marked with - are within maximum fuel capacity but require refueling.\n" "  Distances are shown in light years (LY).", "INTERSTELLAR NAVIGATION", is_not_docked},
+
+    {"galhyp", "g", "Perform a galactic hyperspace jump", 
+     "GALHYP - Perform a galactic hyperspace jump\n" "  Jumps to the next galaxy (1-8).\n" "  No fuel is required for this special jump.", "INTERSTELLAR NAVIGATION", is_not_docked},
+
+    {"info", "i", "Display information about a system", 
+     "INFO <planetname> - Display information about a system\n" "  <planetname> - Name of the system to get information about\n" "  Example: info Lave\n" "  Shows economy, government, tech level, and other system details.", "INTERSTELLAR NAVIGATION", is_always_available},
+
+    {"fuel", "f", "Purchase fuel for your ship", 
+     "FUEL <amount> - Purchase fuel for your ship\n" "  <amount> - Amount of fuel to buy in light years\n" "  Example: fuel 2.5\n" "  Note: You must be docked at a station to buy fuel.\n" "        Fuel costs %.1f credits per 0.1 LY unit for your current ship", "INTERSTELLAR NAVIGATION", is_docked},
+
+    // STAR SYSTEM NAVIGATION
+    {"system", "sys", "Displays detailed information about the current star system", 
+     "SYSTEM - Displays detailed information about the current star system\n" "  Shows all celestial bodies, stations, their locations, and travel times.\n" "  Note: This command (formerly also available as 'scan') scans the system\n" "        for points of interest and costs 1 minute of game time.", "STAR SYSTEM NAVIGATION", is_not_docked},
+
+    {"travel", "t", "Travel within the current star system", 
+     "TRAVEL [destination] - Travel within the current star system\n" "  Without parameters: Lists all available destinations.\n" "  [destination]: The location to travel to, using the numbering system:\n" "    0       - Travel to the central star\n" "    1-8     - Travel to a planet (number depends on system)\n" "    1.1-8.5 - Travel to a station (format: planet.station)\n" "    N       - Travel to the Nav Beacon\n" "  Example: travel 2    - Travel to the second planet\n" "  Example: travel 1.3  - Travel to the third station orbiting the first planet\n" "  Example: travel N    - Travel to the Nav Beacon\n" "  Note: Travel consumes game time based on distance.\n" "        Fuel is also consumed at a rate of 0.025 liters per AU.", "STAR SYSTEM NAVIGATION", is_not_docked},
+
+    {"dock", "d", "Dock with the current station", 
+     "DOCK - Dock with the current station\n" "  Must be at a station location before docking.\n" "  Use 'travel' to navigate to a station first.\n" "  Docking provides access to market and other station services.\n" "  No parameters required.", "STAR SYSTEM NAVIGATION", is_at_station},
+
+    {"land", NULL, "Land on a planet surface", 
+     "LAND - Land on a planet surface\n" "  Allows you to land on a planet when your ship is at a planet location.\n" "  You must be at a planet before landing.\n" "  Use 'travel' to navigate to a planet first.\n" "  Landing provides access to the planet's market and services.\n" "  No parameters required.", "STAR SYSTEM NAVIGATION", is_at_planet},
+
+    // SHIP MANAGEMENT
+    {"ship", NULL, "Display basic ship status information", 
+     "SHIP - Display basic ship status information\n" "  Shows hull integrity, fuel, and cargo capacity", "SHIP MANAGEMENT", is_always_available},
+
+    {"shipinfo", NULL, "Display detailed ship information", 
+     "SHIPINFO - Display detailed ship information\n" "  Shows comprehensive information about your ship's systems,\n" "  equipment, and cargo hold contents", "SHIP MANAGEMENT", is_always_available},
+
+    {"fuelinfo", NULL, "Display detailed fuel information for your ship", 
+     "FUELINFO - Display detailed fuel information for your ship\n" "  Shows current fuel level, maximum capacity, consumption rate,\n" "  estimated range, and refill cost based on your ship's specifications\n" "  This command has no parameters", "SHIP MANAGEMENT", is_always_available},
+
+    {"repair", NULL, "Repair your ship's hull damage", 
+     "REPAIR - Repair your ship's hull damage\n" "  This command will repair your ship to 100% hull integrity\n" "  Cost is 10 credits per hull point repaired\n" "  Note: You must be docked at a station to repair your ship", "SHIP MANAGEMENT", is_docked},
+
+    {"shipyard", NULL, "View ships available for purchase", 
+     "SHIPYARD - View ships available for purchase\n" "  Shows a list of ships available at the current station.\n" "  Displays hull strength, cargo capacity, and price.\n" "  Includes your current ship's trade-in value.\n" "  You must be docked at a station to use this command.\n" "  No parameters required.", "SHIP MANAGEMENT", is_docked},
+
+    {"compareship", NULL, "Compare your ship with another ship type", 
+     "COMPARESHIP <shipname> - Compare your ship with another ship type\n" "  Displays a side-by-side comparison of ship specifications.\n" "  Shows differences in hull, shields, cargo, etc.\n" "  Usage: compareship <shipname> (e.g., 'compareship Viper')\n" "  Works anywhere, docking not required.", "SHIP MANAGEMENT", is_always_available},
+
+    {"buyship", NULL, "Purchase a new ship", 
+     "BUYSHIP <ID or shipname> [notrade] - Purchase a new ship\n" "  Buys a new ship from the current station's shipyard.\n" "  <ID> - The ship ID number shown in the shipyard list\n" "  <shipname> - The name of the ship (for backward compatibility)\n" "  By default, trades in your current ship for a credit.\n" "  Use 'notrade' flag to buy without trading in (e.g., 'buyship 1 notrade').\n" "  Equipment and cargo are transferred when possible.\n" "  You must be docked at a station to use this command.\n" "  Examples: 'buyship 1' or 'buyship \"Cobra Mk III\"'", "SHIP MANAGEMENT", is_docked},
+
+    {"upgrade", NULL, "View and purchase ship upgrades", 
+     "UPGRADE [ID] [quantity] - View and purchase ship upgrades (hull, shields, etc.)\n" "  Without parameters: Lists all available upgrades\n" "  [ID]: The upgrade ID to purchase\n" "  [quantity]: Number of upgrades to purchase (default: 1)", "SHIP MANAGEMENT", is_docked},
+
+    // EQUIPMENT AND INVENTORY
+    {"equip", NULL, "Purchase and install ship equipment", 
+     "EQUIP [equipment] - Purchase and install ship equipment\n" "  Without parameters: Lists all available equipment\n" "  [equipment]: The specific equipment item to purchase\n" "  Available equipment types:\n" "    ecm      - Electronic Counter Measures (600 CR)\n" "    fuelscoop - Fuel Scoop for collecting fuel from stars (525 CR)\n" "    dockcomp - Docking Computer for automated docking (1500 CR)\n" "    escape   - Escape Pod for emergency escape (1000 CR)\n" "    cargo    - Cargo Bay Extension for +4 tons capacity (400 CR)\n" "    pulse    - Pulse Laser for basic combat (400 CR)\n" "    beam     - Beam Laser for improved combat (1000 CR)\n" "    military - Military Laser for maximum firepower (2500 CR)\n" "    mining   - Mining Laser for resource extraction (800 CR)\n" "    scanner  - Scanner Upgrade for improved detection (700 CR)\n" "    missile  - Homing Missile for one-shot attacks (300 CR)\n" "  Example: equip beam\n" "  Note: You must be docked at a station to purchase equipment\n" "        Equipment availability depends on the system's tech level", "EQUIPMENT AND INVENTORY", is_docked},
+
+    {"inv", NULL, "Display equipment inventory", 
+     "INV - Display equipment inventory\n" "  Shows all equipment items stored in your ship's inventory.\n" "  Each item is shown with its inventory slot index for use with the 'use' command.", "EQUIPMENT AND INVENTORY", is_always_available},
+
+    {"store", NULL, "Remove equipment and store in inventory", 
+     "STORE <slot_number> - Remove equipment and store in inventory\n" "  <slot_number> - The equipment slot to remove equipment from\n" "  Example: store 0\n" "  Note: Use 'shipinfo' to see your equipment slots and what's installed in them.", "EQUIPMENT AND INVENTORY", is_always_available},
+
+    {"use", NULL, "Equip item from inventory", 
+     "USE <inventory_index> <slot_number> - Equip item from inventory\n" "  <inventory_index> - The inventory slot containing the equipment to use\n" "  <slot_number> - The equipment slot to install the equipment into\n" "  Example: use 2 1\n" "  Note: Equipment can only be installed in compatible slots.\n" "        Use 'inv' to see your inventory and 'shipinfo' to see slots.", "EQUIPMENT AND INVENTORY", is_always_available},
+
+    // CARGO AND MONEY
+    {"hold", "h", "Set cargo hold capacity", 
+     "HOLD <amount> - Set cargo hold capacity\n" "  <amount> - Total cargo hold space in tonnes\n" "  Example: hold 20\n" "  Note: Cannot reduce hold space below current cargo volume.", "CARGO AND MONEY", is_always_available},
+
+    {"jettison", "j", "Discard cargo into space", 
+     "JETTISON <good> <amount> or JETTISON ALL - Discard cargo into space\n" "  <good>   - Type of trade good to jettison (e.g., Food, Computers)\n" "  <amount> - Quantity to jettison (default: 1)\n" "  ALL      - Special flag to jettison all cargo at once\n" "  Examples: jettison Food 5\n" "            jettison all\n" "  Note: Jettisoned cargo is lost permanently with no payment received.\n" "        Useful in emergencies or when carrying illegal goods and avoiding authorities.", "CARGO AND MONEY", is_not_docked},
+
+    // GAME MANAGEMENT
+    {"save", NULL, "Save the current game state", 
+     "SAVE [description] - Save the current game state\n" "  [description] - Optional description of the save (e.g., 'At Lave')\n" "  Example: save Trading at Lave\n" "  Note: Save files are timestamped and stored in the 'saves' directory.", "GAME MANAGEMENT", is_always_available},
+
+    {"load", NULL, "List and load saved games", 
+     "LOAD - List and load saved games\n" "  Shows a list of available save files, sorted by most recent first.\n" "  Enter the number of the save file to load when prompted.\n" "  Note: Loading a save will discard your current game state.", "GAME MANAGEMENT", is_always_available},
+
+    {"reset", NULL, "Restart the game with an optional random seed", 
+     "RESET [seed] - Restart the game with an optional random seed\n" "  Without parameters: Reinitializes the game with default seed 54321\n" "  [seed]: A positive integer to use as the random seed\n" "  Example: reset, reset 12345\n" "  Note: Resetting will discard your current game state and begin a new game.", "GAME MANAGEMENT", is_always_available},
+
+    {"quit", "q", "Exit the game", 
+     "QUIT - Exit the game\n" "  Exits the game without saving. Use 'save' first to preserve your progress.", "GAME MANAGEMENT", is_always_available},
+
+    // DEBUG COMMANDS
+    {"cash", "c", "Adjust cash balance", 
+     "CASH <+/-amount> - Adjust cash balance\n" "  <+/-amount> - Amount to add or subtract from cash balance\n" "  Example: cash +100.0  - Add 100 credits\n" "  Example: cash -50.5   - Subtract 50.5 credits\n" "  Note: This is a debug command for testing purposes.", "DEBUG COMMANDS", is_always_available},
+
+    {"rand", NULL, "Toggle random number generator", 
+     "RAND - Toggle random number generator\n" "  Switches between native and portable RNG implementations.\n" "  This is a debug command for testing purposes.", "DEBUG COMMANDS", is_always_available},
+
+    {"sneak", NULL, "Jump to another system without using fuel", 
+     "SNEAK <planetname> - Jump to another system without using fuel\n" "  <planetname> - Name of the destination system\n" "  Example: sneak Lave\n" "  Note: This is a debug command for testing purposes.", "DEBUG COMMANDS", is_not_docked},
+
+    // Terminator
+    {NULL, NULL, NULL, NULL, NULL, NULL}
+};
+
+
+
+// Helper function to find command help
+static const CommandHelp* find_command_help(const char *command) {
+    for (int i = 0; command_help[i].command != NULL; i++) {
+        if (strcasecmp(command, command_help[i].command) == 0) {
+            return &command_help[i];
+        }
+        // Check aliases
+        if (command_help[i].aliases != NULL) {
+            char aliases_copy[MAX_LEN];
+            snprintf(aliases_copy, MAX_LEN, "%s", command_help[i].aliases);
+            char *alias = strtok(aliases_copy, " ");
+            while (alias != NULL) {
+                if (strcasecmp(command, alias) == 0) {
+                    return &command_help[i];
+                }
+                alias = strtok(NULL, " ");
+            }
+        }
+    }
+    return NULL;
+}
+
+// Helper function to print formatted help text
+static void print_help_text(const char *text) {
+    // Special handling for fuel command to show dynamic fuel cost
+    char buffer[1024];
+    if (strstr(text, "FUEL <amount>") != NULL) {
+        snprintf(buffer, sizeof(buffer), text, (float)GetFuelCost() / 10.0f);
+        printf("%s", buffer);
+    } else {
+        printf("%s", text);
+    }
+}
 
 static inline bool do_tweak_random_native(char *commandArguments) {
   (void)commandArguments; // Mark 's' as unused
@@ -398,556 +572,43 @@ static inline bool do_reset(char *commandArguments) {
 }
 
 static inline bool do_help(char *commandArguments) {
-  // If specific help is requested for a command, show detailed help
-  if (commandArguments && strlen(commandArguments) > 0) {
-    // Properly strip spaces from the command argument
     commandArguments = strip_leading_trailing_spaces(commandArguments);
 
-    char command[MAX_LEN];
-    snprintf(command, MAX_LEN, "%s", commandArguments);
+    if (commandArguments == NULL || strlen(commandArguments) == 0) {
+        // Display general help
+        printf("\n=== TXTELITE COMMAND REFERENCE ===\n");
 
-    // Convert to lowercase for case-insensitive matching
-    for (char *p = command; *p; ++p)
-      *p = tolower(*p);
+        const char *current_category = NULL;
+        for (int i = 0; command_help[i].command != NULL; i++) {
+            if (current_category == NULL || strcmp(current_category, command_help[i].category) != 0) {
+                current_category = command_help[i].category;
+                printf("\n--- %s ---\n", current_category);
+            }
 
-    // Ship-related commands
-    if (strcmp(command, "ship") == 0) {
-      printf("\nSHIP - Display basic ship status information");
-      printf("\n  Shows hull integrity, fuel, and cargo capacity");
-      return 1;
-    } else if (strcmp(command, "shipinfo") == 0) {
-      printf("\nSHIPINFO - Display detailed ship information");
-      printf("\n  Shows comprehensive information about your ship's systems,");
-      printf("\n  equipment, and cargo hold contents");
-      return 1;
-    } else if (strcmp(command, "repair") == 0) {
-      printf("\nREPAIR - Repair your ship's hull damage");
-      printf("\n  This command will repair your ship to 100%% hull integrity");
-      printf("\n  Cost is 10 credits per hull point repaired");
-      printf("\n  Note: You must be docked at a station to repair your ship");
-      return 1;
-    } else if (strcmp(command, "equip") == 0) {
-      printf("\nEQUIP [equipment] - Purchase and install ship equipment");
-      printf("\n  Without parameters: Lists all available equipment");
-      printf("\n  [equipment]: The specific equipment item to purchase");
-      printf("\n  Available equipment types:");
-      printf("\n    ecm      - Electronic Counter Measures (600 CR)");
-      printf("\n    fuelscoop - Fuel Scoop for collecting fuel from stars (525 "
-             "CR)");      printf(
-          "\n    dockcomp - Docking Computer for automated docking (1500 CR)");
-      printf("\n    escape   - Escape Pod for emergency escape (1000 CR)");
-      printf(
-          "\n    cargo    - Cargo Bay Extension for +4 tons capacity (400 CR)");
-      printf("\n    pulse    - Pulse Laser for basic combat (400 CR)");
-      printf("\n    beam     - Beam Laser for improved combat (1000 CR)");
-      printf("\n    military - Military Laser for maximum firepower (2500 CR)");
-      printf("\n    mining   - Mining Laser for resource extraction (800 CR)");
-      printf(
-          "\n    scanner  - Scanner Upgrade for improved detection (700 CR)");
-      printf("\n    missile  - Homing Missile for one-shot attacks (300 CR)");
-      printf("\n  Example: equip beam");
-      printf("\n  Note: You must be docked at a station to purchase equipment");
-      printf("\n        Equipment availability depends on the system's tech "
-             "level");
-      return 1;
-    } else if (strcmp(command, "fuel") == 0 || strcmp(command, "f") == 0) {
-      printf("\nFUEL <amount> - Purchase fuel for your ship");
-      printf("\n  <amount> - Amount of fuel to buy in light years");
-      printf("\n  Example: fuel 2.5");
-      printf("\n  Note: You must be docked at a station to buy fuel.");
-      printf("\n        Fuel costs %.1f credits per 0.1 LY unit for your "
-             "current ship",
-             (float)GetFuelCost() / 10.0f);
-      return 1;
-    } else if (strcmp(command, "fuelinfo") == 0) {
-      printf("\nFUELINFO - Display detailed fuel information for your ship");
-      printf(
-          "\n  Shows current fuel level, maximum capacity, consumption rate,");
-      printf("\n  estimated range, and refill cost based on your ship's "
-             "specifications");
-      printf("\n  This command has no parameters");
-      return 1;
+            bool available = command_help[i].is_available();
+            printf("  %s%-12s%s - %s %s\n",
+                   available ? KGRN : KRED,
+                   command_help[i].command,
+                   KNRM,
+                   command_help[i].short_description,
+                   available ? "" : "(unavailable)");
+        }
+        printf("\nFor detailed help on any command, type 'help <command>'.\n");
+    } else {
+        // Display specific help for a command
+        const CommandHelp *help = find_command_help(commandArguments);
+        if (help) {
+            print_help_text(help->long_description);
+            if (!help->is_available()) {
+                printf("\n%s(Currently unavailable)%s", KRED, KNRM);
+            }
+            printf("\n");
+        } else {
+            printf("\nUnknown command: %s", commandArguments);
+            printf("\nUse 'help' without parameters to see all available commands.\n");
+        }
     }
-
-    // Trading commands
-    else if (strcmp(command, "buy") == 0 || strcmp(command, "b") == 0) {
-      printf("\nBUY <good> <amount> - Purchase goods from the market");
-      printf("\n  <good>   - Type of trade good (e.g., Food, Computers)");
-      printf("\n  <amount> - Quantity to buy (default: 1)");
-      printf("\n  Example: buy Food 5");
-      printf("\n  Note: You must be docked at a station with a market to buy "
-             "goods.");
-      return 1;
-    }
-    if (strcmp(command, "sell") == 0 || strcmp(command, "s") == 0) {
-      printf("\nSELL <good> <amount> - Sell goods to the market");
-      printf("\n  <good>   - Type of trade good (e.g., Food, Computers)");
-      printf("\n  <amount> - Quantity to sell (default: 1)");
-      printf("\n  Example: sell Computers 3");
-      printf("\n  Note: You must be docked at a station with a market to sell "
-             "goods.");
-      return 1;
-    }
-
-    if (strcmp(command, "jettison") == 0 || strcmp(command, "j") == 0) {
-      printf("\nJETTISON <good> <amount> or JETTISON ALL - Discard cargo into "
-             "space");
-      printf("\n  <good>   - Type of trade good to jettison (e.g., Food, "
-             "Computers)");
-      printf("\n  <amount> - Quantity to jettison (default: 1)");
-      printf("\n  ALL      - Special flag to jettison all cargo at once");
-      printf("\n  Examples: jettison Food 5");
-      printf("\n            jettison all");
-      printf("\n  Note: Jettisoned cargo is lost permanently with no payment "
-             "received.");
-      printf("\n        Useful in emergencies or when carrying illegal goods "
-             "and avoiding authorities.");
-      return 1;
-    }
-
-    // Navigation commands
-    if (strcmp(command, "jump") == 0 || strcmp(command, "j") == 0) {
-      printf("\nJUMP <planetname> - Jump to another star system");
-      printf("\n  <planetname> - Name of the destination system");
-      printf("\n  Example: jump Lave");
-      printf("\n  Note: Requires fuel equal to the distance in light years.");
-      printf("\n        Use 'local' to see systems within jump range.");
-      return 1;
-    }
-
-    if (strcmp(command, "local") == 0 || strcmp(command, "l") == 0) {
-      printf("\nLOCAL - List star systems within jump range");
-      printf("\n  Systems marked with * are within current fuel range.");
-      printf("\n  Systems marked with - are within maximum fuel capacity but "
-             "require refueling.");
-      printf("\n  Distances are shown in light years (LY).");
-      return 1;
-    }
-
-    if (strcmp(command, "galhyp") == 0 || strcmp(command, "g") == 0) {
-      printf("\nGALHYP - Perform a galactic hyperspace jump");
-      printf("\n  Jumps to the next galaxy (1-8).");
-      printf("\n  No fuel is required for this special jump.");
-      return 1;
-    }
-    // Star system navigation commands
-    if (strcmp(command, "system") == 0 || strcmp(command, "sys") == 0) {
-      printf("\nSYSTEM - Displays detailed information about the current star "
-             "system");
-      printf("\n  Shows all celestial bodies, stations, their locations, and "
-             "travel times.");
-      printf("\n  Note: This command (formerly also available as 'scan') scans "
-             "the system");
-      printf(
-          "\n        for points of interest and costs 1 minute of game time.");
-      return 1;
-    }
-
-    if (strcmp(command, "travel") == 0 || strcmp(command, "t") == 0) {
-      printf("\nTRAVEL [destination] - Travel within the current star system");
-      printf("\n  Without parameters: Lists all available destinations.");
-      printf("\n  [destination]: The location to travel to, using the "
-             "numbering system:");
-      printf("\n    0       - Travel to the central star");
-      printf("\n    1-8     - Travel to a planet (number depends on system)");
-      printf("\n    1.1-8.5 - Travel to a station (format: planet.station)");
-      printf("\n    N       - Travel to the Nav Beacon");
-      printf("\n  Example: travel 2    - Travel to the second planet");
-      printf("\n  Example: travel 1.3  - Travel to the third station orbiting "
-             "the first planet");
-      printf("\n  Example: travel N    - Travel to the Nav Beacon");      printf("\n  Note: Travel consumes game time based on distance.");
-      printf(
-          "\n        Fuel is also consumed at a rate of 0.025 liters per AU.");
-      return 1;
-    }
-    if (strcmp(command, "dock") == 0 || strcmp(command, "d") == 0) {
-      printf("\nDOCK - Dock with the current station");
-      printf("\n  Must be at a station location before docking.");
-      printf("\n  Use 'travel' to navigate to a station first.");
-      printf(
-          "\n  Docking provides access to market and other station services.");
-      printf("\n  No parameters required.");
-      return 1;
-    }
-
-    if (strcmp(command, "land") == 0) {
-      printf("\nLAND - Land on a planet surface");
-      printf("\n  Allows you to land on a planet when your ship is at a planet "
-             "location.");
-      printf("\n  You must be at a planet before landing.");
-      printf("\n  Use 'travel' to navigate to a planet first.");
-      printf(
-          "\n  Landing provides access to the planet's market and services.");
-      printf("\n  No parameters required.");
-      return 1;
-    }
-
-    // Ship trading commands
-    if (strcmp(command, "shipyard") == 0) {
-      printf("\nSHIPYARD - View ships available for purchase");
-      printf("\n  Shows a list of ships available at the current station.");
-      printf("\n  Displays hull strength, cargo capacity, and price.");
-      printf("\n  Includes your current ship's trade-in value.");
-      printf("\n  You must be docked at a station to use this command.");
-      printf("\n  No parameters required.");
-      return 1;
-    }
-
-    if (strcmp(command, "compareship") == 0) {
-      printf("\nCOMPARESHIP <shipname> - Compare your ship with another ship "
-             "type");
-      printf("\n  Displays a side-by-side comparison of ship specifications.");
-      printf("\n  Shows differences in hull, shields, cargo, etc.");
-      printf("\n  Usage: compareship <shipname> (e.g., 'compareship Viper')");
-      printf("\n  Works anywhere, docking not required.");
-      return 1;
-    }
-    if (strcmp(command, "buyship") == 0) {
-      printf("\nBUYSHIP <ID or shipname> [notrade] - Purchase a new ship");
-      printf("\n  Buys a new ship from the current station's shipyard.");
-      printf("\n  <ID> - The ship ID number shown in the shipyard list");
-      printf(
-          "\n  <shipname> - The name of the ship (for backward compatibility)");
-      printf("\n  By default, trades in your current ship for a credit.");
-      printf("\n  Use 'notrade' flag to buy without trading in (e.g., 'buyship "
-             "1 notrade').");
-      printf("\n  Equipment and cargo are transferred when possible.");
-      printf("\n  You must be docked at a station to use this command.");
-      printf("\n  Examples: 'buyship 1' or 'buyship \"Cobra Mk III\"'");
-      return 1;
-    }
-
-    // Market commands
-    if (strcmp(command, "mkt") == 0 || strcmp(command, "m") == 0) {
-      printf("\nMKT - Display market information");
-      printf("\n  Shows current market prices, cash, fuel level, and cargo "
-             "status.");
-      printf("\n  No parameters required.");
-      printf("\n  Note: Market prices vary between systems based on economy "
-             "type.");
-      return 1;
-    }
-
-    if (strcmp(command, "fuel") == 0 || strcmp(command, "f") == 0) {
-      printf("\nFUEL <amount> - Purchase fuel");
-      printf("\n  <amount> - Amount of fuel to buy in light years");
-      printf("\n  Example: fuel 7");
-      printf("\n  Note: Your maximum fuel capacity is 7 light years.");
-      return 1;
-    }
-
-    // Cargo and Money commands
-    if (strcmp(command, "hold") == 0 || strcmp(command, "h") == 0) {
-      printf("\nHOLD <amount> - Set cargo hold capacity");
-      printf("\n  <amount> - Total cargo hold space in tonnes");
-      printf("\n  Example: hold 20");
-      printf("\n  Note: Cannot reduce hold space below current cargo volume.");
-      return 1;
-    }
-
-    if (strcmp(command, "cash") == 0 || strcmp(command, "c") == 0) {
-      printf("\nCASH <+/-amount> - Adjust cash balance");
-      printf("\n  <+/-amount> - Amount to add or subtract from cash balance");
-      printf("\n  Example: cash +100.0  - Add 100 credits");
-      printf("\n  Example: cash -50.5   - Subtract 50.5 credits");
-      printf("\n  Note: This is a debug command for testing purposes.");
-      return 1;
-    }
-
-    // Game management commands
-    if (strcmp(command, "save") == 0) {
-      printf("\nSAVE [description] - Save the current game state");
-      printf("\n  [description] - Optional description of the save (e.g., 'At "
-             "Lave')");
-      printf("\n  Example: save Trading at Lave");
-      printf("\n  Note: Save files are timestamped and stored in the 'saves' "
-             "directory.");
-      return 1;
-    }
-
-    if (strcmp(command, "load") == 0) {
-      printf("\nLOAD - List and load saved games");
-      printf("\n  Shows a list of available save files, sorted by most recent "
-             "first.");
-      printf("\n  Enter the number of the save file to load when prompted.");
-      printf("\n  Note: Loading a save will discard your current game state.");
-      return 1;
-    }
-
-    if (strcmp(command, "reset") == 0) {
-      printf("\nRESET [seed] - Restart the game with an optional random seed");
-      printf("\n  Without parameters: Reinitializes the game with default seed "
-             "54321");
-      printf("\n  [seed]: A positive integer to use as the random seed");
-      printf("\n  Example: reset, reset 12345");
-      printf("\n  Note: Resetting will discard your current game state and "
-             "begin a new game.");
-      return 1;
-    }
-
-    if (strcmp(command, "quit") == 0 || strcmp(command, "q") == 0) {
-      printf("\nQUIT - Exit the game");
-      printf("\n  Exits the game without saving. Use 'save' first to preserve "
-             "your progress.");
-      return 1;
-    }
-
-    // Debug commands
-    if (strcmp(command, "rand") == 0) {
-      printf("\nRAND - Toggle random number generator");
-      printf("\n  Switches between native and portable RNG implementations.");
-      printf("\n  This is a debug command for testing purposes.");
-      return 1;
-    }
-
-    if (strcmp(command, "sneak") == 0) {
-      printf(
-          "\nSNEAK <planetname> - Jump to another system without using fuel");
-      printf("\n  <planetname> - Name of the destination system");
-      printf("\n  Example: sneak Lave");
-      printf("\n  Note: This is a debug command for testing purposes.");
-      return 1;
-    }
-
-    if (strcmp(command, "info") == 0 || strcmp(command, "i") == 0) {
-      printf("\nINFO <planetname> - Display information about a system");
-      printf("\n  <planetname> - Name of the system to get information about");
-      printf("\n  Example: info Lave");
-      printf("\n  Shows economy, government, tech level, and other system "
-             "details.");
-      return 1;
-    }
-
-    if (strcmp(command, "compare") == 0) {
-      printf("\nCOMPARE - Compare markets across different stations in the "
-             "system");
-      printf("\n  Shows price differences and profit opportunities between "
-             "stations.");
-      printf(
-          "\n  Lists all stations in the system with their distance from you.");
-      printf("\n  Highlights best commodities to buy or sell at each station.");
-      printf("\n  Shows estimated travel times to other stations.");
-      printf("\n  Note: You must be docked at a station to use this command.");
-      return 1;
-    }
-
-    if (strcmp(command, "mkt") == 0 || strcmp(command, "m") == 0) {
-      printf("\nMKT - Display market information");
-      printf("\n  Shows current market prices, cash, fuel level, and cargo "
-             "status.");
-      printf("\n  No parameters required.");
-      printf("\n  Note: Market prices vary between systems based on economy "
-             "type.");
-      return 1;
-    }
-
-    if (strcmp(command, "fuel") == 0 || strcmp(command, "f") == 0) {
-      printf("\nFUEL <amount> - Purchase fuel");
-      printf("\n  <amount> - Amount of fuel to buy in light years");
-      printf("\n  Example: fuel 7");
-      printf("\n  Note: Your maximum fuel capacity is 7 light years.");
-      return 1;
-    }
-
-    // Cargo and Money commands
-    if (strcmp(command, "hold") == 0 || strcmp(command, "h") == 0) {
-      printf("\nHOLD <amount> - Set cargo hold capacity");
-      printf("\n  <amount> - Total cargo hold space in tonnes");
-      printf("\n  Example: hold 20");
-      printf("\n  Note: Cannot reduce hold space below current cargo volume.");
-      return 1;
-    }
-
-    if (strcmp(command, "cash") == 0 || strcmp(command, "c") == 0) {
-      printf("\nCASH <+/-amount> - Adjust cash balance");
-      printf("\n  <+/-amount> - Amount to add or subtract from cash balance");
-      printf("\n  Example: cash +100.0  - Add 100 credits");
-      printf("\n  Example: cash -50.5   - Subtract 50.5 credits");
-      printf("\n  Note: This is a debug command for testing purposes.");
-      return 1;
-    }
-
-    // Game management commands
-    if (strcmp(command, "save") == 0) {
-      printf("\nSAVE [description] - Save the current game state");
-      printf("\n  [description] - Optional description of the save (e.g., 'At "
-             "Lave')");
-      printf("\n  Example: save Trading at Lave");
-      printf("\n  Note: Save files are timestamped and stored in the 'saves' "
-             "directory.");
-      return 1;
-    }
-
-    if (strcmp(command, "load") == 0) {
-      printf("\nLOAD - List and load saved games");
-      printf("\n  Shows a list of available save files, sorted by most recent "
-             "first.");
-      printf("\n  Enter the number of the save file to load when prompted.");
-      printf("\n  Note: Loading a save will discard your current game state.");
-      return 1;
-    }
-
-    if (strcmp(command, "reset") == 0) {
-      printf("\nRESET [seed] - Restart the game with an optional random seed");
-      printf("\n  Without parameters: Reinitializes the game with default seed "
-             "54321");
-      printf("\n  [seed]: A positive integer to use as the random seed");
-      printf("\n  Example: reset, reset 12345");
-      printf("\n  Note: Resetting will discard your current game state and "
-             "begin a new game.");
-      return 1;
-    }
-
-    if (strcmp(command, "quit") == 0 || strcmp(command, "q") == 0) {
-      printf("\nQUIT - Exit the game");
-      printf("\n  Exits the game without saving. Use 'save' first to preserve "
-             "your progress.");
-      return 1;
-    }
-
-    // Debug commands
-    if (strcmp(command, "rand") == 0) {
-      printf("\nRAND - Toggle random number generator");
-      printf("\n  Switches between native and portable RNG implementations.");
-      printf("\n  This is a debug command for testing purposes.");
-      return 1;
-    }
-
-    if (strcmp(command, "sneak") == 0) {
-      printf(
-          "\nSNEAK <planetname> - Jump to another system without using fuel");
-      printf("\n  <planetname> - Name of the destination system");
-      printf("\n  Example: sneak Lave");
-      printf("\n  Note: This is a debug command for testing purposes.");
-      return 1;
-    }
-
-    if (strcmp(command, "info") == 0 || strcmp(command, "i") == 0) {
-      printf("\nINFO <planetname> - Display information about a system");
-      printf("\n  <planetname> - Name of the system to get information about");
-      printf("\n  Example: info Lave");
-      printf("\n  Shows economy, government, tech level, and other system "
-             "details.");
-      return 1;
-    }
-
-    if (strcmp(command, "compare") == 0) {
-      printf("\nCOMPARE - Compare markets across different stations in the "
-             "system");
-      printf("\n  Shows price differences and profit opportunities between "
-             "stations.");
-      printf(
-          "\n  Lists all stations in the system with their distance from you.");
-      printf("\n  Highlights best commodities to buy or sell at each station.");
-      printf("\n  Shows estimated travel times to other stations.");
-      printf("\n  Note: You must be docked at a station to use this command.");
-      return 1;
-    }
-
-    // Equipment and inventory commands
-    if (strcmp(command, "inv") == 0) {
-      printf("\nINV - Display equipment inventory");
-      printf("\n  Shows all equipment items stored in your ship's inventory.");
-      printf("\n  Each item is shown with its inventory slot index for use "
-             "with the 'use' command.");
-      return 1;
-    }
-
-    if (strcmp(command, "store") == 0) {
-      printf("\nSTORE <slot_number> - Remove equipment and store in inventory");
-      printf("\n  <slot_number> - The equipment slot to remove equipment from");
-      printf("\n  Example: store 0");
-      printf("\n  Note: Use 'shipinfo' to see your equipment slots and what's "
-             "installed in them.");
-      return 1;
-    }
-
-    if (strcmp(command, "use") == 0) {
-      printf(
-          "\nUSE <inventory_index> <slot_number> - Equip item from inventory");
-      printf("\n  <inventory_index> - The inventory slot containing the "
-             "equipment to use");
-      printf("\n  <slot_number> - The equipment slot to install the equipment "
-             "into");
-      printf("\n  Example: use 2 1");
-      printf("\n  Note: Equipment can only be installed in compatible slots.");
-      printf("\n        Use 'inv' to see your inventory and 'shipinfo' to see "
-             "slots.");
-      return 1;
-    }
-    // If command not recognized, show general help
-    printf("\nUnknown command: %s", command);
-    printf("\nUse 'help' without parameters to see all available commands.");
     return 1;
-  }
-  // Display general help categories	printf("\n=== TXTELITE COMMAND REFERENCE
-  // ===");
-  printf("\n\nTRADING COMMANDS:");
-  printf("\n  buy   <good> <amount>   - Buy goods");
-  printf("\n  sell  <good> <amount>   - Sell goods");
-  printf("\n  jettison <good> <amount> - Discard goods into space");
-  printf("\n  jettison all            - Discard all cargo at once");
-  printf("\n  mkt                     - Show current market prices, fuel, and "
-         "cash");
-  printf("\n  compare                 - Compare markets across stations in the "
-         "system");
-  printf("\n\nINTERSTELLAR NAVIGATION:");
-  printf("\n  jump  <planetname>      - Jump to planet (uses fuel)");
-  printf("\n  fuel  <amount>          - Buy amount Light Years of fuel");
-  printf("\n  galhyp                  - Jump to the next galaxy");
-  printf("\n  local                   - List systems within 7 light years");
-  printf("\n  info  <planetname>      - Display information about a system");
-  printf("\n\nSTAR SYSTEM NAVIGATION:");
-  printf("\n  system                  - Scan system for detailed information "
-         "and points of interest");  printf("\n  travel [destination]    - List destinations or travel within the "
-         "system (uses fuel)");
-  printf("\n  dock                    - Dock with a station if at a station "
-         "location");
-  printf(
-      "\n  land                    - Land on a planet if at a planet location");
-  printf("\n\nCARGO AND MONEY:");
-  printf("\n  hold  <amount>          - Set total cargo hold space in tonnes");
-  printf("\n  cash  <+/-amount>       - Adjust cash (e.g., cash +100.0 or cash "
-         "-50.5)");
-  printf("\n\nSHIP MANAGEMENT:");
-  printf("\n  ship                    - Display basic ship status information");
-  printf("\n  shipinfo                - Display detailed ship information");
-  printf(
-      "\n  repair                  - Repair ship's hull damage (when docked)");
-  printf("\n  equip [item]            - Purchase and install ship equipment "
-         "(ECM, fuel scoop, etc.)");
-  printf("\n  inv                     - Display stored equipment items in your "
-         "ship's inventory");
-  printf("\n  store <slot_number>     - Remove equipment from a slot and store "
-         "it in inventory");
-  printf("\n  use <inv_idx> <slot>    - Install equipment from inventory into "
-         "a ship slot");
-  printf("\n  shipyard                - View ships available for purchase at "
-         "the station");
-  printf(
-      "\n  compareship <shipname>  - Compare your ship with another ship type");
-  printf("\n  buyship <ID or shipname> - Purchase a new ship (ID from shipyard "
-         "list)");
-  printf("\n  upgrade [ID] [quantity] - View and purchase ship upgrades (hull, "
-         "shields, etc.)");
-  printf("\n\nGAME MANAGEMENT:");
-  printf(
-      "\n  save  [description]     - Save the game with optional description");
-  printf(
-      "\n  load  [filename]        - List save games or load a specific save");
-  printf("\n  reset [seed]            - Reset the game with an optional seed "
-         "(default: 54321)");
-  printf("\n  quit                    - Exit the game");
-
-  printf("\n\nDEBUG COMMANDS:");
-  printf("\n  sneak <planetname>      - Jump to planet (no fuel cost, debug)");
-  printf("\n  rand                    - Toggle RNG between native and portable "
-         "(debug)");
-
-  printf("\n\nFor detailed help on any command, type 'help <command>'");
-  printf("\nAbbreviations allowed for most commands (e.g., b fo 5 for Buy Food "
-         "5, m for mkt).\n");
-  return 1;
 }
 
 static inline bool do_save(char *commandArguments) {

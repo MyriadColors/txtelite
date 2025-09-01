@@ -334,7 +334,7 @@ static inline bool platform_find_first_file(DirectoryIterator* iter,
 // Function to get next file in enumeration
 static inline bool platform_find_next_file(DirectoryIterator* iter) {
   if (iter->firstCall) {
-    iter->firstCall = false;
+    iter->firstCall = 0;
     // Data for the first file is already in findData from FindFirstFile
     return iter->handle != INVALID_HANDLE_VALUE;
   }
@@ -408,6 +408,37 @@ typedef struct {
   char currentFileFullName[MAX_PATH]; // Full path of current file
 } DirectoryIterator;
 
+// Function to get next file in enumeration
+static inline bool platform_find_next_file(DirectoryIterator* iter) {
+  if (!iter->dir) {
+    return 0;
+  }
+
+  while ((iter->entry = readdir(iter->dir)) != NULL) {
+    if (strcmp(iter->entry->d_name, ".") == 0 ||
+        strcmp(iter->entry->d_name, "..") == 0) {
+      continue; // Skip . and ..
+    }
+
+    if (fnmatch(iter->pattern, iter->entry->d_name, 0) == 0) {
+      snprintf(iter->currentFileFullName, sizeof(iter->currentFileFullName),
+               "%s%c%s", iter->dirPath, PATH_SEPARATOR_CHAR,
+               iter->entry->d_name);
+      iter->currentFileFullName[sizeof(iter->currentFileFullName) - 1] = '\0';
+
+      if (platform_stat(iter->currentFileFullName, &iter->fileStat) == 0) {
+        // Original code filtered for S_ISREG.
+        // To be more general, one might remove this or make it optional.
+        // For now, keeping it to match original behavior.
+        if (S_ISREG(iter->fileStat.st_mode)) {
+            return 1;
+        }
+      }
+    }
+  }
+  return 0; // No more matching files
+}
+
 // Function to start directory enumeration
 static inline bool platform_find_first_file(DirectoryIterator* iter,
                                             const char* pattern_in) {
@@ -434,42 +465,11 @@ static inline bool platform_find_first_file(DirectoryIterator* iter,
 
   iter->dir = opendir(iter->dirPath);
   if (!iter->dir) {
-    return false;
+    return 0;
   }
 
   // Find first matching file (delegating to platform_find_next_file logic)
   return platform_find_next_file(iter);
-}
-
-// Function to get next file in enumeration
-static inline bool platform_find_next_file(DirectoryIterator* iter) {
-  if (!iter->dir) {
-    return false;
-  }
-
-  while ((iter->entry = readdir(iter->dir)) != NULL) {
-    if (strcmp(iter->entry->d_name, ".") == 0 ||
-        strcmp(iter->entry->d_name, "..") == 0) {
-      continue; // Skip . and ..
-    }
-
-    if (fnmatch(iter->pattern, iter->entry->d_name, 0) == 0) {
-      snprintf(iter->currentFileFullName, sizeof(iter->currentFileFullName),
-               "%s%c%s", iter->dirPath, PATH_SEPARATOR_CHAR,
-               iter->entry->d_name);
-      iter->currentFileFullName[sizeof(iter->currentFileFullName) - 1] = '\0';
-
-      if (platform_stat(iter->currentFileFullName, &iter->fileStat) == 0) {
-        // Original code filtered for S_ISREG.
-        // To be more general, one might remove this or make it optional.
-        // For now, keeping it to match original behavior.
-        if (S_ISREG(iter->fileStat.st_mode)) {
-            return true;
-        }
-      }
-    }
-  }
-  return false; // No more matching files
 }
 
 // Function to get current filename
@@ -481,12 +481,12 @@ static inline const char* platform_get_filename(DirectoryIterator* iter) {
 static inline bool platform_is_directory(DirectoryIterator* iter) {
     // Ensure entry and fileStat are valid (e.g., after a successful find_next_file)
     if (iter->entry) {
-        // The current find_next_file filters for S_ISREG, so this would be false
+        // The current find_next_file filters for S_ISREG, so this would be 0
         // for entries returned by it. If that filter is removed/changed,
         // this check becomes more broadly useful.
         return S_ISDIR(iter->fileStat.st_mode);
     }
-    return false;
+    return 0;
 }
 
 

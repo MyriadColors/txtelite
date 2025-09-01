@@ -14,11 +14,11 @@ LDFLAGS_OS = -lm # Default to Linux-like (e.g., for math library)
 RUN_PREFIX = ./
 
 ifeq ($(OS),Windows_NT)
-    # Windows specific settings
-    EXEEXT = .exe
-    LDFLAGS_OS =
-    RM = del /F /Q
-    RUN_PREFIX = .\
+# Windows specific settings
+EXEEXT = .exe
+LDFLAGS_OS =
+RM = del /F /Q
+RUN_PREFIX = .\\
 endif
 
 TARGET = $(TARGET_BASENAME)$(EXEEXT)
@@ -61,4 +61,3 @@ clean:
 
 # Declare phony targets
 .PHONY: all release run clean
-endif

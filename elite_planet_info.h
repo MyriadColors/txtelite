@@ -148,15 +148,9 @@ static inline void goat_soup(const char *sourceString, struct PlanSys *planetSys
 					int len = gen_rnd_number() & 3;
 					for (i = 0; i <= len; i++)
 					{
-						int x = gen_rnd_number() & 0x3e; // pairs0 has 60 chars, so 0x3e (62) is out of bounds for pairs0[x+1] if x is 60 or 61. Max index is 59. (0x3A for 58, 0x3C for 60). pairs0 is 52 chars. "LEXEZASARESORARECETISOALATENNESSEESSTINIVEDALERQUANTEDLENETA" -> length 52. So max x should be 50 (0x32) to access x and x+1.
-														 // Original code: gen_rnd_number() & 0x3e; this means x can be up to 62. pairs0 is 52 chars long.
-														 // This was an existing bug. For now, I will keep it as is to match original, but this should be noted.
-														 // The original pairs0 is "LEXEZASARESORARECETISOALATENNESSEESSTINIVEDALERQUANTEDLENETA" (52 chars)
-														 // Accessing pairs0[x] and pairs0[x+1]. So x must be <= 50.
-														 // gen_rnd_number() & 0x30 would give x up to 48.
-														 // gen_rnd_number() % 51 would give x up to 50.
-														 // Let's use gen_rnd_number() % (sizeof(pairs0)-2) if pairs0 is accessible here for sizeof.
-														 // For now, keeping original logic: x = gen_rnd_number() & 0x3e;
+						// Original code had a potential buffer overflow if pairs0 was not the expected length.
+						// The following code ensures that the index is always within the bounds of the pairs0 array.
+						int x = gen_rnd_number() % (strlen(pairs0) - 1);
 						if (i == 0)
 						{
 							printf("%c", pairs0[x]);

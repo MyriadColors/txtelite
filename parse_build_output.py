@@ -13,7 +13,7 @@ from typing import List, Optional, Dict, Any
 
 # --- Configuration and Colors ---
 class Config:
-    def __init__(self):
+    def __init__(self) -> None:
         self.input_file: Optional[str] = None
         self.output_file: Optional[str] = None
         self.debug_filter: bool = False

@@ -161,50 +161,36 @@ static inline char* safe_strtok(char* str, const char* delim, char** saveptr) {
  *             This function will determine its current length safely.
  * @param dest_size The total size of the destination buffer.
  * @param src The null-terminated source string to append. Must be a valid pointer.
- * @return The new length of the string in 'dest' (equivalent to strlen(dest)
- *         after the call) on success. This value will always be less than 'dest_size'.
- *         If truncation of 'src' occurred, the returned length will be
- *         'dest_size - 1'.
+ * @return The new length of the string in 'dest' on success.
+ *         If truncation occurred, the returned length will be >= dest_size.
  *         Returns a negative value on error:
  *         -1: dest or src is NULL.
  *         -2: dest_size is 0.
- *         -3: dest buffer was initially full and not null-terminated (it is
- *             now forced to be null-terminated at dest[dest_size-1]).
- *         -4: snprintf encoding error or other snprintf failure.
+ *         -3: dest buffer was not null-terminated.
+ *         -4: snprintf encoding error.
  */
 static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
     if (dest == NULL || src == NULL) {
-        return -1; // Invalid arguments: NULL pointers
+        return -1;
     }
     if (dest_size == 0) {
-        return -2; // Destination buffer has no space at all
+        return -2;
     }
 
-    size_t current_len;
-    char *null_terminator_in_dest = (char*)memchr(dest, '\0', dest_size);
-
-    if (null_terminator_in_dest == NULL) {
-        // No null terminator found within dest_size.
+    size_t current_len = strnlen(dest, dest_size);
+    if (current_len >= dest_size) {
         dest[dest_size - 1] = '\0';
         return -3;
-    } else {
-        current_len = (size_t)(null_terminator_in_dest - dest);
     }
 
     size_t remaining_space = dest_size - current_len;
-    char *write_ptr = dest + current_len;
+    int written = snprintf(dest + current_len, remaining_space, "%s", src);
 
-    int chars_that_would_be_written = snprintf(write_ptr, remaining_space, "%s", src);
-
-    if (chars_that_would_be_written < 0) {
+    if (written < 0) {
         return -4; // snprintf error
     }
 
-    if ((size_t)chars_that_would_be_written >= remaining_space) {
-        return (int)(dest_size - 1); // Truncation occurred
-    } else {
-        return (int)(current_len + (size_t)chars_that_would_be_written);
-    }
+    return (int)(current_len + written);
 }
 
 /**
@@ -220,78 +206,36 @@ static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
  * @param n The maximum number of characters to append from 'src'. If 'src' is
  *          shorter than 'n' characters (excluding its null terminator), only
  *          the actual characters from 'src' are appended.
- * @return The new length of the string in 'dest' (equivalent to strlen(dest)
- *         after the call) on success. This value will always be less than 'dest_size'.
- *         If truncation of 'src' (either due to 'n' or 'dest_size') occurred,
- *         the returned length will reflect the actual characters written, up to
- *         'dest_size - 1'.
+ * @return The new length of the string in 'dest' on success.
+ *         If truncation occurred, the returned length will be >= dest_size.
  *         Returns a negative value on error:
  *         -1: dest or src is NULL.
  *         -2: dest_size is 0.
- *         -3: dest buffer was initially full and not null-terminated (it is
- *             now forced to be null-terminated at dest[dest_size-1]).
- *         -4: snprintf encoding error or other snprintf failure.
+ *         -3: dest buffer was not null-terminated.
+ *         -4: snprintf encoding error.
  */
 static inline int safe_strncat(char *dest, size_t dest_size, const char *src, size_t n) {
     if (dest == NULL || src == NULL) {
-        return -1; // Invalid arguments: NULL pointers
+        return -1;
     }
     if (dest_size == 0) {
-        return -2; // Destination buffer has no space at all
+        return -2;
     }
 
-    size_t current_len_dest;
-    char *null_terminator_in_dest = (char*)memchr(dest, '\0', dest_size);
-
-    if (null_terminator_in_dest == NULL) {
-        // No null terminator found within dest_size.
-        dest[dest_size - 1] = '\0'; // Force null-termination
-        return -3; // Indicate dest was full and not properly terminated
-    } else {
-        current_len_dest = (size_t)(null_terminator_in_dest - dest);
+    size_t current_len = strnlen(dest, dest_size);
+    if (current_len >= dest_size) {
+        dest[dest_size - 1] = '\0';
+        return -3;
     }
 
-    // Space available in dest for appending new characters AND a null terminator
-    size_t append_buf_size = dest_size - current_len_dest;
+    size_t remaining_space = dest_size - current_len;
+    int written = snprintf(dest + current_len, remaining_space, "%.*s", (int)n, src);
 
-    if (append_buf_size <= 1) {
-        // No space to append any characters from src (only space for existing null or less)
-        return (int)current_len_dest; // Nothing appended
+    if (written < 0) {
+        return -4; // snprintf error
     }
 
-    // Determine the actual 'n' for snprintf's precision (%.*s)
-    // Cap 'n' at INT_MAX because snprintf's '*' precision takes an int.
-    // If n is 0, actual_n_for_snprintf will be 0, and "%.0s" writes nothing.
-    int actual_n_for_snprintf = (n > INT_MAX) ? INT_MAX : (int)n;
-
-    char *write_ptr = dest + current_len_dest;
-
-    // snprintf will write at most 'actual_n_for_snprintf' chars from src,
-    // or fewer if src is shorter. It will also not write more than
-    // 'append_buf_size - 1' characters into write_ptr, plus a null terminator.
-    int chars_that_would_be_written = snprintf(write_ptr, append_buf_size, "%.*s", actual_n_for_snprintf, src);
-
-    if (chars_that_would_be_written < 0) {
-        // snprintf error (e.g., encoding error).
-        return -4;
-    }
-
-    // chars_that_would_be_written is the number of characters (excluding null)
-    // that *would have been* written if append_buf_size was large enough,
-    // considering the 'actual_n_for_snprintf' limit from src.
-
-    if ((size_t)chars_that_would_be_written >= append_buf_size) {
-        // Truncation by snprintf due to append_buf_size limit occurred.
-        // snprintf has written (append_buf_size - 1) chars and a null.
-        // The new total length of dest is current_len_dest + (append_buf_size - 1)
-        // which simplifies to dest_size - 1.
-        return (int)(dest_size - 1);
-    } else {
-        // No truncation by snprintf's buffer limit.
-        // All 'chars_that_would_be_written' (respecting 'n' and src length) fit.
-        // The new total length is current_len_dest + chars_that_would_be_written.
-        return (int)(current_len_dest + (size_t)chars_that_would_be_written);
-    }
+    return (int)(current_len + written);
 }
 
 
@@ -333,7 +277,7 @@ static inline bool platform_find_first_file(DirectoryIterator* iter,
   iter->pattern[MAX_PATH - 1] = '\0'; // Ensure null termination
 
   iter->handle = FindFirstFileA(iter->pattern, &iter->findData); // Use A for char*
-  iter->firstCall = 1;
+  iter->firstCall = true;
   return iter->handle != INVALID_HANDLE_VALUE;
 }
 
@@ -433,48 +377,36 @@ static inline bool platform_find_next_file(DirectoryIterator* iter) {
       iter->currentFileFullName[sizeof(iter->currentFileFullName) - 1] = '\0';
 
       if (platform_stat(iter->currentFileFullName, &iter->fileStat) == 0) {
-        // Original code filtered for S_ISREG.
-        // To be more general, one might remove this or make it optional.
-        // For now, keeping it to match original behavior.
-        if (S_ISREG(iter->fileStat.st_mode)) {
-            return 1;
-        }
+        // S_ISREG check removed, now returns all matching file types.
+        return true;
       }
     }
   }
-  return 0; // No more matching files
+  return false; // No more matching files
 }
 
 // Function to start directory enumeration
 static inline bool platform_find_first_file(DirectoryIterator* iter,
                                             const char* pattern_in) {
-  const char* filename_component = strrchr(pattern_in, PATH_SEPARATOR_CHAR);
-
-  if (filename_component != NULL) { // Pattern includes a path
-    size_t dir_len = filename_component - pattern_in;
-    if (dir_len == 0) { // e.g., "/pattern"
-      snprintf(iter->dirPath, sizeof(iter->dirPath), "%c",
-               PATH_SEPARATOR_CHAR);
+  const char* last_slash = strrchr(pattern_in, PATH_SEPARATOR_CHAR);
+  if (last_slash) {
+    size_t dir_len = last_slash - pattern_in;
+    if (dir_len > 0) {
+      snprintf(iter->dirPath, sizeof(iter->dirPath), "%.*s", (int)dir_len, pattern_in);
     } else {
-      snprintf(iter->dirPath, sizeof(iter->dirPath), "%.*s", (int)dir_len,
-               pattern_in);
+      strcpy(iter->dirPath, "/");
     }
-    filename_component++; // Move past the separator
-  } else { // Pattern is for current directory
-    snprintf(iter->dirPath, sizeof(iter->dirPath), ".");
-    filename_component = pattern_in;
+    snprintf(iter->pattern, sizeof(iter->pattern), "%s", last_slash + 1);
+  } else {
+    strcpy(iter->dirPath, ".");
+    snprintf(iter->pattern, sizeof(iter->pattern), "%s", pattern_in);
   }
-  iter->dirPath[sizeof(iter->dirPath) - 1] = '\0';
-
-  snprintf(iter->pattern, sizeof(iter->pattern), "%s", filename_component);
-  iter->pattern[sizeof(iter->pattern) - 1] = '\0';
 
   iter->dir = opendir(iter->dirPath);
   if (!iter->dir) {
-    return 0;
+    return false;
   }
 
-  // Find first matching file (delegating to platform_find_next_file logic)
   return platform_find_next_file(iter);
 }
 
@@ -485,14 +417,10 @@ static inline const char* platform_get_filename(DirectoryIterator* iter) {
 
 // Function to check if current entry is a directory
 static inline bool platform_is_directory(DirectoryIterator* iter) {
-    // Ensure entry and fileStat are valid (e.g., after a successful find_next_file)
-    if (iter->entry) {
-        // The current find_next_file filters for S_ISREG, so this would be 0
-        // for entries returned by it. If that filter is removed/changed,
-        // this check becomes more broadly useful.
+    if (iter && iter->entry) {
         return S_ISDIR(iter->fileStat.st_mode);
     }
-    return 0;
+    return false;
 }
 
 

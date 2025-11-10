@@ -1,116 +1,119 @@
 #pragma once
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
-#include "elite_utils.h" // For tweak_seed, strip_char_from_string
+#include "elite_utils.h" // For tweak_seed
+#include <assert.h>      // For debug assertions
 
-// Planet naming data
-// Original pairs0, 1.5 planet names fix (conditional removed)
-static const char pairs0[] =
-	"ABOUSEITILETSTONLONUTHNOALLEXEGEZACEBISOUSESARMAINDIREA.ERATENBERALAVETIEDORQUANTEISRION";
+// Cleaner, dot-free planet naming pairs.
+static const char planet_name_pairs[] = "LEXEGEZACEBISO"
+                                        "USESARMAINDIREA"
+                                        "ERATENBERALAVETI"
+                                        "EDORQUANTEISRION";
 
-// Original pairs
-static const char pairs[] = "..LEXEGEZACEBISO"
-							"USESARMAINDIREA."
-							"ERATENBERALAVETI"
-							"EDORQUANTEISRION"; /* Dots should be nullprint characters */
-
-/* rotate 8 bit number leftwards */
-static inline uint16_t rotate_left(uint16_t valueToRotate)
-{
-	uint16_t temp = valueToRotate & 128;
-	return (2 * (valueToRotate & 127)) + (temp >> 7);
+/**
+ * @brief Rotates an 8-bit number leftwards, mimicking 6502 ROL instruction.
+ * @param value The byte to rotate.
+ * @return The rotated byte.
+ */
+static inline uint8_t rotate_left(uint8_t value) {
+    // A 6502 ROL instruction shifts all bits left, moving bit 7 to the Carry
+    // flag and the Carry flag into bit 0. This implementation simplifies it
+    // by rotating bit 7 directly into bit 0.
+    return (value << 1) | (value >> 7);
 }
 
-static inline uint16_t twist(uint16_t valueToTwist)
-{
-	return (uint16_t)((256 * rotate_left(valueToTwist >> 8)) + rotate_left(valueToTwist & 255));
+/**
+ * @brief "Twists" a 16-bit number by rotating each byte leftwards.
+ * This is a key part of the galaxy generation algorithm.
+ * @param value The 16-bit value to twist.
+ * @return The twisted value.
+ */
+static inline uint16_t twist(uint16_t value) {
+    uint8_t high_byte = (uint8_t)(value >> 8);
+    uint8_t low_byte = (uint8_t)(value & 0xFF);
+    return (uint16_t)(rotate_left(high_byte) << 8) | rotate_left(low_byte);
 }
 
-/* Apply to base seed; once for galaxy 2 */
-static inline void next_galaxy(struct SeedType *currentSeed)
-{
-	(*currentSeed).a = twist((*currentSeed).a); /* twice for galaxy 3, etc. */
-	(*currentSeed).b = twist((*currentSeed).b); /* Eighth application gives galaxy 1 again*/
-	(*currentSeed).c = twist((*currentSeed).c);
-	(*currentSeed).d = twist((*currentSeed).d); /* Added to handle d field */
+/**
+ * @brief Advances the seed to generate the next galaxy.
+ * Each call to this function transitions to the next galaxy in a cycle of 8.
+ * @param seed A pointer to the seed to be modified.
+ */
+static inline void next_galaxy(struct SeedType *seed) {
+    assert(seed != NULL);
+    seed->a = twist(seed->a);
+    seed->b = twist(seed->b);
+    seed->c = twist(seed->c);
+    seed->d = twist(seed->d);
 }
 
-/* Generate system info from seed */
-// Operates on the global Seed, modifies it, and uses global Galaxy array.
-// Depends on strip_char_from_string and tweak_seed from elite_utils.h
-static inline struct PlanSys make_system(struct SeedType *initialSeed) // initialSeed is typically the global Seed
-{
-	struct PlanSys thissys;
-	uint16_t pair1, pair2, pair3, pair4;
-	uint16_t longnameflag = ((*initialSeed).a) & 64; // Changed w0 to a
+/**
+ * @brief Generates a planetary system from a seed.
+ * This function is pure; it does not modify the input seed. It creates a local
+ * copy to ensure the generation process is predictable and free of side effects.
+ * @param seed A constant pointer to the initial seed.
+ * @return A fully generated PlanSys structure.
+ */
+static inline struct PlanSys make_system(const struct SeedType *seed) {
+    assert(seed != NULL);
+    struct PlanSys system;
+    struct SeedType local_seed = *seed; // Use a local copy for generation
 
-	thissys.x = (((*initialSeed).b) >> 8); // Changed w1 to b
-	thissys.y = (((*initialSeed).a) >> 8); // Changed w0 to a
+    // --- System Coordinates and Basic Attributes ---
+    const bool long_name_flag = (local_seed.a & 0x40); // Bit 6 of seed.a
+    system.x = local_seed.b >> 8;
+    system.y = local_seed.a >> 8;
 
-	thissys.govType = ((((*initialSeed).b) >> 3) & 7); /* bits 3,4 &5 of b (was w1) */
+    // --- Government and Economy ---
+    // Gov type is bits 3-5 of seed.b
+    system.govType = (local_seed.b >> 3) & 0x07;
+    // Economy is bits 8-10 (high byte) of seed.a
+    system.economy = (local_seed.a >> 8) & 0x07;
+    // Anarchic systems (govType 0 or 1) have at least a poor industrial base
+    if (system.govType <= 1) {
+        system.economy |= 0x02;
+    }
 
-	thissys.economy = ((((*initialSeed).a) >> 8) & 7); /* bits 8,9 &A of a (was w0) */
-	if (thissys.govType <= 1)
-	{
-		thissys.economy = ((thissys.economy) | 2);
-	}
+    // --- Tech Level ---
+    // Base tech level from seed.b and economy
+    system.techLev = ((local_seed.b >> 8) & 0x03) + (system.economy ^ 0x07);
+    // Modified by government type
+    system.techLev += (system.govType >> 1) + (system.govType & 0x01);
 
-	thissys.techLev = ((((*initialSeed).b) >> 8) & 3) + ((thissys.economy) ^ 7); // Changed w1 to b
-	thissys.techLev += ((thissys.govType) >> 1);
-	if (((thissys.govType) & 1) == 1)
-		thissys.techLev += 1;
-	/* C simulation of 6502's LSR then ADC */
+    // --- Population, Productivity, and Radius ---
+    system.population = (4 * system.techLev) + system.economy + system.govType + 1;
+    system.productivity = ((system.economy ^ 0x07) + 3) * (system.govType + 4) * system.population * 8;
+    system.radius = (256 * (((local_seed.c >> 8) & 0x0F) + 11)) + system.x;
 
-	thissys.population = 4 * (thissys.techLev) + (thissys.economy);
-	thissys.population += (thissys.govType) + 1;
+    // --- "Goat Soup" Special Seed ---
+    // This is a special seed passed to the planet description generator.
+    system.goatSoupSeed.a = local_seed.b & 0xFF;
+    system.goatSoupSeed.b = local_seed.b >> 8;
+    system.goatSoupSeed.c = local_seed.c & 0xFF;
+    system.goatSoupSeed.d = local_seed.c >> 8;
 
-	thissys.productivity = (((thissys.economy) ^ 7) + 3) * ((thissys.govType) + 4);
-	thissys.productivity *= (thissys.population) * 8;
+    // --- Planet Name Generation ---
+    char *name_ptr = system.name;
+    const int num_pairs = long_name_flag ? 4 : 3;
+    for (int i = 0; i < num_pairs; ++i) {
+        uint8_t pair_index = 2 * ((local_seed.c >> 8) & 0x1F); // Get a value from 0-62
+        *name_ptr++ = planet_name_pairs[pair_index];
+        *name_ptr++ = planet_name_pairs[pair_index + 1];
+        tweak_seed(&local_seed); // "Stir" the seed for the next pair
+    }
+    *name_ptr = '\0'; // Null-terminate the string
 
-	thissys.radius = 256 * (((((*initialSeed).c) >> 8) & 15) + 11) + thissys.x; // Changed w2 to c
-
-	thissys.goatSoupSeed.a = (*initialSeed).b & 0xFF; // Changed w1 to b
-	thissys.goatSoupSeed.b = (*initialSeed).b >> 8;	  // Changed w1 to b
-	thissys.goatSoupSeed.c = (*initialSeed).c & 0xFF; // Changed w2 to c
-	thissys.goatSoupSeed.d = (*initialSeed).c >> 8;	  // Changed w2 to c
-
-	pair1 = 2 * ((((*initialSeed).c) >> 8) & 31);
-	tweak_seed(initialSeed); // Changed w2 to c
-	pair2 = 2 * ((((*initialSeed).c) >> 8) & 31);
-	tweak_seed(initialSeed); // Changed w2 to c
-	pair3 = 2 * ((((*initialSeed).c) >> 8) & 31);
-	tweak_seed(initialSeed); // Changed w2 to c
-	pair4 = 2 * ((((*initialSeed).c) >> 8) & 31);
-	tweak_seed(initialSeed); // Changed w2 to c
-	/* Always four iterations of random number */
-
-	(thissys.name)[0] = pairs[pair1];
-	(thissys.name)[1] = pairs[pair1 + 1];
-	(thissys.name)[2] = pairs[pair2];
-	(thissys.name)[3] = pairs[pair2 + 1];
-	(thissys.name)[4] = pairs[pair3];
-	(thissys.name)[5] = pairs[pair3 + 1];
-
-	if (longnameflag) /* bit 6 of ORIGINAL w0 flags a four-pair name */
-	{
-		(thissys.name)[6] = pairs[pair4];
-		(thissys.name)[7] = pairs[pair4 + 1];
-		(thissys.name)[8] = 0;
-	}
-	else
-		(thissys.name)[6] = 0;
-	strip_char_from_string(thissys.name, '.');
-
-	return thissys;
+    return system;
 }
 
-/* Original game generated from scratch each time info needed */
-// Operates on global Seed and Galaxy array.
-// Uses BASE_0, BASE_1, BASE_2 constants from elite_state.h
-static inline void build_galaxy_data(struct SeedType seed)
-{
-	uint16_t syscount;
-	SEED = seed;
-	for (syscount = 0; syscount < GAL_SIZE; ++syscount)
-		Galaxy[syscount] = make_system(&SEED);
+/**
+ * @brief Populates the global Galaxy array with systems generated from a seed.
+ * @param seed The initial seed for the galaxy.
+ */
+static inline void build_galaxy_data(struct SeedType seed) {
+    SEED = seed;
+    for (uint16_t i = 0; i < GAL_SIZE; ++i) {
+        Galaxy[i] = make_system(&SEED);
+        tweak_seed(&SEED); // Advance the global seed for the next system
+    }
 }

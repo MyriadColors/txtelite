@@ -149,18 +149,18 @@ static inline void goat_soup(const char *sourceString, struct PlanSys *planetSys
 					int len = gen_rnd_number() & 3;
 					for (i = 0; i <= len; i++)
 					{
-						// Original code had a potential buffer overflow if pairs0 was not the expected length.
-						// The following code ensures that the index is always within the bounds of the pairs0 array.
-						int x = gen_rnd_number() % (strlen(pairs0) - 1);
+						// The random name generation uses the same pairs as planet naming.
+						// The index is carefully calculated to prevent out-of-bounds access.
+						int x = 2 * (gen_rnd_number() % (sizeof(planet_name_pairs) / 2 - 1));
 						if (i == 0)
 						{
-							printf("%c", pairs0[x]);
+							printf("%c", planet_name_pairs[x]);
 						}
 						else
 						{
-							printf("%c", tolower(pairs0[x]));
+							printf("%c", tolower(planet_name_pairs[x]));
 						}
-						printf("%c", tolower(pairs0[x + 1]));
+						printf("%c", tolower(planet_name_pairs[x + 1]));
 					}
 				}
 				break;

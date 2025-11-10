@@ -1,5 +1,6 @@
 #pragma once
 
+#include "elite_galaxy.h"
 #include "elite_state.h" // Unified header for constants, structures, and globals
 
 // Definition for planetary description generation

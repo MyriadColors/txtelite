@@ -1,39 +1,19 @@
 #pragma once
 
-#include "elite_state.h"  // Unified header for constants, structures, and globals
+#include "elite_state.h"
+#include "elite_navigation_types.h"  // For NavigationState and CelestialType
 #include "elite_utils.h"  // For float_to_int_round, random_byte, string_begins_with
 #include "elite_market.h" // For generate_market
-#include "elite_galaxy.h" // For Galaxy array functions
 #include <math.h>         // For sqrt
+#include <stdint.h>       // For uint16_t
+#include <stdbool.h>      // For bool
+#include <stddef.h>       // For size_t
 
-// Enum for celestial body types
-typedef enum
-{
-    CELESTIAL_STAR,
-    CELESTIAL_PLANET,
-    CELESTIAL_STATION,
-    CELESTIAL_NAV_BEACON
-} CelestialType;
+// Constants
+#define GAL_SIZE 256 // Galaxy size
 
-// Forward declarations with typedefs for types needed by NavigationState
-typedef struct Star Star;
-typedef struct Planet Planet;
-typedef struct Station Station;
-
-// Navigation helper structure for travel within system
-typedef struct NavigationState
-{
-    CelestialType currentLocationType; // Type of current location
-    union
-    {
-        Star *star;
-        Planet *planet;
-        Station *station;
-    } currentLocation;       // Pointer to current location
-    double distanceFromStar; // Current distance from system's star in AU
-} NavigationState;
-
-
+// Forward declarations for structures used in functions
+struct PlanSys;
 
 // Calculates fuel requirement for in-system travel based on distance
 static inline double calculate_travel_fuel_requirement(double distanceInAU)

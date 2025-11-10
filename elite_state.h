@@ -69,8 +69,11 @@ static_assert(GAL_SIZE == 256, "Galaxy size must be 256");
 // Forward declarations
 struct FastSeedType;
 struct StarSystem;
-struct NavigationState;
 struct PlayerShip;
+
+// Navigation State is defined in elite_navigation_types.h to avoid circular dependencies
+// The actual definition includes CelestialType enum and location union
+// for complex in-system navigation functionality
 
 // Struct definitions
 struct FastSeedType
@@ -147,6 +150,7 @@ int GetMaxFuel(void);
 
 // Star System Navigation State
 extern struct StarSystem *CurrentStarSystem;
+#include "elite_navigation_types.h"
 extern struct NavigationState PlayerNavState;
 
 // Names and descriptors
@@ -224,7 +228,7 @@ static inline void game_time_get_formatted(char *buffer, size_t buffer_size)
 
     uint64_t current_seconds = time_val;
 
-    snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu",
+    (void)snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu",
              (unsigned long long)years, (unsigned long long)days,
              (unsigned long long)hours, (unsigned long long)minutes, (unsigned long long)current_seconds);
 }
@@ -281,7 +285,7 @@ uint64_t currentGameTimeSeconds;
 
 // Star System Navigation State
 struct StarSystem *CurrentStarSystem = NULL;
-struct NavigationState PlayerNavState;
+struct NavigationState PlayerNavState = {0};
 
 // Player Ship
 struct PlayerShip *PlayerShipPtr = NULL;

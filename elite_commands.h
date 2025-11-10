@@ -20,13 +20,12 @@
 #include "elite_ship_types.h"    // For ship status display functions
 #include "elite_ship_upgrades.h" // For ship upgrades
 #include "elite_state.h" // Unified header for constants, structures, and globals
-#include "platform_compat.h" // For cross-platform file operations
+#include "platform_compat.h" // For cross-platform file operations and StringCompareIgnoreCase
 #include <ctype.h>           // For toupper, tolower
 #include <math.h>            // For floor, fabs
 #include <stdlib.h>          // For atoi, atof
 #include <string.h>          // For string operations
 #include <time.h>            // For time functions
-#include <strings.h>
 
 // Command help structure
 typedef struct {
@@ -166,19 +165,20 @@ static const CommandHelp command_help[] = {
 // Helper function to find command help
 static const CommandHelp* find_command_help(const char *command) {
     for (int i = 0; command_help[i].command != NULL; i++) {
-        if (strcasecmp(command, command_help[i].command) == 0) {
+        if (StringCompareIgnoreCase(command, command_help[i].command) == 0) {
             return &command_help[i];
         }
         // Check aliases
         if (command_help[i].aliases != NULL) {
             char aliases_copy[MAX_LEN];
             snprintf(aliases_copy, MAX_LEN, "%s", command_help[i].aliases);
-            char *alias = strtok(aliases_copy, " ");
+            char *saveptr = NULL; // Declare saveptr for safe_strtok
+            char *alias = safe_strtok(aliases_copy, " ", &saveptr);
             while (alias != NULL) {
-                if (strcasecmp(command, alias) == 0) {
+                if (StringCompareIgnoreCase(command, alias) == 0) {
                     return &command_help[i];
                 }
-                alias = strtok(NULL, " ");
+                alias = safe_strtok(NULL, " ", &saveptr);
             }
         }
     }

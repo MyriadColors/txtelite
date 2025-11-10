@@ -5,65 +5,7 @@
 #include <string.h> // For string functions
 #include <stdio.h>  // For printf
 #include <ctype.h>  // For tolower
-
-// Helper function for case-insensitive string comparison
-// Also ignores trailing whitespace in either string
-static inline int StringCompareIgnoreCase(const char *str1, const char *str2)
-{
-    if (str1 == NULL || str2 == NULL)
-    {
-        return -1;
-    }
-
-    // Skip trailing whitespace
-    const char *end1 = str1 + strlen(str1);
-    const char *end2 = str2 + strlen(str2);
-
-    // Move end1 back to the last non-whitespace character
-    while (end1 > str1 && isspace((unsigned char)*(end1 - 1)))
-    {
-        end1--;
-    }
-
-    // Move end2 back to the last non-whitespace character
-    while (end2 > str2 && isspace((unsigned char)*(end2 - 1)))
-    {
-        end2--;
-    }
-
-    // Compare characters up to the non-whitespace ends
-    const char *p1 = str1;
-    const char *p2 = str2;
-
-    while (p1 < end1 && p2 < end2)
-    {
-        int c1 = tolower((unsigned char)*p1);
-        int c2 = tolower((unsigned char)*p2);
-
-        if (c1 != c2)
-        {
-            return c1 - c2;
-        }
-
-        p1++;
-        p2++;
-    }
-
-    // If we reached the end of both strings (up to non-whitespace),
-    // they are equal; otherwise, the shorter one is "less"
-    if (p1 == end1 && p2 == end2)
-    {
-        return 0; // Strings are equal (ignoring trailing whitespace)
-    }
-    else if (p1 == end1)
-    {
-        return -1; // str1 is shorter than str2
-    }
-    else
-    {
-        return 1; // str1 is longer than str2
-    }
-}
+#include "platform_compat.h" // For StringCompareIgnoreCase
 
 /**
  * @brief Finds the index of a cargo slot containing a specified cargo item in the player's ship.

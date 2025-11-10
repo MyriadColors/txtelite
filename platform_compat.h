@@ -18,6 +18,12 @@
 #include <string.h>   // For memcpy, memchr, snprintf, strlen, strrchr, strtok_r, strspn, strcspn
 #include <time.h>     // For time_t, struct tm, mktime, localtime, localtime_s, localtime_r
 
+#if defined(_WIN32)
+#include <ctype.h> // For tolower, for _stricmp implementation fallback if not directly available
+#else
+#include <strings.h> // For strcasecmp
+#endif
+
 // Cross-platform safe file opening function.
 // Uses fopen_s when available (Windows with compatible compiler),
 // falls back to standard fopen with proper error handling.
@@ -506,6 +512,15 @@ static inline void platform_find_close(DirectoryIterator* iter) {
 }
 
 #endif
+
+// Cross-platform case-insensitive string comparison
+static inline int StringCompareIgnoreCase(const char *s1, const char *s2) {
+#if defined(_WIN32)
+  return _stricmp(s1, s2);
+#else
+  return strcasecmp(s1, s2);
+#endif
+}
 
 // Common utility functions (platform-independent logic using platform-defined macros)
 

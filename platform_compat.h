@@ -152,6 +152,16 @@ static inline char* safe_strtok(char* str, const char* delim, char** saveptr) {
 }
 
 /**
+ * Internal helper to safely determine string length up to a maximum.
+ * This replaces strnlen which might not be available in all environments/standards.
+ */
+static inline size_t compat_strnlen(const char *s, size_t maxlen) {
+    if (s == NULL) return 0;
+    const char *p = (const char *)memchr(s, '\0', maxlen);
+    return p ? (size_t)(p - s) : maxlen;
+}
+
+/**
  * Safely concatenates the source string to the destination string.
  * Uses snprintf for the concatenation operation, ensuring buffer safety.
  * The destination buffer is always null-terminated if dest_size > 0.
@@ -177,7 +187,7 @@ static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
         return -2;
     }
 
-    size_t current_len = strnlen(dest, dest_size);
+    size_t current_len = compat_strnlen(dest, dest_size);
     if (current_len >= dest_size) {
         dest[dest_size - 1] = '\0';
         return -3;
@@ -222,7 +232,7 @@ static inline int safe_strncat(char *dest, size_t dest_size, const char *src, si
         return -2;
     }
 
-    size_t current_len = strnlen(dest, dest_size);
+    size_t current_len = compat_strnlen(dest, dest_size);
     if (current_len >= dest_size) {
         dest[dest_size - 1] = '\0';
         return -3;

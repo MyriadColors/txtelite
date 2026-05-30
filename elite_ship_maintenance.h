@@ -1,15 +1,10 @@
 #pragma once
 
-#include "elite_ship_types.h"
+#include "elite_player_ship.h"
 #include "elite_equipment_constants.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
-
-// External references to global variables
-extern uint16_t Fuel;
-extern struct PlayerShip *PlayerShipPtr;
-extern int32_t Cash;
 
 /**
  * Consumes a specified amount of fuel from the ship
@@ -22,7 +17,7 @@ extern int32_t Cash;
 static inline bool ConsumeFuel(double fuelAmount, bool isLocalTravel)
 {
     // Debug output can be uncommented for testing
-    // printf("\nConsumeFuel: initial Fuel=%d, amount=%.3f, isLocal=%d", Fuel, fuelAmount, isLocalTravel);
+    // printf("\nConsumeFuel: initial Fuel=%d, amount=%.3f, isLocal=%d", g_state.Fuel, fuelAmount, isLocalTravel);
     
     double fuelInTenthsLY = fuelAmount;
     
@@ -36,23 +31,23 @@ static inline bool ConsumeFuel(double fuelAmount, bool isLocalTravel)
     int fuelToConsume = (int)ceil(fuelInTenthsLY);
     
     // Check if we have enough fuel
-    if (Fuel < fuelToConsume) {
+    if (g_state.Fuel < fuelToConsume) {
         return 0;
     }
     
     // Consume the fuel from the global variable
-    Fuel -= fuelToConsume;
+    g_state.Fuel -= fuelToConsume;
     
     // Also update ship's internal fuel representation
-    if (PlayerShipPtr != NULL) {
+    if (g_state.PlayerShipPtr != NULL) {
         // Update ship's fuel in liters (1 tenth of LY = 10 liters)
         // Ensure we never go below zero
         double fuelLitersToConsume = isLocalTravel ? fuelAmount : fuelAmount * 10.0;
-        PlayerShipPtr->attributes.fuelLiters = fmax(PlayerShipPtr->attributes.fuelLiters - fuelLitersToConsume, 0.0);
+        g_state.PlayerShipPtr->attributes.fuelLiters = fmax(g_state.PlayerShipPtr->attributes.fuelLiters - fuelLitersToConsume, 0.0);
         
         // Make sure global Fuel and ship's fuel are in sync
         // This accounts for any rounding errors
-        Fuel = (uint16_t)(PlayerShipPtr->attributes.fuelLiters / 10.0);
+        g_state.Fuel = (uint16_t)(g_state.PlayerShipPtr->attributes.fuelLiters / 10.0);
     }
     
     return 1;
@@ -68,13 +63,13 @@ static inline bool ConsumeFuel(double fuelAmount, bool isLocalTravel)
  */
 static inline bool ShipRefuel(double amount, bool useCash)
 {
-    if (PlayerShipPtr == NULL) {
+    if (g_state.PlayerShipPtr == NULL) {
         return 0;
     }
     
     // The isEmergency parameter was part of the original signature but not used in the call to RefuelShip.
     // RefuelShip from elite_ship_types.h takes: PlayerShip*, amount, useFuelScoops (1 if !useCash), allowEmergencyRefuel (always 1 here)
-    float result = RefuelShip(PlayerShipPtr, (float)amount, !useCash, 1);
+    float result = RefuelShip(g_state.PlayerShipPtr, (float)amount, !useCash, 1);
     return result > 0.0f;
 }
 
@@ -87,12 +82,12 @@ static inline bool ShipRefuel(double amount, bool useCash)
  */
 static inline bool UseFuelScoops(double amount)
 {
-    if (PlayerShipPtr == NULL) {
+    if (g_state.PlayerShipPtr == NULL) {
         return 0;
     }
     
     // Call the ship-specific RefuelShip with appropriate parameters
-    RefuelShip(PlayerShipPtr, (float)amount, 1, 1);
+    RefuelShip(g_state.PlayerShipPtr, (float)amount, 1, 1);
     return 1;
 }
 
@@ -105,7 +100,7 @@ static inline bool UseFuelScoops(double amount)
  */
 static inline bool ShipRepair(int repairAmount, bool useCash)
 {
-    if (PlayerShipPtr == NULL) {
+    if (g_state.PlayerShipPtr == NULL) {
         return 0;
     }
     
@@ -114,11 +109,12 @@ static inline bool ShipRepair(int repairAmount, bool useCash)
     
     // If not using cash, we use the emergency repair mode which is
     // handled differently by the underlying function
-    int result = RepairHull(PlayerShipPtr, repairAmount, 
+    int result = RepairHull(g_state.PlayerShipPtr, repairAmount, 
                            useCash ? costPerPoint : 0, 1);
                            
     return result > 0;
 }
+
 
 /**
  * Gets the fuel cost per unit based on ship type

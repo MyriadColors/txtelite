@@ -1,19 +1,12 @@
 #pragma once
 
-// Forward declarations of types from elite_ship_types.h
+#include "elite_ship_components.h"
+
+// Forward declarations of types from elite_player_ship.h (to avoid circular include)
 struct PlayerShip;
 typedef struct PlayerShip PlayerShip;
 
-// Including necessary parts directly to avoid circular dependency
-#include <stdbool.h>
-#include <stdint.h>
-
-// Forward declare equipment types and functions used in this file
-typedef enum EquipmentSlotType EquipmentSlotType;
-typedef union EquipmentTypeSpecifics EquipmentTypeSpecifics;
-#define MAX_EQUIPMENT_SLOTS 10
-
-// Forward declare functions from elite_ship_types.h
+// Forward declare functions from elite_player_ship.h
 static inline bool AddEquipment(PlayerShip *playerShip,
                          EquipmentSlotType slotType,
                          const char *equipmentName,
@@ -232,15 +225,14 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
     // Check if we have enough cash to pay for the upgrade
     if (externalSync)
     {
-        extern int32_t Cash;
-
         // Verify we can afford this upgrade
-        if (cost > Cash)
+        if (cost > g_state.Cash)
         {
-            printf("Insufficient credits for upgrade. Required: %d, Available: %d\n", cost, Cash);
+            printf("Insufficient credits for upgrade. Required: %d, Available: %d\n", cost, g_state.Cash);
             return 0;
         }
     }
+
 
     bool upgrade_success = 0;
     const char *upgrade_name = "Unknown"; // Apply upgrade based on type
@@ -347,17 +339,8 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
     // If upgrade succeeded and we're syncing with external state
     if (upgrade_success && externalSync)
     {
-        extern int32_t Cash;
-
         // Deduct the cost
-        Cash -= cost;
-
-        // Special handling for cargo bay extensions if needed
-        if (upgradeType == UPGRADE_TYPE_CARGO_BAY)
-        {
-            extern uint16_t HoldSpace;
-            HoldSpace += upgradeLevel * CARGO_BAY_EXTENSION_CAPACITY;
-        }
+        g_state.Cash -= cost;
     }
 
     if (upgrade_success)
@@ -367,6 +350,7 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
 
     return upgrade_success;
 }
+
 
 /**
  * Configure a preset "Combat Loadout" for a Cobra Mk III.
@@ -720,25 +704,20 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
         return 0;
     }
 
-    // Get external variables
-    extern int32_t Cash;
-    extern struct PlanSys Galaxy[];
-    extern int CurrentPlanet;
-
     // Check if we have enough credits
-    if (cost > Cash)
+    if (cost > g_state.Cash)
     {
         printf("Insufficient credits to purchase %s. Required: %d, Available: %d\n",
-               equipmentName, cost, Cash);
+               equipmentName, cost, g_state.Cash);
         return 0;
     }
 
     // Check if the current system has the required tech level
-    if (Galaxy[CurrentPlanet].techLev < techLevelRequired)
+    if (g_state.Galaxy[g_state.CurrentPlanet].techLev < techLevelRequired)
     {
         printf("This equipment is not available at this technology level.\n");
         printf("Required tech level: %d, Current system tech level: %d\n",
-               techLevelRequired, Galaxy[CurrentPlanet].techLev);
+               techLevelRequired, g_state.Galaxy[g_state.CurrentPlanet].techLev);
         return 0;
     }    // Try to add the equipment
     bool equipmentAdded = AddEquipment(
@@ -750,7 +729,7 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
     if (equipmentAdded)
     {
         // Deduct cost
-        Cash -= cost;
+        g_state.Cash -= cost;
         printf("Successfully purchased %s for %d credits.\n", equipmentName, cost);
 
 // Update equipment mapping for quick access
@@ -759,6 +738,7 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip,
 
         return 1;
     }
+
     else
     {
         printf("Failed to install %s. Make sure the slot is empty.\n", equipmentName);
@@ -779,13 +759,10 @@ static inline void DisplayUpgrades(const PlayerShip *playerShip)
         return;
     }
 
-    // Access to player's cash from elite_state.h
-    extern int32_t Cash;
-
     // Display upgrades header
     printf("\n=== Ship Upgrades Available ===\n");
     printf("Your current ship: %s (%s)\n", playerShip->shipName, playerShip->shipClassName);
-    printf("Available credits: %.1f CR\n\n", (double)Cash / 10.0);    // Display current ship stats
+    printf("Available credits: %.1f CR\n\n", (double)g_state.Cash / 10.0);    // Display current ship stats
     printf("Current ship specifications:\n");
     printf("  Hull Strength: %d\n", playerShip->attributes.hullStrength);
     printf("  Shield Strength: %.1f front, %.1f aft\n",
@@ -852,9 +829,7 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip)
         return 0;
     }
 
-    // Access to player's cash
-    extern int32_t Cash;
-    double playerCash = (double)Cash / 10.0; // Convert to displayed value
+    double playerCash = (double)g_state.Cash / 10.0; // Convert to displayed value
 
     // Get ship-specific upgrade parameters
     const ShipUpgradeParameters *shipParams = GetShipUpgradeParameters(playerShip->shipClassName);
@@ -979,9 +954,7 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
     // Calculate total cost
     int totalCost = costPerUnit * quantity;
 
-    // Access to player's cash
-    extern int32_t Cash;
-    double playerCash = (double)Cash / 10.0; // Convert to displayed value
+    double playerCash = (double)g_state.Cash / 10.0; // Convert to displayed value
 
     // Check if player can afford the upgrade
     if (totalCost > playerCash * 10.0)
@@ -999,9 +972,10 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
     {
         printf("Successfully purchased %s x%d for %.1f CR.\n",
                upgradeName, quantity, (double)totalCost / 10.0);
-        playerCash = (double)Cash / 10.0; // Update displayed cash
+        playerCash = (double)g_state.Cash / 10.0; // Update displayed cash
         printf("Remaining credits: %.1f CR\n", playerCash);
     }
+
 
     return success;
 }
@@ -1015,23 +989,17 @@ static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int qu
  */
 static inline bool UpgradeCommand(const char *arguments)
 {
-    // Check if player is docked at a station
-    extern int PlayerLocationType;
-
     // Need to be docked at a station (PlayerLocationType == 10 means docked)
-    if (PlayerLocationType != 10)
+    if (g_state.PlayerLocationType != 10)
     {
         printf("Error: You must be docked at a station to access ship upgrades.\n");
         return 0;
     }
 
-    // Get player ship
-    extern PlayerShip *PlayerShipPtr; // From elite_player_state.h
-
     // If no arguments, just display the upgrade shop
     if (arguments == NULL || arguments[0] == '\0')
     {
-        return DisplayUpgradesShop(PlayerShipPtr);
+        return DisplayUpgradesShop(g_state.PlayerShipPtr);
     }
 
     // Parse arguments for purchase
@@ -1076,5 +1044,5 @@ static inline bool UpgradeCommand(const char *arguments)
     }
 
     // Purchase the upgrade
-    return PurchaseUpgrade(PlayerShipPtr, upgradeId, quantity);
+    return PurchaseUpgrade(g_state.PlayerShipPtr, upgradeId, quantity);
 }

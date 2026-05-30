@@ -3,7 +3,7 @@
 #include "elite_market.h"           // For market-related functions
 #include "elite_navigation.h"       // For NavigationState and CelestialType
 #include "elite_ship_maintenance.h" // For ConsumeFuel function
-#include "elite_ship_types.h"       // For PlayerShip structure
+#include "elite_player_ship.h"       // For PlayerShip structure
 #include "elite_state.h"            // For PlanSys and other related structures
 
 // Forward declarations
@@ -1240,14 +1240,13 @@ static inline bool travel_to_celestial(StarSystem *system,
   double fuelRequired = calculate_travel_fuel_requirement(distanceDelta);
 
   // Check if player ship has enough fuel
-  extern struct PlayerShip *PlayerShipPtr;
-  if (PlayerShipPtr != NULL) {
+  if (g_state.PlayerShipPtr != NULL) {
     // Check if there's enough fuel
-    if (PlayerShipPtr->attributes.fuelLiters < fuelRequired) {
+    if (g_state.PlayerShipPtr->attributes.fuelLiters < fuelRequired) {
       fprintf(stderr, "Error: Insufficient fuel for travel.\n");
       printf("\nTravel aborted: Insufficient fuel.\n");
       printf("Required: %.3f liters, Available: %.1f liters\n", fuelRequired,
-             PlayerShipPtr->attributes.fuelLiters);
+             g_state.PlayerShipPtr->attributes.fuelLiters);
       return 0;
     }
 
@@ -1280,8 +1279,7 @@ static inline bool travel_to_celestial(StarSystem *system,
 
     // Update global location type to indicate we're at a station but not yet
     // docked
-    extern int PlayerLocationType;
-    PlayerLocationType = 0; // We're at the station but not docked yet
+    g_state.PlayerLocationType = 0; // We're at the station but not docked yet
     break;
 
   case CELESTIAL_NAV_BEACON:
@@ -1290,6 +1288,7 @@ static inline bool travel_to_celestial(StarSystem *system,
     memset(&navState->currentLocation, 0, sizeof(navState->currentLocation));
     break;
   }
+
 
   navState->distanceFromStar = endDistance;
 
@@ -1379,7 +1378,7 @@ static inline void UseStationMarket(Station *station, Planet *planet,
     // fprintf(stderr, "Warning: UseStationMarket called with NULL station or
     // planSys.\\n"); Optionally clear LocalMarket or set to a default empty
     // state
-    memset(&LocalMarket, 0, sizeof(MarketType));
+    memset(&g_state.LocalMarket, 0, sizeof(MarketType));
     return;
   }
 
@@ -1390,7 +1389,7 @@ static inline void UseStationMarket(Station *station, Planet *planet,
 
   // 2. Copy the station's market data to the global LocalMarket.
   // Assuming LocalMarket is a global variable of type MarketType.
-  LocalMarket = station->market;
+  g_state.LocalMarket = station->market;
 }
 
 // Forward declarations exist at the beginning of the file
@@ -1403,7 +1402,7 @@ static inline void UseStationMarket(Station *station, Planet *planet,
  */
 static inline void UsePlanetaryMarket(Planet *planet, struct PlanSys *planSys) {
   if (!planet || !planSys) {
-    memset(&LocalMarket, 0, sizeof(MarketType));
+    memset(&g_state.LocalMarket, 0, sizeof(MarketType));
     return;
   }
 
@@ -1416,7 +1415,7 @@ static inline void UsePlanetaryMarket(Planet *planet, struct PlanSys *planSys) {
   }
 
   // Set the global LocalMarket to this planet's market
-  LocalMarket = planet->planetaryMarket.market;
+  g_state.LocalMarket = planet->planetaryMarket.market;
 }
 
 // =============================================================================

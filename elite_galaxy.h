@@ -111,9 +111,9 @@ static inline struct PlanSys make_system(const struct SeedType *seed) {
  * @param seed The initial seed for the galaxy.
  */
 static inline void build_galaxy_data(struct SeedType seed) {
-    SEED = seed;
+    g_state.SEED = seed;
     for (uint16_t i = 0; i < GAL_SIZE; ++i) {
-        Galaxy[i] = make_system(&SEED);
-        tweak_seed(&SEED); // Advance the global seed for the next system
+        g_state.Galaxy[i] = make_system(&g_state.SEED);
+        tweak_seed(&g_state.SEED); // Advance the global seed for the next system
     }
 }

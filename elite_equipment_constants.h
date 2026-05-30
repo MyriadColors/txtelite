@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elite_ship_types.h" // For PlayerShip and other types
+#include "elite_player_ship.h" // For PlayerShip and other types
 
 // Equipment slot indices for simplicity in status checks
 // These are indices into the ship's equipment array for common equipment

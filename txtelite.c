@@ -43,7 +43,7 @@ of Elite with no combat or missions.
 #include "elite_commands.h"            // For game commands
 #include "elite_equipment_constants.h" // For equipment indices
 #include "elite_player_state.h"        // For player state initialization
-#include "elite_ship_types.h"    // For ship initialization and status functions
+#include "elite_player_ship.h"    // For ship initialization and status functions
 #include "elite_ship_upgrades.h" // For equipment access
 #include "elite_star_system.h"   // For star system data
 #include "elite_state.h" // Unified header for constants, structures, and globals
@@ -51,16 +51,43 @@ of Elite with no combat or missions.
 #include "elite_utils.h" // For string handling and other utilities
 #include "platform_compat.h"
 
+// =====================================
+// Global State Definition
+// =====================================
+GameState g_state = {
+    .ExitStatus = EXIT_SUCCESS,
+    .CurrentSystemName = "Lave",
+    .CurrentSystemEconomy = 0,
+    .PlayerLocationType = 0,
+    .InCombat = false,
+    .currentGameTimeSeconds = 0,
+    .PlayerShipPtr = NULL,
+    .CurrentStarSystem = NULL,
+    .PlayerNavState = {0}
+};
+
+const uint16_t BASE_0 = 0x5A4A;
+const uint16_t BASE_1 = 0x0248;
+const uint16_t BASE_2 = 0xB753;
+
+char GovNames[GOV_MAX_COUNT][MAX_LEN] = {
+    "Anarchy", "Feudal", "Multi-gov", "Dictatorship",
+    "Communist", "Confederacy", "Democracy", "Corporate State"};
+
+char EconNames[ECON_MAX_COUNT][MAX_LEN] = {
+    "Rich Ind", "Average Ind", "Poor Ind", "Mainly Ind",
+    "Mainly Agri", "Rich Agri", "Average Agri", "Poor Agri"};
+
 /**
  * Gets the fuel cost per unit based on ship type
  *
  * @return Cost of fuel unit (for 0.1 LY of travel)
  */
 int GetFuelCost(void) {
-  if (PlayerShipPtr == NULL) {
+  if (g_state.PlayerShipPtr == NULL) {
     return 2; // Default value if ship not initialized
   }
-  return (int)PlayerShipPtr->shipType->fuelConsumptionRate;
+  return (int)g_state.PlayerShipPtr->shipType->fuelConsumptionRate;
 }
 
 /**
@@ -69,10 +96,10 @@ int GetFuelCost(void) {
  * @return Maximum fuel capacity in tenths of LY
  */
 int GetMaxFuel(void) {
-  if (PlayerShipPtr == NULL) {
+  if (g_state.PlayerShipPtr == NULL) {
     return 70; // Default value if ship not initialized
   }
-  return (int)(PlayerShipPtr->shipType->maxFuelLY *
+  return (int)(g_state.PlayerShipPtr->shipType->maxFuelLY *
                10.0); // Convert from LY to 0.1 LY units
 }
 
@@ -80,40 +107,36 @@ int GetMaxFuel(void) {
  * General functions *
  * ================= */
 
-// Definition of the global game time variable (in seconds)
-// This will be linked with the extern declaration in elite_state.h
-uint64_t currentGameTimeSeconds = 0;
-
 // Function to display the current game status
 static void display_game_status(char *location_buffer) {
   // Enhanced status display with ship information
-  if (PlayerShipPtr != NULL) { // Calculate hull percentage
-    int hull_percentage = (PlayerShipPtr->attributes.hullStrength * 100) /
-                          PlayerShipPtr->shipType->baseHullStrength;
+  if (g_state.PlayerShipPtr != NULL) { // Calculate hull percentage
+    int hull_percentage = (g_state.PlayerShipPtr->attributes.hullStrength * 100) /
+                          g_state.PlayerShipPtr->shipType->baseHullStrength;
     // Prepare equipment status string
     char equipment_status[MAX_LEN] = "";
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ECM_SYSTEM)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_ECM_SYSTEM)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "ECM ");
     }
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_FUEL_SCOOP)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_FUEL_SCOOP)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "FuelScoop ");
     }
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_DOCKING_COMPUTER)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_DOCKING_COMPUTER)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "DockCmp ");
     }
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MINING_LASER)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_MINING_LASER)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "Mining ");
     }
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_BEAM_LASER)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_BEAM_LASER)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "Beam ");
     }
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_MILITARY_LASER)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_MILITARY_LASER)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "Military ");
     }
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "Scanner ");
     }
-    if (CheckEquipmentActive(PlayerShipPtr, EQUIP_ESCAPE_POD)) {
+    if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_ESCAPE_POD)) {
       safe_strcat(equipment_status, sizeof(equipment_status), "EscPod ");
     }
     if (strlen(equipment_status) == 0) {
@@ -122,14 +145,14 @@ static void display_game_status(char *location_buffer) {
 
     (void)printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | "
            "Equip: %s | Time: %" PRIu64 " seconds > ",
-           location_buffer, ((double)Cash) / 10.0, ((double)Fuel) / 10.0,
+           location_buffer, ((double)g_state.Cash) / 10.0, ((double)g_state.Fuel) / 10.0,
            hull_percentage, equipment_status,
-           currentGameTimeSeconds);
+           g_state.currentGameTimeSeconds);
   } else {
     printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Time: %" PRIu64
            " seconds > ",
-           location_buffer, ((double)Cash) / 10.0, ((double)Fuel) / 10.0,
-           currentGameTimeSeconds);
+           location_buffer, ((double)g_state.Cash) / 10.0, ((double)g_state.Fuel) / 10.0,
+           g_state.currentGameTimeSeconds);
   }
 }
 
@@ -168,7 +191,7 @@ int main(int argc, char *argv[]) {
 #undef PARSER
   for (;;) {
     char location_buffer[MAX_LEN];
-    get_current_location_name(&PlayerNavState, location_buffer, sizeof(location_buffer));
+    get_current_location_name(&g_state.PlayerNavState, location_buffer, sizeof(location_buffer));
 
     // Periodically update all markets in the system as time passes
     update_all_system_markets();
@@ -182,5 +205,6 @@ int main(int argc, char *argv[]) {
 
   printf("\n");
 
-  exit(ExitStatus);
+  exit(g_state.ExitStatus);
 }
+

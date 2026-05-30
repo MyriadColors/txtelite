@@ -3,7 +3,7 @@
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include <ctype.h>		 // For isspace, toupper functions
 
-// Note: NativeRand and ExitStatus are now defined in elite_state.h
+// Note: NativeRand and ExitStatus are now members of g_state in elite_state.h
 
 static unsigned int lastrand_for_my_rand = 0; // Renamed to avoid potential conflicts if lastrand is used elsewhere
 
@@ -17,7 +17,7 @@ static inline int my_rand(void)
 {
 	int r;
 
-	if (NativeRand)
+	if (g_state.NativeRand)
 		r = rand();
 	else
 	{ // As supplied by D McDonnell	from SAS Insititute C

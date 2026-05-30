@@ -67,14 +67,14 @@ static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB)
 static inline PlanetNum find_matching_system_name(char *searchName)
 {
     PlanetNum syscount;
-    PlanetNum p = CurrentPlanet; // Global variable
+    PlanetNum p = g_state.CurrentPlanet; // Global variable
     uint16_t d = 0xFFFF;         // Initialize with max uint16_t value
 
     for (syscount = 0; syscount < GAL_SIZE; ++syscount)
     {
-        if (string_begins_with(searchName, Galaxy[syscount].name)) // Galaxy is global
+        if (string_begins_with(searchName, g_state.Galaxy[syscount].name)) // Galaxy is global
         {
-            uint16_t dist_to_current = distance(Galaxy[syscount], Galaxy[CurrentPlanet]);
+            uint16_t dist_to_current = distance(g_state.Galaxy[syscount], g_state.Galaxy[g_state.CurrentPlanet]);
             if (dist_to_current < d)
             {
                 d = dist_to_current;
@@ -104,9 +104,9 @@ static inline PlanetNum find_matching_system_name(char *searchName)
  */
 static inline void execute_jump_to_planet(PlanetNum planetIndex)
 {
-    CurrentPlanet = planetIndex; // Global variable
+    g_state.CurrentPlanet = planetIndex; // Global variable
     // Galaxy is a global variable, random_byte from elite_utils, generate_market from elite_market
-    LocalMarket = generate_market(random_byte(), Galaxy[planetIndex]); // Global variable
+    g_state.LocalMarket = generate_market(random_byte(), g_state.Galaxy[planetIndex]); // Global variable
 
     // Update the star system and navigation state for the new planet
     initialize_star_system_for_current_planet();

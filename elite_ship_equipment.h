@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elite_ship_types.h" // Include the basic ship type definitions
+#include "elite_player_ship.h" // Include the basic ship type definitions
 
 /**
  * Check if the player's ship has fuel scoops installed.

@@ -6,14 +6,8 @@
 #include "elite_galaxy.h"              // For build_galaxy_data()
 #include "elite_utils.h"               // For minimum_value
 #include "elite_star_system.h"         // For StarSystem
-#include "elite_ship_types.h"          // For PlayerShip structure and functions
+#include "elite_player_ship.h"          // For PlayerShip structure and functions
 #include "elite_equipment_constants.h" // For equipment mapping functions
-
-extern struct NavigationState PlayerNavState;
-extern struct StarSystem *CurrentStarSystem;
-
-// Forward declarations
-static inline void initialize_star_system_for_current_planet(void);
 
 /**
  * @brief Initializes the player's state at the start of a new game.
@@ -46,64 +40,58 @@ static inline void initialize_player_state(void)
     uint32_t randSeed = my_rand();
 
     // SeedType has a, b, c, d members as defined in elite_structs.h
-    SEED.a = BASE_0 ^ (randSeed & 0xFFFF); // XOR with random value to vary galaxy
-    SEED.b = BASE_1 ^ ((randSeed >> 8) & 0xFFFF);
-    SEED.c = BASE_2 ^ ((randSeed >> 16) & 0xFFFF);
-    SEED.d = BASE_2 ^ ((randSeed >> 24) & 0xFFFF);
+    g_state.SEED.a = BASE_0 ^ (randSeed & 0xFFFF); // XOR with random value to vary galaxy
+    g_state.SEED.b = BASE_1 ^ ((randSeed >> 8) & 0xFFFF);
+    g_state.SEED.c = BASE_2 ^ ((randSeed >> 16) & 0xFFFF);
+    g_state.SEED.d = BASE_2 ^ ((randSeed >> 24) & 0xFFFF);
 
     // Also initialize RndSeed structure for deterministic randomness within the galaxy
-    RndSeed.a = (uint8_t)(randSeed & 0xFF);
-    RndSeed.b = (uint8_t)((randSeed >> 8) & 0xFF);
-    RndSeed.c = (uint8_t)((randSeed >> 16) & 0xFF);
-    RndSeed.d = (uint8_t)((randSeed >> 24) & 0xFF);
+    g_state.RndSeed.a = (uint8_t)(randSeed & 0xFF);
+    g_state.RndSeed.b = (uint8_t)((randSeed >> 8) & 0xFF);
+    g_state.RndSeed.c = (uint8_t)((randSeed >> 16) & 0xFF);
+    g_state.RndSeed.d = (uint8_t)((randSeed >> 24) & 0xFF);
 
-    NativeRand = 0; // Set to 0 as per original logic for predictable generation initially
-    GalaxyNum = 1;      // Start in Galaxy 1
+    g_state.NativeRand = 0; // Set to 0 as per original logic for predictable generation initially
+    g_state.GalaxyNum = 1;      // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed
-    build_galaxy_data(SEED); // Set current planet to Lave (planet 7 in galaxy 1)    CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h    // Populate LocalMarket for the starting planet. Use random fluctuation instead of 0.
+    build_galaxy_data(g_state.SEED); 
+    
+    // Set current planet to Lave (planet 7 in galaxy 1)
+    g_state.CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h
+    
+    // Populate LocalMarket for the starting planet. Use random fluctuation instead of 0.
     // Galaxy[CurrentPlanet] is now valid after build_galaxy_data()
-    LocalMarket = generate_market(random_byte(), Galaxy[CurrentPlanet]);
+    g_state.LocalMarket = generate_market(random_byte(), g_state.Galaxy[g_state.CurrentPlanet]);
 
     // Initialize player ship
-    if (PlayerShipPtr != NULL)
+    if (g_state.PlayerShipPtr != NULL)
     {
-        free(PlayerShipPtr);
+        free(g_state.PlayerShipPtr);
     }
 
-    PlayerShipPtr = (PlayerShip *)malloc(sizeof(PlayerShip));
-    if (PlayerShipPtr == NULL)
+    g_state.PlayerShipPtr = (PlayerShip *)malloc(sizeof(PlayerShip));
+    if (g_state.PlayerShipPtr == NULL)
     {
         printf("Error: Could not allocate memory for player ship!\n");
         return;
     }
 
-    InitializeCobraMkIII(PlayerShipPtr);
+    InitializeCobraMkIII(g_state.PlayerShipPtr);
 
     // Now set fuel based on the ship's max fuel capacity
-    Fuel = GetMaxFuel(); // Get the max fuel based on the ship type
+    g_state.Fuel = GetMaxFuel(); // Get the max fuel based on the ship type
 
-    Cash = 1000;    // Start with 100.0 credits (1000 internal units)
-    HoldSpace = 20; // Start with 20t hold space
-
-    // Zero out the player's ship hold
-    // COMMODITY_ARRAY_SIZE is from elite_state.h
-    for (int i = 0; i < COMMODITY_ARRAY_SIZE; i++)
-    {
-        ShipHold[i] = 0;
-    }
+    g_state.Cash = 1000;    // Start with 100.0 credits (1000 internal units)
 
     // Initialize the tradenames array for command parsing
     init_tradnames();
 
     // Synchronize ship fuel with global state
-    PlayerShipPtr->attributes.fuelLiters = Fuel * 10.0; // Convert game units to liters
-
-    // Synchronize cargo capacity with HoldSpace
-    PlayerShipPtr->attributes.cargoCapacityTons = HoldSpace;
+    g_state.PlayerShipPtr->attributes.fuelLiters = g_state.Fuel * 10.0; // Convert game units to liters
 
     // Map equipment indices for quick status checks
-    MapEquipmentIndices(PlayerShipPtr);
+    MapEquipmentIndices(g_state.PlayerShipPtr);
 
     // Initialize star system for the current planet
     initialize_star_system_for_current_planet();
@@ -121,12 +109,12 @@ static inline void initialize_player_state(void)
  */
 static inline void cleanup_player_ship(void)
 {
-    if (PlayerShipPtr != NULL)
+    if (g_state.PlayerShipPtr != NULL)
     {
         // Any additional cleanup for ship resources would go here
 
-        free(PlayerShipPtr);
-        PlayerShipPtr = NULL;
+        free(g_state.PlayerShipPtr);
+        g_state.PlayerShipPtr = NULL;
     }
 }
 
@@ -152,29 +140,29 @@ static inline void cleanup_player_ship(void)
 static inline void initialize_star_system_for_current_planet(void)
 {
     // Clean up any existing star system
-    if (CurrentStarSystem != NULL)
+    if (g_state.CurrentStarSystem != NULL)
     {
-        cleanup_star_system(CurrentStarSystem);
-        free(CurrentStarSystem);
-        CurrentStarSystem = NULL;
+        cleanup_star_system(g_state.CurrentStarSystem);
+        free(g_state.CurrentStarSystem);
+        g_state.CurrentStarSystem = NULL;
     }
 
     // Allocate a new star system
-    CurrentStarSystem = (struct StarSystem *)malloc(sizeof(struct StarSystem));
-    if (CurrentStarSystem == NULL)
+    g_state.CurrentStarSystem = (struct StarSystem *)malloc(sizeof(struct StarSystem));
+    if (g_state.CurrentStarSystem == NULL)
     {
         printf("Error: Could not allocate memory for star system!\n");
         return;
     }
 
     // Initialize the star system with the current planet's data
-    initialize_star_system(CurrentStarSystem, &Galaxy[CurrentPlanet]);
+    initialize_star_system(g_state.CurrentStarSystem, &g_state.Galaxy[g_state.CurrentPlanet]);
 
     // Initialize navigation state - default position at the main planet
-    memset(&PlayerNavState, 0, sizeof(PlayerNavState));
-    PlayerNavState.currentLocationType = CELESTIAL_PLANET;
-    PlayerNavState.currentLocation.planet = get_planet_by_index(CurrentStarSystem, 0);
-    PlayerNavState.distanceFromStar = PlayerNavState.currentLocation.planet->orbitalDistance;
+    memset(&g_state.PlayerNavState, 0, sizeof(g_state.PlayerNavState));
+    g_state.PlayerNavState.currentLocationType = CELESTIAL_PLANET;
+    g_state.PlayerNavState.currentLocation.planet = get_planet_by_index(g_state.CurrentStarSystem, 0);
+    g_state.PlayerNavState.distanceFromStar = g_state.PlayerNavState.currentLocation.planet->orbitalDistance;
 }
 
 /**
@@ -193,22 +181,22 @@ static inline void initialize_star_system_for_current_planet(void)
 
 static inline void display_ship_status_brief(void)
 {
-    if (PlayerShipPtr == NULL)
+    if (g_state.PlayerShipPtr == NULL)
     {
         printf("\nError: Ship data is not available.\n");
         return;
     }
 
     printf("\nShip: %s (%s) - ",
-           PlayerShipPtr->shipName,
-           PlayerShipPtr->shipClassName);
+           g_state.PlayerShipPtr->shipName,
+           g_state.PlayerShipPtr->shipClassName);
 
     // Calculate hull percentage
-    int hullPercentage = (PlayerShipPtr->attributes.hullStrength * 100) / PlayerShipPtr->shipType->baseHullStrength;
+    int hullPercentage = (g_state.PlayerShipPtr->attributes.hullStrength * 100) / g_state.PlayerShipPtr->shipType->baseHullStrength;
     printf("Hull: %d%% - ", hullPercentage);
     // Display fuel information including consumption rate
-    double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
-    double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
+    double currentFuelLY = g_state.PlayerShipPtr->attributes.fuelLiters / 100.0;
+    double maxFuelLY = g_state.PlayerShipPtr->shipType->maxFuelLY;
     double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
 
     printf("Fuel: %.1f/%.1f LY (%.0f%%) - ",
@@ -218,8 +206,8 @@ static inline void display_ship_status_brief(void)
 
     // Show cargo capacity
     printf("Cargo: %d/%d tons",
-           PlayerShipPtr->attributes.currentCargoTons,
-           PlayerShipPtr->attributes.cargoCapacityTons);
+           g_state.PlayerShipPtr->attributes.currentCargoTons,
+           g_state.PlayerShipPtr->attributes.cargoCapacityTons);
 }
 
 /**
@@ -240,11 +228,11 @@ static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
     int currentFuelCost = GetFuelCost();
     if (currentFuelCost <= 0)
         return 0; // Avoid division by zero if FuelCost is invalid
-    if (Cash <= 0)
+    if (g_state.Cash <= 0)
         return 0; // No cash, no fuel
 
     // Calculate fuel units player can afford (1 unit = 0.1 LY)
-    uint16_t affordable_fuel_units = (uint16_t)((double)Cash / currentFuelCost);
+    uint16_t affordable_fuel_units = (uint16_t)((double)g_state.Cash / currentFuelCost);
 
     // Return the minimum of what's desired and what's affordable
     return (desiredAmount < affordable_fuel_units) ? desiredAmount : affordable_fuel_units;
@@ -258,16 +246,16 @@ static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
  */
 static inline void display_ship_fuel_status(void)
 {
-    if (PlayerShipPtr == NULL)
+    if (g_state.PlayerShipPtr == NULL)
     {
         printf("\nError: Ship data is not available.\n");
         return;
     }
 
-    double currentFuelLY = PlayerShipPtr->attributes.fuelLiters / 100.0;
-    double maxFuelLY = PlayerShipPtr->shipType->maxFuelLY;
+    double currentFuelLY = g_state.PlayerShipPtr->attributes.fuelLiters / 100.0;
+    double maxFuelLY = g_state.PlayerShipPtr->shipType->maxFuelLY;
     double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
-    double consumptionRate = PlayerShipPtr->shipType->fuelConsumptionRate;
+    double consumptionRate = g_state.PlayerShipPtr->shipType->fuelConsumptionRate;
 
     printf("\n=== Fuel Status ===\n");
     printf("Current fuel:     %.1f LY (%.0f%%)\n", currentFuelLY, fuelPercent);

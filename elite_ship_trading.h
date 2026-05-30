@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elite_ship_types.h"
+#include "elite_player_ship.h"
 #include "elite_star_system.h"
 #include "elite_player_state.h"
 #include <ctype.h> // For isdigit()
@@ -242,9 +242,9 @@ static inline void DisplayShipyard(const char *systemName, int systemEconomy,
         double price = shipPrices[i];
         double netCost = price - tradeInValue;
 
-        // Determine if the player can afford this ship        extern int32_t Cash; // Access to player's cash from elite_state.h
+        // Determine if the player can afford this ship
         // Cash is stored internally as a value 10x the displayed value
-        bool canAfford = (netCost * 10.0 <= Cash);        printf("[%d] %-15s %-8d %-6d %-7.1f %-8.1f %s\n",
+        bool canAfford = (netCost * 10.0 <= g_state.Cash);        printf("[%d] %-15s %-8d %-6d %-7.1f %-8.1f %s\n",
                i + 1, // Use 1-based indexing for user-friendliness
                ship->className,
                ship->baseHullStrength,
@@ -258,6 +258,7 @@ static inline void DisplayShipyard(const char *systemName, int systemEconomy,
     printf("Use 'buyship <ID> notrade' to buy without trading in your current ship.\n");
     printf("Use 'compareship <shipname>' to compare with your current ship.\n");
 }
+
 
 /**
  * Compares the player's current ship with a ship available for purchase
@@ -661,9 +662,6 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
         return 0;
     }
 
-    // Access to player's cash from elite_state.h
-    extern int32_t Cash;
-
     // Find the new ship type
     InitializeShipRegistry();
     const ShipType *newShipType = GetShipTypeByName(newShipName);    if (newShipType == NULL)
@@ -690,11 +688,11 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
     double netCost = price - tradeInValue;
     // Check if player can afford the ship
     // Cash is stored internally as a value 10x the displayed value
-    if (netCost * 10.0 > Cash)
+    if (netCost * 10.0 > g_state.Cash)
     {
         printf("Error: Insufficient funds to purchase %s.\n", newShipType->className);
         printf("Ship price: %.1f CR, Trade-in value: %.1f CR, Net cost: %.1f CR, Your cash: %.1f CR\n",
-               price, tradeInValue, netCost, (double)Cash / 10.0);
+               price, tradeInValue, netCost, (double)g_state.Cash / 10.0);
         return 0;
     }
 
@@ -736,7 +734,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
         tradeInStorage.isActive = 0;
     }
     // Deduct the cost from player's cash
-    Cash -= (int32_t)netCost;
+    g_state.Cash -= (int32_t)(netCost * 10.0);
 
     // Display purchase information
     printf("\nCongratulations on your new ship purchase!\n");
@@ -755,7 +753,7 @@ static inline bool BuyNewShip(const char *systemName, int systemEconomy,
     }
 
     printf("Net cost: %.1f CR\n", netCost);
-    printf("Remaining cash: %.1f CR\n", (double)Cash / 10.0);
+    printf("Remaining cash: %.1f CR\n", (double)g_state.Cash / 10.0);
 
     return 1;
 }
@@ -773,24 +771,15 @@ static inline bool ShipyardCommand(const char *arguments)
 {
     (void)arguments; // Unused parameter
     // Check if player is docked at a station
-    extern struct NavigationState PlayerNavState;
-    extern int PlayerLocationType;
-
     // Need to be both at a station AND docked
-    if (PlayerNavState.currentLocationType != CELESTIAL_STATION || PlayerLocationType != 10)
+    if (g_state.PlayerNavState.currentLocationType != CELESTIAL_STATION || g_state.PlayerLocationType != 10)
     {
         printf("Error: You must be docked at a station to access the shipyard.\n");
         return 0;
     }
 
-    // Get current system info
-    extern char CurrentSystemName[20];      // From elite_player_state.h
-    extern int CurrentSystemEconomy;        // From elite_player_state.h
-    extern uint64_t currentGameTimeSeconds; // From elite_state.h
-    extern PlayerShip *PlayerShipPtr;       // From elite_player_state.h
-
     // Display the shipyard
-    DisplayShipyard(CurrentSystemName, CurrentSystemEconomy, PlayerShipPtr, currentGameTimeSeconds);
+    DisplayShipyard(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, g_state.PlayerShipPtr, g_state.currentGameTimeSeconds);
 
     return 1;
 }
@@ -812,11 +801,8 @@ static inline bool CompareShipCommand(const char *arguments)
         return 0;
     }
 
-    // Get player ship
-    extern PlayerShip *PlayerShipPtr; // From elite_player_state.h
-
     // Compare ships
-    CompareShips(PlayerShipPtr, arguments);
+    CompareShips(g_state.PlayerShipPtr, arguments);
 
     return 1;
 }
@@ -870,11 +856,8 @@ static inline bool GetShipNameByID(const char *systemName, int systemEconomy, in
 static inline bool BuyShipCommand(const char *arguments)
 {
     // Check if player is docked at a station
-    extern struct NavigationState PlayerNavState;
-    extern int PlayerLocationType;
-
     // Need to be both at a station AND docked
-    if (PlayerNavState.currentLocationType != CELESTIAL_STATION || PlayerLocationType != 10)
+    if (g_state.PlayerNavState.currentLocationType != CELESTIAL_STATION || g_state.PlayerLocationType != 10)
     {
         printf("Error: You must be docked at a station to purchase a ship.\n");
         return 0;
@@ -888,12 +871,6 @@ static inline bool BuyShipCommand(const char *arguments)
         printf("Example: buyship 1  or  buyship \"Cobra Mk III\"\n");
         return 0;
     }
-
-    // Get current system info and player ship
-    extern char CurrentSystemName[20];      // From elite_player_state.h
-    extern int CurrentSystemEconomy;        // From elite_player_state.h
-    extern uint64_t currentGameTimeSeconds; // From elite_state.h
-    extern PlayerShip *PlayerShipPtr;       // From elite_player_state.h
 
     // Parse arguments
     char shipNameOrID[64] = {0};
@@ -940,7 +917,7 @@ static inline bool BuyShipCommand(const char *arguments)
         int shipID = atoi(shipNameOrID);
 
         // Get the ship name by ID
-        if (!GetShipNameByID(CurrentSystemName, CurrentSystemEconomy, shipID, actualShipName, MAX_SHIP_NAME_LENGTH))
+        if (!GetShipNameByID(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, shipID, actualShipName, MAX_SHIP_NAME_LENGTH))
         {
             printf("Error: Invalid ship ID: %d\n", shipID);
             return 0;
@@ -955,10 +932,11 @@ static inline bool BuyShipCommand(const char *arguments)
 
     // Buy the new ship
     return BuyNewShip(
-        CurrentSystemName,
-        CurrentSystemEconomy,
-        PlayerShipPtr,
+        g_state.CurrentSystemName,
+        g_state.CurrentSystemEconomy,
+        g_state.PlayerShipPtr,
         actualShipName,
-        currentGameTimeSeconds,
+        g_state.currentGameTimeSeconds,
         tradeIn);
 }
+

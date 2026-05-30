@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elite_ship_types.h"
+#include "elite_player_ship.h"
 #include "elite_market.h"  // For Commodities array
 #include <string.h> // For string functions
 #include <stdio.h>  // For printf
@@ -209,8 +209,7 @@ static inline bool SellCargo(PlayerShip *playerShip, const char *cargoName, int 
     // If we need to sync with the game's global state
     if (externalSync)
     {
-        extern int32_t Cash;
-        Cash += totalSale;
+        g_state.Cash += totalSale;
     }
 
     printf("Sold %d tonnes of %s for %d credits.\n", quantity, cargoName, totalSale);
@@ -240,11 +239,9 @@ static inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int q
     // If we need to sync with the game's global state, check if we have enough cash
     if (externalSync)
     {
-        extern int32_t Cash;
-
-        if (Cash < totalCost)
+        if (g_state.Cash < totalCost)
         {
-            printf("Error: Not enough credits. Available: %d, Required: %d\n", Cash, totalCost);
+            printf("Error: Not enough credits. Available: %d, Required: %d\n", g_state.Cash, totalCost);
             return 0;
         }
     }
@@ -258,8 +255,7 @@ static inline bool BuyCargo(PlayerShip *playerShip, const char *cargoName, int q
     // If everything successful and we need to sync, deduct the cash
     if (externalSync)
     {
-        extern int32_t Cash;
-        Cash -= totalCost;
+        g_state.Cash -= totalCost;
     }
 
     printf("Purchased %d tonnes of %s for %d credits.\n", quantity, cargoName, totalCost);
@@ -375,87 +371,25 @@ static inline bool JettisonAllCargo(PlayerShip *playerShip)
 
     int totalJettisoned = 0;
 
-    // Temporary array to store cargo data before jettisoning
-    // (because we'll be modifying the cargo array while iterating)
-    struct
-    {
-        char name[MAX_SHIP_NAME_LENGTH];
-        int quantity;
-    } cargoToJettison[MAX_CARGO_SLOTS];
-
-    int numCargoTypes = 0;
-
-    // First, collect all cargo items that need to be jettisoned
+    // Iterate through all cargo slots
     for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
     {
         if (playerShip->cargo[i].quantity > 0)
         {
-            // Store information about this cargo type for jettisoning
-            snprintf(cargoToJettison[numCargoTypes].name, MAX_SHIP_NAME_LENGTH, "%s", playerShip->cargo[i].name);
-            // cargoToJettison[numCargoTypes].name[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
-            cargoToJettison[numCargoTypes].quantity = playerShip->cargo[i].quantity;
-            numCargoTypes++;
-            totalJettisoned += playerShip->cargo[i].quantity;
+            int quantity = playerShip->cargo[i].quantity;
+            totalJettisoned += quantity;
+
+            printf("\nJettisoned %d tonnes of %s into space.",
+                   quantity, playerShip->cargo[i].name);
+
+            // Clear the cargo slot
+            playerShip->cargo[i].quantity = 0;
+            snprintf(playerShip->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
+            playerShip->cargo[i].purchasePrice = 0;
         }
     }
 
-    // If no cargo found (should not happen since we checked currentCargoTons)
-    if (numCargoTypes == 0)
-    {
-        printf("\nNo cargo to jettison.");
-        return 0;
-    }
-
-    // Now jettison each cargo item
-    for (int i = 0; i < numCargoTypes; ++i)
-    {
-        // Find cargo index in global tradnames array for ShipHold update
-        uint16_t cargoIndex = 0;
-        bool cargoFound = 0;
-
-        // Find the cargo index in the global tradnames array
-        for (uint16_t j = 0; j <= LAST_TRADE; j++)
-        {
-            if (StringCompareIgnoreCase(tradnames[j], cargoToJettison[i].name) == 0)
-            {
-                cargoIndex = j;
-                cargoFound = 1;
-                break;
-            }
-        }
-
-        if (cargoFound)
-        {
-            // Update the global ShipHold array
-            if (ShipHold[cargoIndex] >= cargoToJettison[i].quantity)
-            {
-                ShipHold[cargoIndex] -= cargoToJettison[i].quantity;
-
-                // Update HoldSpace if it's measured in tons
-                if (Commodities[cargoIndex].units == TONNES_UNIT)
-                {
-                    HoldSpace += cargoToJettison[i].quantity;
-                }
-
-                // Remove the cargo using RemoveCargo (which will update playerShip->cargo)
-                RemoveCargo(playerShip, cargoToJettison[i].name, cargoToJettison[i].quantity);
-
-                printf("\nJettisoned %d tonnes of %s into space.",
-                       cargoToJettison[i].quantity, cargoToJettison[i].name);
-            }
-        }
-    }
-
-    // Clear all remaining cargo in playerShip (in case RemoveCargo missed anything)
-    for (int i = 0; i < MAX_CARGO_SLOTS; ++i)
-    {
-        playerShip->cargo[i].quantity = 0;
-        snprintf(playerShip->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
-        // playerShip->cargo[i].name[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
-        playerShip->cargo[i].purchasePrice = 0;
-    }
-
-    // Reset current cargo tons
+    // Reset current cargo weight
     playerShip->attributes.currentCargoTons = 0;
 
     // Print summary

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elite_ship_types.h" // Include the basic ship type definitions
+#include "elite_player_ship.h" // Include the basic ship type definitions
 
 // Maximum equipment items the player can have in inventory (not equipped)
 #define MAX_EQUIPMENT_INVENTORY 30

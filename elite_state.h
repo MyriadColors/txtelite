@@ -122,54 +122,67 @@ typedef struct
 // =====================================
 // Global Variables
 // =====================================
-// System state
-extern int ExitStatus;
-extern bool NativeRand;
+#include "elite_navigation_types.h"
 
-// Galaxy and seed data
-extern struct PlanSys Galaxy[GAL_SIZE];
-extern struct SeedType SEED;
-extern struct FastSeedType RndSeed;
+// Forward declarations
+struct StarSystem;
+struct PlayerShip;
 
-// Base seeds for galaxy generation
+/**
+ * Encapsulates the global game state to improve organization and modularity.
+ */
+typedef struct {
+    int ExitStatus;
+    bool NativeRand;
+
+    struct PlanSys Galaxy[GAL_SIZE];
+    struct SeedType SEED;
+    struct FastSeedType RndSeed;
+
+    int CurrentPlanet;
+    uint16_t GalaxyNum;
+    int32_t Cash;
+    uint16_t Fuel;
+    MarketType LocalMarket;
+
+    uint64_t currentGameTimeSeconds;
+
+    struct StarSystem *CurrentStarSystem;
+    struct NavigationState PlayerNavState;
+
+    struct PlayerShip *PlayerShipPtr;
+
+    char CurrentSystemName[20];
+    int CurrentSystemEconomy;
+    int PlayerLocationType;
+    bool InCombat;
+
+    char tradnames[LAST_TRADE + 1][MAX_LEN];
+} GameState;
+
+extern GameState g_state;
+
+// Base seeds for galaxy generation (constant)
 extern const uint16_t BASE_0;
 extern const uint16_t BASE_1;
 extern const uint16_t BASE_2;
 
-// Player state
-extern uint16_t ShipHold[COMMODITY_ARRAY_SIZE];
-extern int CurrentPlanet;
-extern uint16_t GalaxyNum;
-extern int32_t Cash;
-extern uint16_t Fuel;
-extern MarketType LocalMarket;
-extern uint16_t HoldSpace;
-// Function declarations (implementations are later in this file)
-int GetFuelCost(void);
-int GetMaxFuel(void);
-
-// Star System Navigation State
-extern struct StarSystem *CurrentStarSystem;
-#include "elite_navigation_types.h"
-extern struct NavigationState PlayerNavState;
-
-// Names and descriptors
+// Names and descriptors (read-only lookup tables)
 extern char GovNames[GOV_MAX_COUNT][MAX_LEN];
 extern char EconNames[ECON_MAX_COUNT][MAX_LEN];
-extern char tradnames[LAST_TRADE + 1][MAX_LEN];
 
-// Declaration of the global game time variable (in seconds)
-extern uint64_t currentGameTimeSeconds;
+// Function declarations (implementations are later in this file or in txtelite.c)
+int GetFuelCost(void);
+int GetMaxFuel(void);
 
 // --- Game Time Functions ---
 
 /**
  * Initializes the game time to zero.
- * Should be called when starting a new game.
  */
 static inline void game_time_initialize(void)
 {
-    currentGameTimeSeconds = 0;
+    g_state.currentGameTimeSeconds = 0;
 }
 
 /**
@@ -179,8 +192,8 @@ static inline void game_time_initialize(void)
 static inline void game_time_advance(uint32_t seconds_to_add)
 {
     if (seconds_to_add > 0)
-    { // Basic check
-        currentGameTimeSeconds += seconds_to_add;
+    {
+        g_state.currentGameTimeSeconds += seconds_to_add;
     }
 }
 
@@ -190,7 +203,7 @@ static inline void game_time_advance(uint32_t seconds_to_add)
  */
 static inline uint64_t game_time_get_seconds(void)
 {
-    return currentGameTimeSeconds;
+    return g_state.currentGameTimeSeconds;
 }
 
 /**
@@ -206,7 +219,7 @@ static inline void game_time_get_formatted(char *buffer, size_t buffer_size)
         return;
     }
 
-    uint64_t time_val = currentGameTimeSeconds;
+    uint64_t time_val = g_state.currentGameTimeSeconds;
 
     const uint64_t secs_in_minute = 60;
     const uint64_t secs_in_hour = 60 * secs_in_minute;
@@ -233,67 +246,3 @@ static inline void game_time_get_formatted(char *buffer, size_t buffer_size)
              (unsigned long long)hours, (unsigned long long)minutes, (unsigned long long)current_seconds);
 }
 
-// =====================================
-// Global Variable Definitions
-// =====================================
-// These definitions are included here rather than in a separate .c file
-// to maintain the header-only architecture of the codebase
-
-int ExitStatus = EXIT_SUCCESS;
-bool NativeRand;
-
-struct PlanSys Galaxy[GAL_SIZE];
-struct SeedType SEED;
-struct FastSeedType RndSeed;
-
-const uint16_t BASE_0 = 0x5A4A;
-const uint16_t BASE_1 = 0x0248;
-const uint16_t BASE_2 = 0xB753; /* Base seed for galaxy 1 */
-
-uint16_t ShipHold[COMMODITY_ARRAY_SIZE];
-int CurrentPlanet;
-uint16_t GalaxyNum;
-int32_t Cash;
-uint16_t Fuel;
-MarketType LocalMarket;
-uint16_t HoldSpace;
-
-// Forward declare PlayerShipPtr for use in function implementations
-extern struct PlayerShip *PlayerShipPtr;
-
-// These functions are implemented in txtelite.c
-// They provide fuel-related attributes from the current ship
-int GetFuelCost(void);
-int GetMaxFuel(void);
-
-// Legacy global variables for backward compatibility
-// These are now just placeholders - use the getter functions instead
-int FuelCost = 2;
-int MaxFuel = 70;
-
-char GovNames[GOV_MAX_COUNT][MAX_LEN] = {
-    "Anarchy", "Feudal", "Multi-gov", "Dictatorship",
-    "Communist", "Confederacy", "Democracy", "Corporate State"};
-
-char EconNames[ECON_MAX_COUNT][MAX_LEN] = {
-    "Rich Ind", "Average Ind", "Poor Ind", "Mainly Ind",
-    "Mainly Agri", "Rich Agri", "Average Agri", "Poor Agri"};
-
-char tradnames[LAST_TRADE + 1][MAX_LEN];
-
-uint64_t currentGameTimeSeconds;
-
-// Star System Navigation State
-struct StarSystem *CurrentStarSystem = NULL;
-struct NavigationState PlayerNavState = {0};
-
-// Player Ship
-struct PlayerShip *PlayerShipPtr = NULL;
-
-// Current System Information
-char CurrentSystemName[20] = "Lave"; // Default starting system
-int CurrentSystemEconomy = 0;        // Default economy type
-int PlayerLocationType = 0;          // 0 = in space, 10 = docked at station
-
-// Combat state
-bool InCombat = 0;

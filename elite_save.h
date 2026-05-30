@@ -20,7 +20,7 @@
 #include "elite_star_system.h"
 
 // Version identifier for the save file format
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2
 
 // Signature to identify valid save files
 #define SAVE_SIGNATURE "TXTELITE"
@@ -85,6 +85,8 @@ typedef struct
     int currentPlanet;
     int32_t cash;
     uint16_t fuel;
+    
+    // Legacy cargo fields (kept in save format for now, but populated from PlayerShip)
     uint16_t holdSpace;
     uint16_t shipHold[COMMODITY_ARRAY_SIZE];
 
@@ -99,21 +101,19 @@ typedef struct
     double distanceFromStar;
     uint8_t currentPlanetIndex;  // Index of planet in player location, if applicable
     uint8_t currentStationIndex; // Index of station in player location, if applicable
+
+    // Ship data
+    char shipClassName[MAX_SHIP_NAME_LENGTH];
+    ShipCoreAttributes shipAttributes;
 } SaveGameState;
 
 /**
  * @brief Saves the current game state to a file
  *
- * This function writes the current game state to a binary file, including:
- * - A header with signature, version, timestamp, and description
- * - Complete game state including seed, position, inventory, market data, and navigation state
- *
- * If no description is provided, a default one is generated based on the current timestamp
- * and planet name. The function handles finding and saving indices for the current planet
- * and station to allow proper reconstruction when loading.
+ * This function writes the current game state to a binary file.
  *
  * @param filename The path to the save file to be created
- * @param description Optional custom description for the save (pass NULL for automatic description)
+ * @param description Optional custom description for the save
  *
  * @return 1 if the save operation succeeded, 0 if any error occurred
  */
@@ -135,7 +135,7 @@ static inline bool save_game(const char *filename, const char *description)
     // Prepare header
     SaveHeader header;
     memset(&header, 0, sizeof(header));
-    memcpy(header.signature, SAVE_SIGNATURE, 7); // Exactly copy the 7 characters without null terminator
+    memcpy(header.signature, SAVE_SIGNATURE, 7); 
     header.version = SAVE_VERSION;
     header.timestamp = time(NULL);    if (description)
     {
@@ -143,7 +143,7 @@ static inline bool save_game(const char *filename, const char *description)
     }
     else
     {
-        // Create a default description with timestamp and planet name
+        // Create a default description
         char timeStr[32];
         struct tm timeBuffer;
         if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
@@ -156,7 +156,7 @@ static inline bool save_game(const char *filename, const char *description)
         }
         snprintf(header.description, sizeof(header.description),
                  "%s - %s (Galaxy %d)",
-                 timeStr, Galaxy[CurrentPlanet].name, GalaxyNum);
+                 timeStr, g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
     }
 
     // Write header
@@ -170,48 +170,59 @@ static inline bool save_game(const char *filename, const char *description)
     // Prepare game state
     SaveGameState state;
     memset(&state, 0, sizeof(state));
-    // Copy current game state into save structure
-    state.seed = SEED;
-    state.rndSeed = RndSeed;
-    state.galaxyNum = GalaxyNum;
-    state.currentPlanet = CurrentPlanet;
-    state.cash = Cash;
-    state.fuel = Fuel;
-    state.holdSpace = HoldSpace;
-    memcpy(state.shipHold, ShipHold, sizeof(ShipHold));
-    state.localMarket = LocalMarket;
-    state.gameTimeSeconds = currentGameTimeSeconds; // Save current game time
+    
+    state.seed = g_state.SEED;
+    state.rndSeed = g_state.RndSeed;
+    state.galaxyNum = g_state.GalaxyNum;
+    state.currentPlanet = g_state.CurrentPlanet;
+    state.cash = g_state.Cash;
+    state.fuel = g_state.Fuel;
+    
+    // Sync legacy cargo fields from PlayerShipPtr
+    if (g_state.PlayerShipPtr) {
+        state.holdSpace = g_state.PlayerShipPtr->attributes.cargoCapacityTons - g_state.PlayerShipPtr->attributes.currentCargoTons;
+        snprintf(state.shipClassName, MAX_SHIP_NAME_LENGTH, "%s", g_state.PlayerShipPtr->shipClassName);
+        state.shipAttributes = g_state.PlayerShipPtr->attributes;
+        
+        // Populate shipHold array from PlayerShipPtr->cargo
+        for (int i = 0; i <= LAST_TRADE; i++) {
+            for (int j = 0; j < MAX_CARGO_SLOTS; j++) {
+                if (StringCompareIgnoreCase(g_state.PlayerShipPtr->cargo[j].name, g_state.tradnames[i]) == 0) {
+                    state.shipHold[i] = g_state.PlayerShipPtr->cargo[j].quantity;
+                    break;
+                }
+            }
+        }
+    }
 
-    // Save navigation state
-    state.currentLocationType = PlayerNavState.currentLocationType;
-    state.distanceFromStar = PlayerNavState.distanceFromStar;
+    state.localMarket = g_state.LocalMarket;
+    state.gameTimeSeconds = g_state.currentGameTimeSeconds;
 
-    // Save indices for later reconstruction
-    state.currentPlanetIndex = 0;  // Default
-    state.currentStationIndex = 0; // Default
+    state.currentLocationType = g_state.PlayerNavState.currentLocationType;
+    state.distanceFromStar = g_state.PlayerNavState.distanceFromStar;
 
-    // Record the index of current planet/station if applicable
-    if (PlayerNavState.currentLocationType == CELESTIAL_PLANET)
+    state.currentPlanetIndex = 0;
+    state.currentStationIndex = 0;
+
+    if (g_state.PlayerNavState.currentLocationType == CELESTIAL_PLANET)
     {
-        // Find planet index
-        for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++)
+        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++)
         {
-            if (PlayerNavState.currentLocation.planet == &CurrentStarSystem->planets[i])
+            if (g_state.PlayerNavState.currentLocation.planet == &g_state.CurrentStarSystem->planets[i])
             {
                 state.currentPlanetIndex = i;
                 break;
             }
         }
     }
-    else if (PlayerNavState.currentLocationType == CELESTIAL_STATION)
+    else if (g_state.PlayerNavState.currentLocationType == CELESTIAL_STATION)
     {
-        // Find which planet and which station
-        for (uint8_t i = 0; i < CurrentStarSystem->numPlanets; i++)
+        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++)
         {
-            Planet *planet = &CurrentStarSystem->planets[i];
+            Planet *planet = &g_state.CurrentStarSystem->planets[i];
             for (uint8_t j = 0; j < planet->numStations; j++)
             {
-                if (PlayerNavState.currentLocation.station == planet->stations[j])
+                if (g_state.PlayerNavState.currentLocation.station == planet->stations[j])
                 {
                     state.currentPlanetIndex = i;
                     state.currentStationIndex = j;
@@ -236,28 +247,11 @@ static inline bool save_game(const char *filename, const char *description)
 
 /**
  * @brief Loads game state from a saved file
- *
- * This function loads a previously saved game state from a file, including all critical
- * game variables like player position, inventory, cash, fuel, and navigation state.
- * It performs several validation steps to ensure the save file is compatible.
- *
- * The function follows this process:
- * 1. Opens the specified file for reading
- * 2. Reads and validates the save file header (signature and version)
- * 3. Reads the game state data
- * 4. Applies the loaded state to the current game
- * 5. Rebuilds necessary game data structures
- * 6. Reconstructs object pointers based on saved indices
- * 7. Displays information about the loaded save
- *
- * @param filename Path to the save file to load
- * @return 1 if the game was successfully loaded, 0 if any error occurred
  */
 static inline bool load_game(const char *filename)
 {
     char fullPath[256];
     
-    // Get the full path with save directory
     if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
     {
         return 0;
@@ -307,76 +301,94 @@ static inline bool load_game(const char *filename)
 
     fclose(file);
     // Apply loaded state to game
-    SEED = state.seed;
-    RndSeed = state.rndSeed;
-    GalaxyNum = state.galaxyNum;
+    g_state.SEED = state.seed;
+    g_state.RndSeed = state.rndSeed;
+    g_state.GalaxyNum = state.galaxyNum;
 
     // Rebuild galaxy data if needed
-    build_galaxy_data(SEED);
+    build_galaxy_data(g_state.SEED);
 
-    CurrentPlanet = state.currentPlanet;
-    Cash = state.cash;
-    Fuel = state.fuel;
-    HoldSpace = state.holdSpace;
-    memcpy(ShipHold, state.shipHold, sizeof(ShipHold));
-    LocalMarket = state.localMarket;
-    currentGameTimeSeconds = state.gameTimeSeconds; // Load game time
+    g_state.CurrentPlanet = state.currentPlanet;
+    g_state.Cash = state.cash;
+    g_state.Fuel = state.fuel;
+    
+    // PlayerShip restoration
+    if (g_state.PlayerShipPtr) {
+        g_state.PlayerShipPtr->attributes = state.shipAttributes;
+        // In a more complete implementation, we'd lookup shipType by shipClassName
+        
+        // Restore cargo from saved shipHold array
+        for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
+            g_state.PlayerShipPtr->cargo[i].quantity = 0;
+            snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
+        }
+        
+        int cargoSlot = 0;
+        for (int i = 0; i <= LAST_TRADE; i++) {
+            if (state.shipHold[i] > 0 && cargoSlot < MAX_CARGO_SLOTS) {
+                snprintf(g_state.PlayerShipPtr->cargo[cargoSlot].name, MAX_SHIP_NAME_LENGTH, "%s", g_state.tradnames[i]);
+                g_state.PlayerShipPtr->cargo[cargoSlot].quantity = state.shipHold[i];
+                cargoSlot++;
+            }
+        }
+    }
+
+    g_state.LocalMarket = state.localMarket;
+    g_state.currentGameTimeSeconds = state.gameTimeSeconds; 
 
     // Initialize star system for the current planet
     initialize_star_system_for_current_planet();
 
     // Restore navigation state
-    PlayerNavState.currentLocationType = state.currentLocationType;
-    PlayerNavState.distanceFromStar = state.distanceFromStar;
+    g_state.PlayerNavState.currentLocationType = state.currentLocationType;
+    g_state.PlayerNavState.distanceFromStar = state.distanceFromStar;
 
     // Reconstruct the pointers based on saved indices
     if (state.currentLocationType == CELESTIAL_STAR)
     {
-        PlayerNavState.currentLocation.star = &CurrentStarSystem->centralStar;
+        g_state.PlayerNavState.currentLocation.star = &g_state.CurrentStarSystem->centralStar;
     }
     else if (state.currentLocationType == CELESTIAL_PLANET)
     {
-        if (state.currentPlanetIndex < CurrentStarSystem->numPlanets)
+        if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets)
         {
-            PlayerNavState.currentLocation.planet = &CurrentStarSystem->planets[state.currentPlanetIndex];
+            g_state.PlayerNavState.currentLocation.planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
         }
         else
         {
-            // Fallback to first planet if index is invalid
-            PlayerNavState.currentLocation.planet = &CurrentStarSystem->planets[0];
-            PlayerNavState.distanceFromStar = PlayerNavState.currentLocation.planet->orbitalDistance;
+            g_state.PlayerNavState.currentLocation.planet = &g_state.CurrentStarSystem->planets[0];
+            g_state.PlayerNavState.distanceFromStar = g_state.PlayerNavState.currentLocation.planet->orbitalDistance;
         }
     }
     else if (state.currentLocationType == CELESTIAL_STATION)
     {
-        if (state.currentPlanetIndex < CurrentStarSystem->numPlanets)
+        if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets)
         {
-            Planet *planet = &CurrentStarSystem->planets[state.currentPlanetIndex];
+            Planet *planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
             if (state.currentStationIndex < planet->numStations)
             {
-                PlayerNavState.currentLocation.station = planet->stations[state.currentStationIndex];
+                g_state.PlayerNavState.currentLocation.station = planet->stations[state.currentStationIndex];
             }
             else
             {
-                // Fallback to first planet if station index is invalid
-                PlayerNavState.currentLocationType = CELESTIAL_PLANET;
-                PlayerNavState.currentLocation.planet = planet;
-                PlayerNavState.distanceFromStar = planet->orbitalDistance;
+                g_state.PlayerNavState.currentLocationType = CELESTIAL_PLANET;
+                g_state.PlayerNavState.currentLocation.planet = planet;
+                g_state.PlayerNavState.distanceFromStar = planet->orbitalDistance;
             }
         }
         else
         {
-            // Fallback to first planet if planet index is invalid
-            PlayerNavState.currentLocationType = CELESTIAL_PLANET;
-            PlayerNavState.currentLocation.planet = &CurrentStarSystem->planets[0];
-            PlayerNavState.distanceFromStar = PlayerNavState.currentLocation.planet->orbitalDistance;
+            g_state.PlayerNavState.currentLocationType = CELESTIAL_PLANET;
+            g_state.PlayerNavState.currentLocation.planet = &g_state.CurrentStarSystem->planets[0];
+            g_state.PlayerNavState.distanceFromStar = g_state.PlayerNavState.currentLocation.planet->orbitalDistance;
         }
     }
     else if (state.currentLocationType == CELESTIAL_NAV_BEACON)
     {
-        // Nav beacon doesn't need a specific pointer
-        PlayerNavState.distanceFromStar = CurrentStarSystem->navBeaconDistance;
-    }    // Show load information
+        g_state.PlayerNavState.distanceFromStar = g_state.CurrentStarSystem->navBeaconDistance;
+    }    
+    
+    // Show load information
     char timeStr[32];
     struct tm timeBuffer;
     if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
@@ -390,16 +402,11 @@ static inline bool load_game(const char *filename)
     printf("Game loaded from '%s'.\n", filename);
     printf("Save info: %s\n", header.description);
     printf("Created: %s\n", timeStr);
-    printf("Current planet: %s (Galaxy %d)\n", Galaxy[CurrentPlanet].name, GalaxyNum);
-    printf("Current game time: Year: %llu, Day: %llu, %02llu:%02llu:%02llu\n",
-           (unsigned long long)(currentGameTimeSeconds / (365 * 24 * 60 * 60)),
-           (unsigned long long)((currentGameTimeSeconds / (24 * 60 * 60)) % 365),
-           (unsigned long long)((currentGameTimeSeconds / (60 * 60)) % 24),
-           (unsigned long long)((currentGameTimeSeconds / 60) % 60),
-           (unsigned long long)(currentGameTimeSeconds % 60));
+    printf("Current planet: %s (Galaxy %d)\n", g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
 
     return 1;
 }
+
 
 /**
  * @brief Displays information about a saved game file.
@@ -481,7 +488,7 @@ static inline bool show_save_info(const char *filename)
 static inline void get_default_save_filename(char *buffer, size_t size)
 {
     char filename[MAX_PATH];
-    snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav", Galaxy[CurrentPlanet].name, GalaxyNum);
+    snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav", g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
     platform_make_path(buffer, size, SAVE_DIRECTORY, filename);
 }
 

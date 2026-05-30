@@ -67,18 +67,18 @@ static struct DescChoice descList[] =
 static inline int gen_rnd_number(void)
 {
 	int a, x;
-	x = (RndSeed.a * 2) & 0xFF;
-	a = x + RndSeed.c;
-	if (RndSeed.a > 127)
+	x = (g_state.RndSeed.a * 2) & 0xFF;
+	a = x + g_state.RndSeed.c;
+	if (g_state.RndSeed.a > 127)
 		a++;
-	RndSeed.a = a & 0xFF;
-	RndSeed.c = x;
+	g_state.RndSeed.a = a & 0xFF;
+	g_state.RndSeed.c = x;
 
 	a = a / 256; /* a = any carry left from above */
-	x = RndSeed.b;
-	a = (a + x + RndSeed.d) & 0xFF;
-	RndSeed.b = a;
-	RndSeed.d = x;
+	x = g_state.RndSeed.b;
+	a = (a + x + g_state.RndSeed.d) & 0xFF;
+	g_state.RndSeed.b = a;
+	g_state.RndSeed.d = x;
 	return a;
 }
 
@@ -226,7 +226,7 @@ static inline void print_system_info(struct PlanSys planetSystemInfo, bool useCo
 		printf("\nRadius: %u", planetSystemInfo.radius);
 		printf("\nPopulation: %u Billion", (planetSystemInfo.population) >> 3);
 
-		RndSeed = planetSystemInfo.goatSoupSeed; // RndSeed is global
+		g_state.RndSeed = planetSystemInfo.goatSoupSeed; // RndSeed is global
 		printf("\n");
 		goat_soup("\x8F is \x97.", &planetSystemInfo);
 	}

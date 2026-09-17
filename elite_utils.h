@@ -10,37 +10,38 @@
 
 // Note: NativeRand and ExitStatus are now members of g_state in elite_state.h
 
-static unsigned int g_lastrand_for_my_rand = 0; // Renamed to avoid potential conflicts if lastrand is used elsewhere
-static _Thread_local uint32_t g_native_rand_state = 1U;
+// Internal PRNG states
+static uint32_t g_s_sas_rand_state = 0;
+static thread_local uint32_t g_s_xorshift_state = 1U;
 
-[[maybe_unused]] static inline void my_srand(unsigned int initial_seed) {
-    srand(initial_seed);
-    g_lastrand_for_my_rand = initial_seed - 1;
-    g_native_rand_state = initial_seed != 0U ? initial_seed : 1U;
+// 32-bit Xorshift (Marsaglia, 2003) clamped to [0, 2^31 - 1]
+static inline uint32_t step_xorshift32(uint32_t *state) {
+    uint32_t x = *state;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    *state = x;
+    return x & 0x7FFF'FFFFU;
+}
+
+// SAS/C LCG: evaluates (3677 * state + 3680) mod 2^31
+static inline uint32_t step_sas_lcg(uint32_t *state) {
+    uint32_t r = ((3'677U * (*state)) + 0x0E60U) & 0x7FFF'FFFFU;
+    *state = r - 1U;
+    return r;
+}
+
+[[maybe_unused]] static inline void my_srand(uint32_t seed) {
+    srand(seed);
+    g_s_sas_rand_state = seed - 1U;
+    g_s_xorshift_state = (seed != 0U) ? seed : 1U;
 }
 
 static inline int my_rand(void) {
-    uint32_t r;
+    uint32_t r = (int)g_state.NativeRand 
+        ? step_xorshift32(&g_s_xorshift_state) 
+        : step_sas_lcg(&g_s_sas_rand_state);
 
-    if (g_state.NativeRand) {
-        // Per-thread xorshift generator; avoid the global, thread-unsafe rand().
-        r = g_native_rand_state;
-        r ^= r << 13;
-        r ^= r >> 17;
-        r ^= r << 5;
-        g_native_rand_state = r;
-        r &= UINT32_C(0x7fffffff);
-    } else { // As supplied by D McDonnell	from SAS Insititute C
-        r = (((((((((((g_lastrand_for_my_rand << 3) - g_lastrand_for_my_rand) << 3) + g_lastrand_for_my_rand) << 1) +
-                  g_lastrand_for_my_rand)
-                 << 4) -
-                g_lastrand_for_my_rand)
-               << 1) -
-              g_lastrand_for_my_rand) +
-             0xe60) &
-            0x7fffffff;
-        g_lastrand_for_my_rand = r - 1U;
-    }
     return (int)r;
 }
 
@@ -81,15 +82,15 @@ static inline int my_rand(void) {
 
 /* Remove all c's from string s */
 [[maybe_unused]] static inline void strip_char_from_string(char *input_string, const char CHAR_TO_STRIP) {
-    size_t i = 0;
+    size_t index = 0;
     size_t j = 0;
 
-    while (i < strlen(input_string)) {
-        if (input_string[i] != CHAR_TO_STRIP) {
-            input_string[j] = input_string[i];
+    while (index < strlen(input_string)) {
+        if (input_string[index] != CHAR_TO_STRIP) {
+            input_string[j] = input_string[index];
             j++;
         }
-        i++;
+        index++;
     }
 
     input_string[j] = 0;
@@ -98,17 +99,17 @@ static inline int my_rand(void) {
 /* Return nonzero iff string t begins with non-empty string s */
 static inline bool string_begins_with(const char *prefix_string, const char *full_string) // Made params const
 {
-    size_t i = 0;
-    size_t l = strlen(prefix_string);
-    if (l > 0) {
+    size_t index = 0;
+    size_t prefixStrLen = strlen(prefix_string);
+    if (prefixStrLen > 0) {
         // Check if fullString is long enough
-        if (strlen(full_string) < l) {
+        if (strlen(full_string) < prefixStrLen) {
             return false;
         }
-        while ((i < l) & (toupper(prefix_string[i]) == toupper(full_string[i]))) {
-            i++;
+        while ((index < prefixStrLen) & (toupper(prefix_string[index]) == toupper(full_string[index]))) {
+            index++;
         }
-        if (i == l) {
+        if (index == prefixStrLen) {
             return true;
         }
     }
@@ -133,7 +134,7 @@ static inline bool string_begins_with(const char *prefix_string, const char *ful
 
 /* Strip leading and trailing space characters from the given string. */
 [[maybe_unused]] static inline char *strip_leading_trailing_spaces(char *input_string) {
-    char *p;
+    char *lineBuffer;
     if (input_string == nullptr) {
         return nullptr; // Handle nullptr input
     }
@@ -141,11 +142,11 @@ static inline bool string_begins_with(const char *prefix_string, const char *ful
     {
         ++input_string;
     }
-    p = input_string + strlen(input_string);
-    while (p > input_string && isspace((unsigned char)*(p - 1))) // Cast to unsigned char for isspace
+    lineBuffer = input_string + strlen(input_string);
+    while (lineBuffer > input_string && isspace((unsigned char)*(lineBuffer - 1))) // Cast to unsigned char for isspace
     {
-        --p;
-        *p = '\0';
+        --lineBuffer;
+        *lineBuffer = '\0';
     }
     return input_string;
 }

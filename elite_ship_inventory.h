@@ -3,6 +3,7 @@
 #include "elite_equipment_constants.h" // For map_equipment_indices
 #include "elite_ship_components.h"     // Include the basic ship type definitions
 #include "elite_state.h"
+#include "platform_compat.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -26,7 +27,7 @@ static inline bool store_equipment_in_inventory(player_ship_t *player_ship, ship
         if (!player_ship->equipmentInventory[i].isActive) {
             // Store equipment in inventory
             player_ship->equipmentInventory[i] = equipment;
-            player_ship->equipmentInventory[i].isActive = 1; // Mark as active in inventory
+            player_ship->equipmentInventory[i].isActive = true; // Mark as active in inventory
             printf("Stored %s in inventory slot %d.\n", equipment.name, i);
             return true;
         }
@@ -85,7 +86,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equ
     }
 
     // Reset the equipment slot
-    player_ship->equipment[slot_type].isActive = 0;
+    player_ship->equipment[slot_type].isActive = false;
     memcpy(player_ship->equipment[slot_type].name, "Empty", sizeof("Empty"));
     // Leave other fields as they are - they'll be overwritten on next install
 
@@ -169,7 +170,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equ
     }
 
     // Clear the inventory slot
-    player_ship->equipmentInventory[inventory_index].isActive = 0;
+    player_ship->equipmentInventory[inventory_index].isActive = false;
     if (safe_snprintf(player_ship->equipmentInventory[inventory_index].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
         return false;
     }
@@ -259,7 +260,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equ
 
         // Print slot info
         printf("\nSlot %d (%s): %s", i, slot_type_name,
-               player_ship->equipment[i].isActive ? player_ship->equipment[i].name : "Empty");
+               (int)player_ship->equipment[i].isActive ? player_ship->equipment[i].name : "Empty");
     }
 
     printf("\n");

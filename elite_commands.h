@@ -581,7 +581,8 @@ static inline bool do_jump(const char *command_arguments) {
     uint16_t t;
     char s2[MAX_LEN];
     char arg_copy[MAX_LEN];
-    int copy_result = safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
+    int copy_result =
+        safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
     if (copy_result < 0 || (size_t)copy_result >= sizeof(arg_copy)) {
         printf("\nSell command arguments are too long or could not be copied.");
         return false;
@@ -621,7 +622,8 @@ static inline bool do_jump(const char *command_arguments) {
     uint16_t t;
     char s2[MAX_LEN];
     char arg_copy[MAX_LEN];
-    int copy_result = safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
+    int copy_result =
+        safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
     if (copy_result < 0) {
         arg_copy[0] = '\0';
     }
@@ -720,7 +722,7 @@ static inline bool do_jump(const char *command_arguments) {
     }
 
     const long SCALED_AMOUNT_CONSTANT = (long)SCALED_AMOUNT;
-    g_state.Cash += (long)SCALED_AMOUNT_CONSTANT;
+    g_state.Cash += (int32_t)SCALED_AMOUNT_CONSTANT;
 
     if (SCALED_AMOUNT_CONSTANT != 0) {
         printf("\nCash adjusted by %.1f. Current cash: %.1f CR.", (double)SCALED_AMOUNT_CONSTANT / 10.0,
@@ -1165,7 +1167,7 @@ static inline bool do_jump(const char *command_arguments) {
                         continue; // Skip nullptr stations
                     }
 
-                    has_valid_stations = 1; // station_t type information
+                    has_valid_stations = true; // station_t type information
                     const char *station_types[] = {"Orbital", "Coriolis", "Ocellus"};
                     double station_dist_absolute = planet->orbitalDistance + station->orbitalDistance;
                     double dist_to_station = fabs(g_state.PlayerNavState.distanceFromStar - station_dist_absolute);
@@ -1576,7 +1578,7 @@ static inline bool do_jump(const char *command_arguments) {
                 if (dist_to_station <= 1.0) {
                     printf("\n  %s (%.2f AU away) - Use 'travel %d.%d' to reach", station->name, dist_to_station, i + 1,
                            j + 1);
-                    stations_found = 1;
+                    stations_found = true;
                 }
             }
         }
@@ -1712,7 +1714,7 @@ static inline bool do_jump(const char *command_arguments) {
             // Show planets within 1 AU as "nearby"
             if (dist_to_planet <= 1.0) {
                 printf("\n  %s (%.2f AU away) - Use 'travel %d' to reach", planet->name, dist_to_planet, i + 1);
-                planets_found = 1;
+                planets_found = true;
             }
         }
 
@@ -1806,7 +1808,7 @@ static inline bool do_jump(const char *command_arguments) {
             // Generate market and store in planet's market
             temp_station.market = generate_station_market(&temp_station, planet, g_state.CurrentStarSystem->plan_sys_t);
             planet->planetaryMarket.market = temp_station.market;
-            planet->planetaryMarket.isInitialized = 1;
+            planet->planetaryMarket.isInitialized = true;
         } else {
             // Update existing market based on elapsed time
             uint64_t current_time = game_time_get_seconds();
@@ -1909,7 +1911,7 @@ static inline bool do_jump(const char *command_arguments) {
 
     market_type_t base_market_to_compare; // Changed MarketInfo to MarketType
     char base_location_name[MAX_LEN];
-    bool is_planet_base = 0; // Initialize isPlanetBase
+    bool is_planet_base = false; // Initialize isPlanetBase
 
     // Determine the base market for comparison
     if (g_state.PlayerNavState.currentLocationType == CELESTIAL_PLANET &&
@@ -2001,7 +2003,7 @@ static inline bool do_jump(const char *command_arguments) {
                 continue;
             }
 
-            found_stations_to_compare = 1;
+            found_stations_to_compare = true;
             // Update the "other" station's market to current time to ensure fair
             // comparison
             update_station_market(station, game_time_get_seconds(), planet, g_state.CurrentStarSystem->plan_sys_t);
@@ -2021,8 +2023,9 @@ static inline bool do_jump(const char *command_arguments) {
 
             for (uint16_t k = 0; k <= LAST_TRADE; k++) {
                 // Skip invalid commodities
-                if (g_commodities[k].basePrice == 0)
+                if (g_commodities[k].basePrice == 0) {
                     continue;
+                }
 
                 double base_price = base_market_to_compare.price[k]; // Changed Price to price
                 int base_qty = base_market_to_compare.quantity[k];   // Changed Quantity to quantity
@@ -2461,17 +2464,33 @@ static inline bool do_jump(const char *command_arguments) {
     char arg2[MAX_LEN];
     int invIndex = -1;
     int slotNumber = -1;
+    char *endptr = nullptr;
     // Extract the arguments
     char *saveptr;
     char *token = safe_strtok(arg_copy, " \t", &saveptr);
     if (token != nullptr) {
         safe_snprintf(arg1, MAX_LEN, "%s", token);
-        invIndex = atoi(arg1);
+        errno = 0;
+        long parsedIndex = strtol(arg1, &endptr, 10);
+        if (endptr == arg1 || *endptr != '\0' || errno == ERANGE ||
+            parsedIndex < INT_MIN || parsedIndex > INT_MAX) {
+            invIndex = -1;
+        } else {
+            invIndex = (int)parsedIndex;
+        }
 
         token = safe_strtok(nullptr, " \t", &saveptr);
         if (token != nullptr) {
             safe_snprintf(arg2, MAX_LEN, "%s", token);
-            slotNumber = atoi(arg2);
+            errno = 0;
+            char *slotEndptr = nullptr;
+            long parsedSlot = strtol(arg2, &slotEndptr, 10);
+            if (slotEndptr == arg2 || *slotEndptr != '\0' || errno == ERANGE ||
+                parsedSlot < INT_MIN || parsedSlot > INT_MAX) {
+                slotNumber = -1;
+            } else {
+                slotNumber = (int)parsedSlot;
+            }
         } else {
             printf("\nUsage: use <inventory_index> <slot_number>\n");
             printf("Example: use 0 1  (equips item from inventory slot 0 to "
@@ -2492,7 +2511,8 @@ static inline bool do_jump(const char *command_arguments) {
     }
 
     // Try to equip the item from inventory
-    return equip_from_inventory(g_state.PlayerShipPtr, invIndex, slotNumber);
+    return equip_from_inventory(g_state.PlayerShipPtr, invIndex,
+                                (equipment_slot_type_t)slotNumber);
 }
 
 // Ship trading commands
@@ -2527,7 +2547,7 @@ static inline bool do_jump(const char *command_arguments) {
     // Get player ship
 
     // Compare ships
-    compare_ships(g_state.PlayerShipPtr, (const char *)args);
+    compare_ships(g_state.PlayerShipPtr, args);
 
     return true;
 }
@@ -2553,17 +2573,17 @@ static inline bool do_jump(const char *command_arguments) {
 
     // Parse arguments
     char shipNameOrID[64] = {0};
-    bool tradeIn = 1;
+    bool tradeIn = true;
     // Copy the first part of the arguments (up to the first space)
     const char *space = strchr(args, ' ');
     if (space != nullptr) {
-        size_t nameLen = space - args;
+        size_t nameLen = (size_t)(space - args);
         nameLen = (nameLen < 63) ? nameLen : 63;
         safe_snprintf(shipNameOrID, nameLen + 1, "%.*s", (int)nameLen, args);
 
         // Check for 'notrade' flag in the remaining part
         if (strstr(space + 1, "notrade") != nullptr) {
-            tradeIn = 0;
+            tradeIn = false;
         }
     } else {
         // No space, just copy the entire argument
@@ -2572,19 +2592,27 @@ static inline bool do_jump(const char *command_arguments) {
 
     // Check if the argument is a number (ID) or a string (ship name)
     char actualShipName[MAX_SHIP_NAME_LENGTH] = {0};
-    bool isID = 1;
+    bool isID = true;
 
     // Check if shipNameOrID is a number
     for (size_t i = 0; i < strlen(shipNameOrID); i++) {
         if (!isdigit(shipNameOrID[i])) {
-            isID = 0;
+            isID = false;
             break;
         }
     }
 
     if (isID) {
         // Convert the ID to an integer
-        int ship_id = atoi(shipNameOrID);
+        char *endptr = nullptr;
+        errno = 0;
+        long parsed_ship_id = strtol(shipNameOrID, &endptr, 10);
+        if (errno == ERANGE || endptr == shipNameOrID || *endptr != '\0' || parsed_ship_id < INT_MIN ||
+            parsed_ship_id > INT_MAX) {
+            printf("Error: Invalid ship ID: %s\n", shipNameOrID);
+            return false;
+        }
+        int ship_id = (int)parsed_ship_id;
 
         // Get the ship name by ID
         if (!get_ship_name_by_id(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, ship_id, actualShipName,
@@ -2676,7 +2704,14 @@ static inline bool do_jump(const char *command_arguments) {
             printf("\nInvalid quantity.");
             return false;
         }
-        quantity = atoi(quantityStr);
+        char *quantity_end = nullptr;
+        long parsed_quantity = strtol(quantityStr, &quantity_end, 10);
+        if (quantity_end == quantityStr || *quantity_end != '\0' ||
+            parsed_quantity <= 0 || parsed_quantity > INT_MAX) {
+            printf("\nInvalid quantity. Please specify a positive number.");
+            return false;
+        }
+        quantity = (int)parsed_quantity;
     }
     // Verify quantity is valid
     if (quantity <= 0) {
@@ -2688,7 +2723,7 @@ static inline bool do_jump(const char *command_arguments) {
     // capitalizations
 
     // First, check if the cargo exists in the player's ship
-    bool cargoFound = 0;
+    bool cargoFound = false;
     if (!get_cargo_quantity(g_state.PlayerShipPtr, cargoName)) {
         printf("\nError: %s not found in cargo hold.", cargoName);
         return false;
@@ -2697,7 +2732,7 @@ static inline bool do_jump(const char *command_arguments) {
     // Find the cargo index in the global g_state.tradnames array
     for (uint16_t i = 0; i <= LAST_TRADE; i++) {
         if (StringCompareIgnoreCase(g_state.tradnames[i], cargoName) == 0) {
-            cargoFound = 1;
+            cargoFound = true;
             break;
         }
     }

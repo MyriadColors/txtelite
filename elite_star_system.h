@@ -436,7 +436,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
     for (int i = 0; i < 7; i++) {
         cumulative += STELLAR_CLASSES[i].frequency;
         if (classRoll <= cumulative) {
-            system->centralStar.spectralClass = i;
+            system->centralStar.spectralClass = (uint8_t)i;
             break;
         }
     }
@@ -620,7 +620,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
             ((double)((plan_sys_tEntry->goatSoupSeed.d + (i * 17)) % 100) / 200.0) - 0.25; // -0.25 to 0.25
         planet->orbitalDistance = base_distance * (1.0 + (variability * 0.4));           // Reduced from 0.8 to 0.4
         // Further reduced habitable zone bias to minimize super-habitable planets
-        uint32_t habitable_bias = (plan_sys_tEntry->goatSoupSeed.c + i) % 100;
+        uint32_t habitable_bias = (uint32_t)((plan_sys_tEntry->goatSoupSeed.c + i) % 100);
         if (habitable_bias < 8 && i < system->numPlanets - 1) { // Reduced from 15% to 8% chance
             double habitable_zone_center =
                 (system->centralStar.habitableZoneInner + system->centralStar.habitableZoneOuter) / 2.0;
@@ -696,7 +696,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
 
         // Set realistic planet radius based on type and formation conditions
         double base_radius = 0.0;
-        uint32_t radius_seed = plan_sys_tEntry->goatSoupSeed.b + (i * 1009); // Use different seed offset
+        uint32_t radius_seed = (uint32_t)(plan_sys_tEntry->goatSoupSeed.b + (i * 1009)); // Use different seed offset
 
         switch (planet->type) {
         case 0:                                                    // Rocky/Airless (Mercury-like to Mars-like)
@@ -715,12 +715,14 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
         case 3:                                                      // Ice Giant (Uranus/Neptune-like)
             base_radius = 20000.0 + ((double)(radius_seed % 30000)); // 20,000-50,000 km
             break;
+        default:
+            break;
         }
 
         planet->radius = base_radius;
 
         // Initialize planetary market fluctuation factor
-        planet->marketFluctuation = (plan_sys_tEntry->goatSoupSeed.b + i) % 16; // 0-15 fluctuation
+        planet->marketFluctuation = (uint8_t)((plan_sys_tEntry->goatSoupSeed.b + i) % 16); // 0-15 fluctuation
 
         // Initialize the planetary market (this also sets lastMarketUpdate and
         // isInitialized)
@@ -752,7 +754,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
                 max_stations--; // Harsh environments get fewer stations
             }
         }
-        planet->numStations = (plan_sys_tEntry->goatSoupSeed.d + i) % (max_stations + 1);
+        planet->numStations = (uint8_t)((plan_sys_tEntry->goatSoupSeed.d + i) % (max_stations + 1));
 
         // Initialize stations for this planet
         for (int j = 0; j < planet->numStations; j++) {
@@ -807,9 +809,9 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
             // Set station type based on tech level, planet type, and environmental
             // conditions
             if (plan_sys_tEntry->techLev >= 10) {
-                station->type = (plan_sys_tEntry->goatSoupSeed.d + j) % 3; // 0-2 for high tech
+                station->type = (uint8_t)((plan_sys_tEntry->goatSoupSeed.d + j) % 3); // 0-2 for high tech
             } else if (plan_sys_tEntry->techLev >= 5) {
-                station->type = (plan_sys_tEntry->goatSoupSeed.a + j) % 2; // 0-1 for medium tech
+                station->type = (uint8_t)((plan_sys_tEntry->goatSoupSeed.a + j) % 2); // 0-1 for medium tech
             } else {
                 station->type = 0; // Only basic stations for low tech
             }
@@ -1078,18 +1080,18 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
 [[maybe_unused]] static inline bool travel_to_celestial(star_system_t *system, navigation_state_t *nav_state,
                                                         celestial_type_t target_type, void *target_body) {
     if (!system) {
-        fprintf(stderr, "Error: Invalid star system data for travel.\n");
+        (void)fprintf(stderr, "Error: Invalid star system data for travel.\n");
         return false;
     }
 
     if (!nav_state) {
-        fprintf(stderr, "Error: Invalid navigation state for travel.\n");
+        (void)fprintf(stderr, "Error: Invalid navigation state for travel.\n");
         return false;
     }
 
     // For non-NavBeacon targets, we need a valid body pointer
     if (target_type != CELESTIAL_NAV_BEACON && !target_body) {
-        fprintf(stderr, "Error: Invalid target body for travel destination.\n");
+        (void)fprintf(stderr, "Error: Invalid target body for travel destination.\n");
         return false;
     }
 
@@ -1115,7 +1117,7 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
         }
 
         if (!planet_found) {
-            fprintf(stderr, "Error: Target planet is not part of the current star system.\n");
+            (void)fprintf(stderr, "Error: Target planet is not part of the current star system.\n");
             return false;
         }
 
@@ -1144,7 +1146,7 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
         }
 
         if (!parent_planet) {
-            fprintf(stderr, "Error: Could not find parent planet for target station.\n");
+            (void)fprintf(stderr, "Error: Could not find parent planet for target station.\n");
             return false;
         }
 
@@ -1158,7 +1160,7 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
         break;
 
     default:
-        fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
+        (void)fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
         return false;
     } // Calculate travel time
     uint32_t travel_time = calculate_travel_time(start_distance, end_distance); // Calculate fuel requirement for travel
@@ -1169,7 +1171,7 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
     if (g_state.PlayerShipPtr != nullptr) {
         // Check if there's enough fuel
         if (g_state.PlayerShipPtr->attributes.fuelLiters < fuel_required) {
-            fprintf(stderr, "Error: Insufficient fuel for travel.\n");
+            (void)fprintf(stderr, "Error: Insufficient fuel for travel.\n");
             printf("\nTravel aborted: Insufficient fuel.\n");
             printf("Required: %.3f liters, Available: %.1f liters\n", fuel_required,
                    g_state.PlayerShipPtr->attributes.fuelLiters);
@@ -1177,8 +1179,8 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
         }
 
         // Consume fuel using ConsumeFuel function
-        if (!consume_fuel(fuel_required, 1)) {
-            fprintf(stderr, "Error: Failed to consume fuel for travel.\n");
+        if (consume_fuel(fuel_required, 1) == 0) {
+            (void)fprintf(stderr, "Error: Failed to consume fuel for travel.\n");
             printf("\nTravel aborted: Insufficient fuel for operation.\n");
             return false;
         }
@@ -1589,6 +1591,8 @@ static inline bool check_tidal_locking(planet_t *planet, star_t *star) {
         // Individual variation for ice/rock ratio, internal heating
         double ice_variation = (variation_factor - 0.5) * 10.0; // ±5 points
         score += ice_variation;
+        break;
+    default:
         break;
     } // Stellar factors (0-15 points, more conservative)
     if (star->spectralClass == 4) {                                    // G stars (like our Sun)

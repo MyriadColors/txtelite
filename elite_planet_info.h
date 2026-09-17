@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "elite_galaxy.h"
@@ -211,7 +212,7 @@ static inline void goat_soup(const char *source_string, const struct plan_sys_t 
  * @note Relies on global arrays g_econ_names and g_gov_names from elite_state.h
  * @note When using detailed format, modifies the global RndSeed variable for goat_soup generation
  */
-static inline void print_system_info(struct plan_sys_t planet_system_info, bool use_compressed_output) {
+[[maybe_unused]] static inline void print_system_info(struct plan_sys_t planet_system_info, bool use_compressed_output) {
     if (use_compressed_output) {
         printf("%10s", planet_system_info.name);
         printf(" TL: %2i ", (planet_system_info.techLev) + 1);

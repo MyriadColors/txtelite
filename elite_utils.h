@@ -2,6 +2,7 @@
 
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include <ctype.h>       // For isspace, toupper functions
+#include <math.h>        // For floor, etc.
 
 // Note: NativeRand and ExitStatus are now members of g_state in elite_state.h
 

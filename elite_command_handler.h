@@ -1,17 +1,20 @@
 #pragma once
 
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "elite_commands.h" // For do_* functions
 #include "elite_state.h"    // Unified header for constants, structures, and globals
 #include "elite_utils.h"
 // Command definitions
-static char commands[NUM_COMMANDS][MAX_LEN] = {
+static char g_command_names[NUM_COMMANDS][MAX_LEN] = {
     "buy",   "sell",     "fuel",        "jump",    "cash",    "mkt",      "help",     "hold",   "sneak",
     "local", "info",     "galhyp",      "quit",    "rand",    "save",     "load",     "system", "travel",
     "dock",  "compare",  "land",        "ship",    "repair",  "shipinfo", "equip",    "inv",    "store",
     "use",   "shipyard", "compareship", "buyship", "upgrade", "fuelinfo", "jettison", "reset"};
 
-// Array of function pointers to command functions
-static bool (*comfuncs[NUM_COMMANDS])(char *) = {do_buy,
+static bool (*g_command_functions[NUM_COMMANDS])(const char *) = {do_buy,
                                                  do_sell,
                                                  do_fuel,
                                                  do_jump,
@@ -48,16 +51,25 @@ static bool (*comfuncs[NUM_COMMANDS])(char *) = {do_buy,
                                                  do_reset};
 
 // Function to parse and execute commands
-static inline bool parse_and_execute_command(char *commandString) {
+[[maybe_unused]] static inline bool parse_and_execute_command(const char *command_string) {
+    if (command_string == NULL) {
+        return false;
+    }
+    char cmd_buffer[MAX_LEN];
+    snprintf(cmd_buffer, sizeof(cmd_buffer), "%s", command_string);
+
+    char *cmd = strip_leading_trailing_spaces(cmd_buffer);
+    if (strlen(cmd) == 0) {
+        return false;
+    }
+
     uint16_t i;
     char c[MAX_LEN];
-    commandString = strip_leading_trailing_spaces(commandString);
-    if (strlen(commandString) == 0)
-        return 0;
-    split_string_at_first_space(commandString, c);
-    i = match_string_in_array(c, commands, NUM_COMMANDS);
-    if (i)
-        return (*comfuncs[i - 1])(commandString);
+    split_string_at_first_space(cmd, c);
+    i = match_string_in_array(c, g_command_names, NUM_COMMANDS);
+    if (i) {
+        return (*g_command_functions[i - 1])(cmd);
+    }
     printf("\nBad command (%s)", c);
-    return 0;
+    return false;
 }

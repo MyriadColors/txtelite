@@ -35,14 +35,12 @@ of Elite with no combat or missions.
 */
 
 #include <inttypes.h> // For PRIu64 and other format macros
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "elite_command_handler.h"     // For command parsing
 #include "elite_commands.h"            // For game commands
 #include "elite_equipment_constants.h" // For equipment indices
-#include "elite_navigation.h"          // For NavigationState definition
 #include "elite_player_ship.h"         // For ship initialization and status functions
 #include "elite_player_state.h"        // For player state initialization
 #include "elite_ship_upgrades.h"       // For equipment access
@@ -168,19 +166,12 @@ int main(int argc, char* argv[]) {
     initialize_player_state();
     game_time_initialize();
 
-#define PARSER(S)                                                                                                      \
-    {                                                                                                                  \
-        char buf[sizeof(S) > 0x10 ? 0x10 : sizeof(S)];                                                                 \
-        snprintf(buf, sizeof(buf), "%s", S);                                                                           \
-        if (!parse_and_execute_command(buf)) {                                                                         \
-            fprintf(stderr, "Error: Failed to parse initial command '%s'\n", S);                                       \
-            exit(EXIT_FAILURE);                                                                                        \
-        }                                                                                                              \
+    if (!parse_and_execute_command("help")) {
+        if (fprintf(stderr, "Error: Failed to parse initial command 'help'\n") < 0) {
+            exit(EXIT_FAILURE);
+        }
+        exit(EXIT_FAILURE);
     }
-
-    PARSER("help");
-
-#undef PARSER
     for (;;) {
         char location_buffer[MAX_LEN];
         get_current_location_name(&g_state.PlayerNavState, location_buffer, sizeof(location_buffer));
@@ -189,8 +180,9 @@ int main(int argc, char* argv[]) {
         update_all_system_markets();
         display_game_status(location_buffer); // Call the new function to display status
 
-        if (!fgets(getcommand, sizeof(getcommand) - 1, stdin))
+        if (!fgets(getcommand, sizeof(getcommand) - 1, stdin)) {
             break;
+		}
         getcommand[sizeof(getcommand) - 1] = '\0';
         parse_and_execute_command(getcommand);
     }

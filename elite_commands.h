@@ -1,5 +1,8 @@
 #pragma once
 
+#include "elite_utils.h"
+#include <stdint.h>
+#include <stdio.h>
 #define KGRN "\x1b[32m"
 #define KRED "\x1b[31m"
 #define KNRM "\x1b[0m"
@@ -23,6 +26,7 @@
 #include "platform_compat.h"        // For cross-platform file operations and StringCompareIgnoreCase
 #include <ctype.h>                  // For toupper, tolower
 #include <math.h>                   // For floor, fabs
+#include <stdatomic.h>              // For atomic random state
 #include <stdlib.h>                 // For atoi, atof
 #include <string.h>                 // For string operations
 #include <time.h>                   // For time functions
@@ -35,17 +39,17 @@ typedef struct {
     const char *long_description;
     const char *category;
     bool (*is_available)(void); // Function to check if the command is available
-} CommandHelp;
+} command_help_t;
 
 // Availability checks for commands
-static inline bool is_always_available(void) { return 1; }
+static inline bool is_always_available(void) { return true; }
 static inline bool is_docked(void) { return g_state.PlayerLocationType == 10; }
 static inline bool is_not_docked(void) { return g_state.PlayerLocationType != 10; }
 static inline bool is_at_planet(void) { return g_state.PlayerNavState.currentLocationType == CELESTIAL_PLANET; }
 static inline bool is_at_station(void) { return g_state.PlayerNavState.currentLocationType == CELESTIAL_STATION; }
 
 // Command help data
-static const CommandHelp command_help[] = {
+static const command_help_t COMMAND_HELP[] = {
     // TRADING COMMANDS
     {"buy", "b", "Purchase goods from the market",
      "BUY <good> <amount> - Purchase goods from the market\n"
@@ -335,20 +339,23 @@ static const CommandHelp command_help[] = {
     {NULL, NULL, NULL, NULL, NULL, NULL}};
 
 // Helper function to find command help
-static const CommandHelp *find_command_help(const char *command) {
-    for (int i = 0; command_help[i].command != NULL; i++) {
-        if (StringCompareIgnoreCase(command, command_help[i].command) == 0) {
-            return &command_help[i];
+static const command_help_t *find_command_help(const char *command) {
+    for (int i = 0; COMMAND_HELP[i].command != NULL; i++) {
+        if (StringCompareIgnoreCase(command, COMMAND_HELP[i].command) == 0) {
+            return &COMMAND_HELP[i];
         }
         // Check aliases
-        if (command_help[i].aliases != NULL) {
+        if (COMMAND_HELP[i].aliases != NULL) {
             char aliases_copy[MAX_LEN];
-            snprintf(aliases_copy, MAX_LEN, "%s", command_help[i].aliases);
+            int aliases_length = snprintf(aliases_copy, sizeof(aliases_copy), "%s", COMMAND_HELP[i].aliases);
+            if (aliases_length < 0 || (size_t)aliases_length >= sizeof(aliases_copy)) {
+                continue;
+            }
             char *saveptr = NULL; // Declare saveptr for safe_strtok
             char *alias = safe_strtok(aliases_copy, " ", &saveptr);
             while (alias != NULL) {
                 if (StringCompareIgnoreCase(command, alias) == 0) {
-                    return &command_help[i];
+                    return &COMMAND_HELP[i];
                 }
                 alias = safe_strtok(NULL, " ", &saveptr);
             }
@@ -362,108 +369,138 @@ static void print_help_text(const char *text) {
     // Special handling for fuel command to show dynamic fuel cost
     char buffer[1024];
     if (strstr(text, "FUEL <amount>") != NULL) {
-        snprintf(buffer, sizeof(buffer), text, (float)GetFuelCost() / 10.0f);
-        printf("%s", buffer);
+        const char *placeholder = strstr(text, "%.1f");
+        if (placeholder == NULL) {
+            if (fputs(text, stdout) == EOF) {
+                return;
+            }
+        } else {
+            int fuel_cost = GetFuelCost();
+            int fractional_cost = fuel_cost % 10;
+            if (fractional_cost < 0) {
+                fractional_cost = -fractional_cost;
+            }
+            int written = snprintf(buffer, sizeof(buffer), "%d.%d", fuel_cost / 10, fractional_cost);
+            if (written < 0 || (size_t)written >= sizeof(buffer)) {
+                return;
+            }
+
+            size_t prefix_length = (size_t)(placeholder - text);
+            if (fwrite(text, 1, prefix_length, stdout) != prefix_length || fputs(buffer, stdout) == EOF ||
+                fputs(placeholder + 4, stdout) == EOF) {
+                return;
+            }
+        }
     } else {
-        printf("%s", text);
+        if (fputs(text, stdout) == EOF) {
+            return;
+        }
     }
 }
 
-static inline bool do_tweak_random_native(char *commandArguments) {
-    (void)commandArguments; // Mark 's' as unused
+[[maybe_unused]] static inline bool do_tweak_random_native(const char *command_arguments) {
+    (void)command_arguments; // Mark 's' as unused
     g_state.NativeRand ^= 1;
-    return 1;
+    return true;
 }
 
-static inline bool do_local_systems_display(char *commandArguments) {
-    uint16_t d = (uint16_t)atoi(commandArguments); // commandArguments might be unused if
-                                                   // not parsed for a distance limit
+[[maybe_unused]] static inline bool do_local_systems_display(const char *command_arguments) {
+    (void)command_arguments; // No distance limit is parsed for this command.
+    uint16_t d;
 
     printf("g_state.Galaxy number %i", g_state.GalaxyNum);
     for (PlanetNum syscount = 0; syscount < GAL_SIZE; ++syscount) {
         d = distance(g_state.Galaxy[syscount], g_state.Galaxy[g_state.CurrentPlanet]);
 
         if (d <= GetMaxFuel()) {
-            if (d <= g_state.Fuel)
+            if (d <= g_state.Fuel) {
                 printf("\n * ");
-            else
+            } else {
                 printf("\n - ");
+            }
 
-            print_system_info(g_state.Galaxy[syscount], 1);
-            printf(" (%.1f LY)", (float)d / 10.0f);
+            print_system_info(g_state.Galaxy[syscount], true);
+            printf(" (%.1f LY)", (double)d / 10.0);
         }
     }
     printf("\n");
-    return 1;
+    return true;
 }
 
-static inline bool do_jump(char *commandArguments) {
+static inline bool do_jump(const char *command_arguments) {
     uint16_t d;
-    PlanetNum dest = find_matching_system_name(commandArguments);
+    PlanetNum dest = find_matching_system_name(command_arguments);
 
     if (dest == g_state.CurrentPlanet) {
         printf("\nBad jump");
-        return 0;
+        return false;
     }
     d = distance(g_state.Galaxy[dest], g_state.Galaxy[g_state.CurrentPlanet]);
 
     // Get the fuel cost per distance unit based on ship type
-    int fuelCostPerUnit = GetFuelCost();
+    int fuel_cost_per_unit = GetFuelCost();
 
     // Calculate the fuel needed for this jump based on ship's consumption rate
-    uint16_t fuelNeeded = (uint16_t)((float)d * ((float)fuelCostPerUnit / 2.0)); // Scale based on ship efficiency
-    if (fuelNeeded > g_state.Fuel) {
-        printf("\nJump too far - requires %d fuel units, you have %d", fuelNeeded, g_state.Fuel);
-        return 0;
+    uint16_t fuel_needed = (uint16_t)((double)d * ((double)fuel_cost_per_unit / 2.0)); // Scale based on ship efficiency
+    if (fuel_needed > g_state.Fuel) {
+        printf("\nJump too far - requires %d fuel units, you have %d", fuel_needed, g_state.Fuel);
+        return false;
     }
 
     // Use the new ConsumeFuel function to update both global and ship fuel
     if (g_state.PlayerShipPtr != NULL) {
-        if (!ConsumeFuel((double)fuelNeeded, 0)) {
+        if (!ConsumeFuel((double)fuel_needed, false)) {
             printf("\nJump failed: Insufficient fuel");
-            return 0;
+            return false;
         }
 
-        // Small chance of minor hull damage during jump
-        if (rand() % 100 < 5) // 5% chance
-        {
-            int damageTaken = rand() % 5 + 1; // 1-5 points of damage
+        // Small chance of minor hull damage during jump.
+        static atomic_uint_fast32_t s_random_state = 0x9E3779B9U;
+        uint_fast32_t state = atomic_load_explicit(&s_random_state, memory_order_relaxed);
+        uint_fast32_t next;
+        do {
+            next = (state * 1664525U) + 1013904223U;
+        } while (!atomic_compare_exchange_weak_explicit(&s_random_state, &state, next, memory_order_relaxed,
+                                                        memory_order_relaxed));
+
+        if ((next % 100U) < 5U) {                    // 5% chance
+            int damage_taken = (int)(next % 5U) + 1; // 1-5 points of damage
             g_state.PlayerShipPtr->attributes.hullStrength =
-                (g_state.PlayerShipPtr->attributes.hullStrength > damageTaken)
-                    ? g_state.PlayerShipPtr->attributes.hullStrength - damageTaken
+                (g_state.PlayerShipPtr->attributes.hullStrength > damage_taken)
+                    ? g_state.PlayerShipPtr->attributes.hullStrength - damage_taken
                     : 1;
 
-            printf("\nHyperspace stress caused minor hull damage (-%d)", damageTaken);
+            printf("\nHyperspace stress caused minor hull damage (-%d)", damage_taken);
         }
     } // Update global g_state.Fuel based on ship's fuel if g_state.PlayerShipPtr is available
     if (g_state.PlayerShipPtr != NULL) {
         // Sync the ship's fuel with the global value (exact match)
-        g_state.PlayerShipPtr->attributes.fuelLiters = g_state.Fuel * 10.0f;
+        g_state.PlayerShipPtr->attributes.fuelLiters = (double)g_state.Fuel * (double)10.0F;
     }
 
     execute_jump_to_planet(dest);
-    print_system_info(g_state.Galaxy[g_state.CurrentPlanet], 0);
-    return 1;
+    print_system_info(g_state.Galaxy[g_state.CurrentPlanet], false);
+    return true;
 }
 
-static inline bool do_sneak(char *commandArguments) {
+[[maybe_unused]] static inline bool do_sneak(const char *command_arguments) {
     uint16_t fuelkeep = g_state.Fuel;
-    float shipFuelKeep = (g_state.PlayerShipPtr != NULL) ? g_state.PlayerShipPtr->attributes.fuelLiters : 0.0f;
+    double ship_fuel_keep = (g_state.PlayerShipPtr != NULL) ? g_state.PlayerShipPtr->attributes.fuelLiters : 0.0;
     bool b;
     g_state.Fuel = 666; // Arbitrary large fuel value for sneak
     if (g_state.PlayerShipPtr != NULL) {
-        g_state.PlayerShipPtr->attributes.fuelLiters = 6660.0f;
+        g_state.PlayerShipPtr->attributes.fuelLiters = 6660.0;
     }
-    b = do_jump(commandArguments);
+    b = do_jump(command_arguments);
     g_state.Fuel = fuelkeep;
     if (g_state.PlayerShipPtr != NULL) {
-        g_state.PlayerShipPtr->attributes.fuelLiters = shipFuelKeep;
+        g_state.PlayerShipPtr->attributes.fuelLiters = ship_fuel_keep;
     }
     return b;
 }
 
-static inline bool do_galactic_hyperspace(char *commandArguments) {
-    (void)(commandArguments); /* Discard s */
+[[maybe_unused]] static inline bool do_galactic_hyperspace(const char *command_arguments) {
+    (void)(command_arguments); /* Discard s */
 
     // This feature has been removed from the game
     printf("\nThe Galactic Hyperspace technology has been deemed unsafe and is "
@@ -471,22 +508,22 @@ static inline bool do_galactic_hyperspace(char *commandArguments) {
     printf("\nPlease use standard Hyperspace jumps (jump command) for "
            "interstellar travel.");
 
-    return 0;
+    return false;
 }
 
-static inline bool do_planet_info_display(char *commandArguments) {
-    PlanetNum dest = find_matching_system_name(commandArguments);
+[[maybe_unused]] static inline bool do_planet_info_display(const char *command_arguments) {
+    PlanetNum dest = find_matching_system_name(command_arguments);
     if (dest < GAL_SIZE) { // Check if a valid planet was found
-        print_system_info(g_state.Galaxy[dest], 0);
+        print_system_info(g_state.Galaxy[dest], false);
     } else {
-        printf("\nPlanet not found: %s", commandArguments);
-        return 0;
+        printf("\nPlanet not found: %s", command_arguments);
+        return false;
     }
-    return 1;
+    return true;
 }
 
-static inline bool do_hold(char *commandArguments) {
-    uint16_t a = (uint16_t)atoi(commandArguments);
+[[maybe_unused]] static inline bool do_hold(const char *command_arguments) {
+    uint16_t a = (uint16_t)atoi(command_arguments);
     uint16_t t = 0;
 
     if (g_state.PlayerShipPtr != NULL) {
@@ -507,7 +544,7 @@ static inline bool do_hold(char *commandArguments) {
     if (a < t) // Can't set hold space to less than current cargo
     {
         printf("\nHold too full to reduce size to %u. Current cargo: %u tonnes.", a, t);
-        return 0;
+        return false;
     }
 
     if (g_state.PlayerShipPtr != NULL) {
@@ -515,24 +552,27 @@ static inline bool do_hold(char *commandArguments) {
         g_state.PlayerShipPtr->attributes.currentCargoTons = t;
     }
     printf("\nHold space set to %u. Available: %u tonnes.", a, a - t);
-    return 1;
+    return true;
 }
 
-static inline bool do_sell(char *commandArguments) {
+[[maybe_unused]] static inline bool do_sell(const char *command_arguments) {
     uint16_t i;
     uint16_t t;
     char s2[MAX_LEN];
-    split_string_at_first_space(commandArguments, s2);
-    uint16_t a = (uint16_t)atoi(commandArguments);
+    char arg_copy[MAX_LEN];
+    snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != NULL ? command_arguments : "");
+    split_string_at_first_space(arg_copy, s2);
+    uint16_t a = (uint16_t)atoi(arg_copy);
 
-    if (a == 0)
+    if (a == 0) {
         a = 1;
+    }
 
     i = match_string_in_array(s2, g_state.tradnames, LAST_TRADE + 1);
 
     if (i == 0) {
         printf("\nUnknown trade good: '%s'", s2);
-        return 0;
+        return false;
     }
 
     i -= 1; // Adjust index for 0-based array
@@ -548,15 +588,17 @@ static inline bool do_sell(char *commandArguments) {
         if (g_state.PlayerShipPtr != NULL) {
         }
     }
-    return 1;
+    return true;
 }
 
-static inline bool do_buy(char *commandArguments) {
+[[maybe_unused]] static inline bool do_buy(const char *command_arguments) {
     uint16_t i;
     uint16_t t;
     char s2[MAX_LEN];
-    split_string_at_first_space(commandArguments, s2);
-    uint16_t a = (uint16_t)atoi(commandArguments);
+    char arg_copy[MAX_LEN];
+    snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != NULL ? command_arguments : "");
+    split_string_at_first_space(arg_copy, s2);
+    uint16_t a = (uint16_t)atoi(arg_copy);
 
     if (a == 0)
         a = 1;
@@ -565,7 +607,7 @@ static inline bool do_buy(char *commandArguments) {
 
     if (i == 0) {
         printf("\nUnknown trade good: '%s'", s2);
-        return 0;
+        return false;
     }
     i -= 1; // Adjust index
 
@@ -578,15 +620,24 @@ static inline bool do_buy(char *commandArguments) {
         if (g_state.PlayerShipPtr != NULL) {
         }
     }
-    return 1;
+    return true;
 }
 
-static inline bool do_fuel(char *commandArguments) {
-    if (commandArguments == NULL || commandArguments[0] == '\0') {
+[[maybe_unused]] static inline bool do_fuel(const char *command_arguments) {
+    if (command_arguments == NULL || command_arguments[0] == '\0') {
         printf("\nUsage: fuel <amount>");
-        return 0;
+        return false;
     }
-    uint16_t f = calculate_fuel_purchase((uint16_t)floor(10 * atof(commandArguments)));
+    char *parse_end = NULL;
+    const double REQUESTED_FUEL = strtod(command_arguments, &parse_end);
+    if (parse_end == command_arguments || *parse_end != '\0' || REQUESTED_FUEL < 0.0) {
+        printf("\nNumber not understood for fuel command.");
+        return false;
+    }
+    const double REQUESTED_UNITS_DOUBLE = floor(10.0 * REQUESTED_FUEL);
+    const uint16_t REQUESTED_UNITS =
+        REQUESTED_UNITS_DOUBLE > (double)UINT16_MAX ? UINT16_MAX : (uint16_t)REQUESTED_UNITS_DOUBLE;
+    const uint16_t f = calculate_fuel_purchase(REQUESTED_UNITS);
     if (f == 0) {
         printf("\nCan't buy any fuel");
     } else {
@@ -595,45 +646,46 @@ static inline bool do_fuel(char *commandArguments) {
 
         // Add the fuel to the current fuel level, making sure not to exceed max
         // fuel for the ship
-        int currentMaxFuel = GetMaxFuel();
-        g_state.Fuel = (g_state.Fuel + f > currentMaxFuel) ? currentMaxFuel : g_state.Fuel + f;
+        const int current_max_fuel = GetMaxFuel();
+        g_state.Fuel =
+            (g_state.Fuel + f > current_max_fuel) ? (uint16_t)(current_max_fuel) : (uint16_t)(g_state.Fuel + f);
 
         // Also update the ship's fuel levels
         if (g_state.PlayerShipPtr != NULL) {
             // Convert game units to liters (1 fuel unit = 0.1 LY = 10 liters)
-            float fuelLiters = f * 10.0f;
-            float maxFuelLiters = g_state.PlayerShipPtr->shipType->maxFuelLY * 100.0f;
+            const float fuel_liters = (float)(f) * 10.0F;
+            const float max_fuel_liters = (float)(g_state.PlayerShipPtr->shipType->maxFuelLY * 100.0);
 
             g_state.PlayerShipPtr->attributes.fuelLiters =
-                (g_state.PlayerShipPtr->attributes.fuelLiters + fuelLiters > maxFuelLiters)
-                    ? maxFuelLiters
-                    : g_state.PlayerShipPtr->attributes.fuelLiters + fuelLiters;
+                (g_state.PlayerShipPtr->attributes.fuelLiters + fuel_liters > max_fuel_liters)
+                    ? max_fuel_liters
+                    : g_state.PlayerShipPtr->attributes.fuelLiters + fuel_liters;
         }
 
-        printf("\nBuying %.1fLY fuel", (float)f / 10.0f);
+        printf("\nBuying %.1fLY fuel", (double)f / 10.0);
     }
-    return 1;
+    return true;
 }
 
-static inline bool do_cash(char *commandArguments) {
-    if (commandArguments == NULL || commandArguments[0] == '\0') {
+[[maybe_unused]] static inline bool do_cash(const char *command_arguments) {
+    if (command_arguments == NULL || command_arguments[0] == '\0') {
         printf("\nUsage: cash <amount>");
-        return 0;
+        return false;
     }
-    int a = (int)(10 * atof(commandArguments)); // Amount is in tenths of credits
+    int a = (int)(10 * atof(command_arguments)); // Amount is in tenths of credits
     g_state.Cash += (long)a;
 
     if (a != 0) {
-        printf("\nCash adjusted by %.1f. Current cash: %.1f CR.", (float)a / 10.0f, (float)g_state.Cash / 10.0f);
-        return 1;
+        printf("\nCash adjusted by %.1f. Current cash: %.1f CR.", (double)a / 10.0f, (double)g_state.Cash / 10.0F);
+        return true;
     }
 
     printf("Number not understood for cash command.");
-    return 0;
+    return false;
 }
 
-static inline bool do_market_display(char *commandArguments) {
-    (void)commandArguments;
+[[maybe_unused]] static inline bool do_market_display(const char *command_arguments) {
+    (void)command_arguments;
 
     // Display basic market information
     display_market_info(g_state.LocalMarket);
@@ -646,15 +698,16 @@ static inline bool do_market_display(char *commandArguments) {
         Station *station = g_state.PlayerNavState.currentLocation.station;
 
         // Find parent planet for context
-        Planet *parentPlanet = NULL;
-        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets && !parentPlanet; i++) {
+        Planet *parent_planet = NULL;
+        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets && !parent_planet; i++) {
             Planet *planet = &g_state.CurrentStarSystem->planets[i];
-            if (!planet)
+            if (!planet) {
                 continue;
+            }
 
             for (uint8_t j = 0; j < planet->numStations; j++) {
                 if (planet->stations[j] == station) {
-                    parentPlanet = planet;
+                    parent_planet = planet;
                     break;
                 }
             }
@@ -665,14 +718,14 @@ static inline bool do_market_display(char *commandArguments) {
         printf("\nSystem Economy: %s", EconNames[g_state.CurrentStarSystem->planSys->economy]);
 
         // Display specialization
-        const char *specNames[] = {"Balanced", "Industrial", "Agricultural", "Mining"};
+        const char *spec_names[] = {"Balanced", "Industrial", "Agricultural", "Mining"};
         if (station->specialization < 4) {
-            printf("\nStation Specialization: %s", specNames[station->specialization]);
+            printf("\nStation Specialization: %s", spec_names[station->specialization]);
         }
 
         // Display market update time
-        uint64_t timeSinceUpdate = game_time_get_seconds() - station->lastMarketUpdate;
-        printf("\nLast Market Update: %llu seconds ago", (unsigned long long)timeSinceUpdate);
+        uint64_t time_since_update = game_time_get_seconds() - station->lastMarketUpdate;
+        printf("\nLast Market Update: %llu seconds ago", (unsigned long long)time_since_update);
 
         // Add hint about best trades based on specialization
         printf("\n\nTrade Opportunities:");
@@ -695,23 +748,23 @@ static inline bool do_market_display(char *commandArguments) {
         }
     }
 
-    printf("\n\nFuel :%.1fLY", (float)g_state.Fuel / 10.0f);
+    printf("\n\nFuel :%.1fLY", (float)g_state.Fuel / 10.0F);
     if (g_state.PlayerShipPtr != NULL) {
         printf("      Holdspace :%dt", g_state.PlayerShipPtr->attributes.cargoCapacityTons -
                                            g_state.PlayerShipPtr->attributes.currentCargoTons);
     }
-    printf("\nCurrent Cash: %.1f CR\n", (float)g_state.Cash / 10.0f);
-    return 1;
+    printf("\nCurrent Cash: %.1f CR\n", (float)g_state.Cash / 10.0F);
+    return true;
 }
 
-static inline bool do_quit(char *commandArguments) {
-    (void)(commandArguments);
+[[maybe_unused]]  static inline bool do_quit(const char *command_arguments) {
+    (void)(command_arguments);
     printf("\nExiting Text Elite. Goodbye!\n");
     exit(g_state.ExitStatus);
     // This line will not be reached if g_state.ExitStatus leads to a successful exit.
     // It's here to satisfy the function signature if exit() somehow didn't
     // terminate.
-    return 1;
+    return true;
 }
 
 /**
@@ -722,14 +775,14 @@ static inline bool do_quit(char *commandArguments) {
  * @param commandArguments Optional seed to use for the new game
  * @return 1 if the reset was successful
  */
-static inline bool do_reset(char *commandArguments) {
+[[maybe_unused]] static inline bool do_reset(const char *command_arguments) {
     unsigned int seed = 54321; // Default seed
 
     // If a seed is provided, use it
-    if (commandArguments != NULL && commandArguments[0] != '\0') {
-        unsigned int providedSeed = (unsigned int)atoi(commandArguments);
-        if (providedSeed > 0) {
-            seed = providedSeed;
+    if (command_arguments != NULL && command_arguments[0] != '\0') {
+        unsigned int provided_seed = (unsigned int)atoi(command_arguments);
+        if (provided_seed > 0) {
+            seed = provided_seed;
             printf("\nResetting game with custom seed: %u", seed);
         } else {
             printf("\nInvalid seed provided. Using default seed: %u", seed);
@@ -746,31 +799,33 @@ static inline bool do_reset(char *commandArguments) {
     printf("\nGame reset complete. You are now at planet %s in g_state.Galaxy %d.",
            g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
 
-    return 1;
+    return true;
 }
 
-static inline bool do_help(char *commandArguments) {
-    commandArguments = strip_leading_trailing_spaces(commandArguments);
+[[maybe_unused]] static inline bool do_help(const char *command_arguments) {
+    char arg_copy[MAX_LEN];
+    snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != NULL ? command_arguments : "");
+    char *cmd = strip_leading_trailing_spaces(arg_copy);
 
-    if (commandArguments == NULL || strlen(commandArguments) == 0) {
+    if (cmd == NULL || strlen(cmd) == 0) {
         // Display general help
         printf("\n=== TXTELITE COMMAND REFERENCE ===\n");
 
         const char *current_category = NULL;
-        for (int i = 0; command_help[i].command != NULL; i++) {
-            if (current_category == NULL || strcmp(current_category, command_help[i].category) != 0) {
-                current_category = command_help[i].category;
+        for (int i = 0; COMMAND_HELP[i].command != NULL; i++) {
+            if (current_category == NULL || strcmp(current_category, COMMAND_HELP[i].category) != 0) {
+                current_category = COMMAND_HELP[i].category;
                 printf("\n--- %s ---\n", current_category);
             }
 
-            bool available = command_help[i].is_available();
-            printf("  %s%-12s%s - %s %s\n", available ? KGRN : KRED, command_help[i].command, KNRM,
-                   command_help[i].short_description, available ? "" : "(unavailable)");
+            bool available = COMMAND_HELP[i].is_available();
+            printf("  %s%-12s%s - %s %s\n", (int)available ? KGRN : KRED, COMMAND_HELP[i].command, KNRM,
+                   COMMAND_HELP[i].short_description, (int)available ? "" : "(unavailable)");
         }
         printf("\nFor detailed help on any command, type 'help <command>'.\n");
     } else {
         // Display specific help for a command
-        const CommandHelp *help = find_command_help(commandArguments);
+        const command_help_t *help = find_command_help(cmd);
         if (help) {
             print_help_text(help->long_description);
             if (!help->is_available()) {
@@ -778,14 +833,14 @@ static inline bool do_help(char *commandArguments) {
             }
             printf("\n");
         } else {
-            printf("\nUnknown command: %s", commandArguments);
+            printf("\nUnknown command: %s", cmd);
             printf("\nUse 'help' without parameters to see all available commands.\n");
         }
     }
-    return 1;
+    return true;
 }
 
-static inline bool do_save(char *commandArguments) {
+[[maybe_unused]] static inline bool do_save(const char *command_arguments) {
     // Generate filename with current date and time
     char filename[64];
     time_t now = time(NULL);
@@ -797,11 +852,11 @@ static inline bool do_save(char *commandArguments) {
     }
 
     // Use the provided description if available
-    char *description = NULL;
+    const char *description = NULL;
 
     // If command arguments were provided, use them as description
-    if (commandArguments && commandArguments[0] != '\0') {
-        description = commandArguments;
+    if (command_arguments && command_arguments[0] != '\0') {
+        description = command_arguments;
     }
 
     // Save the game
@@ -810,8 +865,8 @@ static inline bool do_save(char *commandArguments) {
     return success;
 }
 
-static inline bool do_load(char *commandArguments) {
-    (void)commandArguments; // Unused parameter
+[[maybe_unused]] static inline bool do_load(const char *command_arguments) {
+    (void)command_arguments; // Unused parameter
 
     printf("\nAvailable save files:\n");
 
@@ -828,63 +883,64 @@ static inline bool do_load(char *commandArguments) {
 
     if (!platform_find_first_file(&iter, searchPattern)) {
         printf("No save files found in the 'saves' directory.\n");
-        return 0;
+        return false;
     }
 
     // Count the number of save files
-    int fileCount = 0;
-    SaveFileInfo saveFiles[100]; // Array to store up to 100 save files
+    int file_count = 0;
+    SaveFileInfo save_files[100]; // Array to store up to 100 save files
 
     do {
         const char *filename = platform_get_filename(&iter);
         if (filename) {
             // Store filename
-            snprintf(saveFiles[fileCount].filename, MAX_PATH, "%s", filename);
+            snprintf(save_files[file_count].filename, MAX_PATH, "%s", filename);
 
             // Get file timestamp using cross-platform function
-            saveFiles[fileCount].timestamp = platform_get_file_time(&iter);
+            save_files[file_count].timestamp = platform_get_file_time(&iter);
 
-            fileCount++;
-            if (fileCount >= 100)
+            file_count++;
+            if (file_count >= 100) {
                 break; // Limit to 100 files
+            }
         }
     } while (platform_find_next_file(&iter));
 
     platform_find_close(&iter);
 
-    if (fileCount == 0) {
+    if (file_count == 0) {
         printf("No save files found.\n");
-        return 0;
+        return false;
     }
 
     // Sort save files by timestamp (most recent first)
-    for (int i = 0; i < fileCount - 1; i++) {
-        for (int j = 0; j < fileCount - i - 1; j++) {
-            if (saveFiles[j].timestamp < saveFiles[j + 1].timestamp) {
+    for (int i = 0; i < file_count - 1; i++) {
+        for (int j = 0; j < file_count - i - 1; j++) {
+            if (save_files[j].timestamp < save_files[j + 1].timestamp) {
                 // Swap
-                SaveFileInfo temp = saveFiles[j];
-                saveFiles[j] = saveFiles[j + 1];
-                saveFiles[j + 1] = temp;
+                SaveFileInfo temp = save_files[j];
+                save_files[j] = save_files[j + 1];
+                save_files[j + 1] = temp;
             }
         }
     }
 
     // Display the sorted save files
-    for (int i = 0; i < fileCount; i++) { // Read save header to get the description
-        SaveHeader header;
-        char fullPath[MAX_PATH];
-        platform_make_path(fullPath, sizeof(fullPath), "saves", saveFiles[i].filename);
-        FILE *file = safe_fopen(fullPath, "rb");
-        bool headerValid = 0;
+    for (int i = 0; i < file_count; i++) { // Read save header to get the description
+        save_header_t header;
+        char full_path[MAX_PATH];
+        platform_make_path(full_path, sizeof(full_path), "saves", save_files[i].filename);
+        FILE *file = safe_fopen(full_path, "rb");
+        bool header_valid = false;
 
         if (file) {
             if (fread(&header, sizeof(header), 1, file) == 1) {
-                headerValid = (strncmp(header.signature, SAVE_SIGNATURE, strlen(SAVE_SIGNATURE)) == 0);
+                header_valid = (strncmp(header.signature, SAVE_SIGNATURE, strlen(SAVE_SIGNATURE)) == 0);
             }
             fclose(file);
         } // Format date and time
         struct tm timeinfo;
-        int localtime_result = safe_localtime(&saveFiles[i].timestamp, &timeinfo);
+        int localtime_result = safe_localtime(&save_files[i].timestamp, &timeinfo);
         char timeStr[32];
         if (localtime_result == 0) {
             strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
@@ -892,28 +948,28 @@ static inline bool do_load(char *commandArguments) {
             snprintf(timeStr, sizeof(timeStr), "Invalid Date");
         }
 
-        printf("%2d. %s - %s", i + 1, saveFiles[i].filename, timeStr);
-        if (headerValid) {
+        printf("%2d. %s - %s", i + 1, save_files[i].filename, timeStr);
+        if (header_valid) {
             printf(" - %s", header.description);
         }
         printf("\n");
     }
 
     // Prompt user to select a save file
-    if (fileCount > 0) {
+    if (file_count > 0) {
         printf("\nEnter the number of the save file to load (or 0 to cancel): ");
         char input[10];
         if (fgets(input, sizeof(input), stdin) != NULL) {
             int selection = atoi(input);
-            if (selection > 0 && selection <= fileCount) {
+            if (selection > 0 && selection <= file_count) {
                 char fullPath[MAX_PATH];
-                platform_make_path(fullPath, sizeof(fullPath), "saves", saveFiles[selection - 1].filename);
+                platform_make_path(fullPath, sizeof(fullPath), "saves", save_files[selection - 1].filename);
                 return load_game(fullPath);
             }
         }
     }
 
-    return 0;
+    return false;
 }
 
 // =============================
@@ -922,19 +978,19 @@ static inline bool do_load(char *commandArguments) {
 
 // Displays detailed information about the current star system, including scan
 // data
-static inline bool do_system_info(char *commandArguments) {
-    (void)(commandArguments); // Unused parameter
+[[maybe_unused]] static inline bool do_system_info(const char *command_arguments) {
+    (void)(command_arguments); // Unused parameter
     // Validate star system data
     if (!g_state.CurrentStarSystem) {
         printf("\nError: Star system data not available. System might not be "
                "properly initialized.");
-        return 0;
+        return false;
     }
 
     // Validate pointer to PlanSys data
     if (!g_state.CurrentStarSystem->planSys) {
         printf("\nError: Planet system data not available.");
-        return 0;
+        return false;
     } // Get current location information
     char locBuffer[MAX_LEN];
     get_current_location_name(&g_state.PlayerNavState, locBuffer, sizeof(locBuffer));
@@ -1097,16 +1153,16 @@ static inline bool do_system_info(char *commandArguments) {
     game_time_advance(60);
     printf("\n\nSystem scan complete. Elapsed time: 1 minute.");
 
-    return 1;
+    return true;
 }
 
 // Lists available destinations and allows travel within the system
-static inline bool do_travel(char *commandArguments) {
+[[maybe_unused]] static inline bool do_travel(const char *command_arguments) {
     // Check if star system data is properly initialized
     if (!g_state.CurrentStarSystem) {
         printf("\nError: Star system data not available. System might not be "
                "properly initialized.");
-        return 0;
+        return false;
     }
 
     // Get current location information for display
@@ -1114,8 +1170,8 @@ static inline bool do_travel(char *commandArguments) {
     get_current_location_name(&g_state.PlayerNavState, locBuffer, sizeof(locBuffer));
 
     // If no arguments provided, just list destinations
-    if (commandArguments == NULL || strlen(commandArguments) == 0 ||
-        strspn(commandArguments, " \t\n\r") == strlen(commandArguments)) {
+    if (command_arguments == NULL || strlen(command_arguments) == 0 ||
+        strspn(command_arguments, " \t\n\r") == strlen(command_arguments)) {
 
         printf("\nCurrent location: %s (%.2f AU from star)", locBuffer, g_state.PlayerNavState.distanceFromStar);
         printf("\n\nAvailable destinations:");
@@ -1147,11 +1203,11 @@ static inline bool do_travel(char *commandArguments) {
 
         printf("\n\nUse 'travel <destination number>' to travel (e.g., 'travel 1' "
                "or 'travel 1.2' or 'travel N')");
-        return 1;
+        return true;
     }
     // Parse destination string, trimming whitespace
     char destStr[MAX_LEN];
-    snprintf(destStr, sizeof(destStr), "%s", commandArguments);
+    snprintf(destStr, sizeof(destStr), "%s", command_arguments);
 
     // Trim leading and trailing whitespace
     char *start = destStr;
@@ -1170,14 +1226,14 @@ static inline bool do_travel(char *commandArguments) {
     if (strlen(destStr) == 0) {
         printf("\nNo destination specified. Use 'travel' to see available "
                "destinations.");
-        return 0;
+        return false;
     }
 
     // Check for Nav Beacon special case
     if (destStr[0] == 'N' || destStr[0] == 'n') { // Check if already at Nav Beacon
         if (g_state.PlayerNavState.currentLocationType == CELESTIAL_NAV_BEACON) {
             printf("\nAlready at Nav Beacon.");
-            return 1;
+            return true;
         }
         // Calculate fuel requirement
         double distanceDelta =
@@ -1192,10 +1248,10 @@ static inline bool do_travel(char *commandArguments) {
             travel_to_celestial(g_state.CurrentStarSystem, &g_state.PlayerNavState, CELESTIAL_NAV_BEACON, dummy);
         if (result) {
             printf("\nArrived at Nav Beacon (%.2f AU from star)", g_state.PlayerNavState.distanceFromStar);
-            return 1;
+            return true;
         } else {
             printf("\nFailed to travel to Nav Beacon.");
-            return 0;
+            return false;
         }
     }
 
@@ -1212,14 +1268,14 @@ static inline bool do_travel(char *commandArguments) {
         for (char *p = destStr; *p; p++) {
             if (!isdigit((unsigned char)*p)) {
                 printf("\nInvalid planet number: %s. Must be a number.", destStr);
-                return 0;
+                return false;
             }
         }
 
         for (char *p = dotPos + 1; *p; p++) {
             if (!isdigit((unsigned char)*p)) {
                 printf("\nInvalid station number: %s. Must be a number.", dotPos + 1);
-                return 0;
+                return false;
             }
         }
 
@@ -1229,12 +1285,12 @@ static inline bool do_travel(char *commandArguments) {
         // Validate index ranges
         if (primaryIndex <= 0) {
             printf("\nInvalid planet number: %d. Must be a positive number.", primaryIndex);
-            return 0;
+            return false;
         }
 
         if (secondaryIndex <= 0) {
             printf("\nInvalid station number: %d. Must be a positive number.", secondaryIndex);
-            return 0;
+            return false;
         }
     } else {
         // For just a planet or star, validate that we have valid digits or '0'
@@ -1246,14 +1302,14 @@ static inline bool do_travel(char *commandArguments) {
                     printf("\nInvalid destination number: %s. Must be a number or 'N' "
                            "for Nav Beacon.",
                            destStr);
-                    return 0;
+                    return false;
                 }
             }
             primaryIndex = atoi(destStr);
 
             if (primaryIndex < 0) {
                 printf("\nInvalid destination number: %d. Must be a non-negative number.", primaryIndex);
-                return 0;
+                return false;
             }
         }
     }
@@ -1262,7 +1318,7 @@ static inline bool do_travel(char *commandArguments) {
     if (primaryIndex == 0) { // Check if already at star
         if (g_state.PlayerNavState.currentLocationType == CELESTIAL_STAR) {
             printf("\nAlready at %s.", g_state.CurrentStarSystem->centralStar.name);
-            return 1;
+            return true;
         }
         // Calculate fuel requirement
         double distanceDelta = g_state.PlayerNavState.distanceFromStar; // Distance to star is just current distance
@@ -1274,10 +1330,10 @@ static inline bool do_travel(char *commandArguments) {
                                           &g_state.CurrentStarSystem->centralStar);
         if (result) {
             printf("\nArrived at %s (0.00 AU from star)", g_state.CurrentStarSystem->centralStar.name);
-            return 1;
+            return true;
         } else {
             printf("\nFailed to travel to %s.", g_state.CurrentStarSystem->centralStar.name);
-            return 0;
+            return false;
         }
     }
 
@@ -1292,13 +1348,13 @@ static inline bool do_travel(char *commandArguments) {
         printf("\nThis system has %d planets. Use 'travel' to see available "
                "destinations.",
                g_state.CurrentStarSystem->numPlanets);
-        return 0;
+        return false;
     }
 
     Planet *planet = &g_state.CurrentStarSystem->planets[primaryIndex];
     if (!planet) {
         printf("\nError: Invalid planet data for planet %d.", primaryIndex + 1);
-        return 0;
+        return false;
     }
 
     // If no secondary index, travel to planet
@@ -1306,7 +1362,7 @@ static inline bool do_travel(char *commandArguments) {
         if (g_state.PlayerNavState.currentLocationType == CELESTIAL_PLANET &&
             g_state.PlayerNavState.currentLocation.planet == planet) {
             printf("\nAlready at %s.", planet->name);
-            return 1;
+            return true;
         }
         // Calculate fuel requirement
         double distanceDelta = fabs(g_state.PlayerNavState.distanceFromStar - planet->orbitalDistance);
@@ -1316,10 +1372,10 @@ static inline bool do_travel(char *commandArguments) {
         bool result = travel_to_celestial(g_state.CurrentStarSystem, &g_state.PlayerNavState, CELESTIAL_PLANET, planet);
         if (result) {
             printf("\nArrived at %s (%.2f AU from star)", planet->name, g_state.PlayerNavState.distanceFromStar);
-            return 1;
+            return true;
         } else {
             printf("\nFailed to travel to %s.", planet->name);
-            return 0;
+            return false;
         }
     }
 
@@ -1330,19 +1386,19 @@ static inline bool do_travel(char *commandArguments) {
     if (secondaryIndex < 0 || secondaryIndex >= planet->numStations) {
         printf("\nInvalid station. Planet %s has %d stations (numbered 1 to %d).", planet->name, planet->numStations,
                planet->numStations);
-        return 0;
+        return false;
     }
 
     Station *station = planet->stations[secondaryIndex];
     if (!station) {
         printf("\nError: Station data not available for station %d of planet %s.", secondaryIndex + 1, planet->name);
-        return 0;
+        return false;
     }
     // Check if already at this station
     if (g_state.PlayerNavState.currentLocationType == CELESTIAL_STATION &&
         g_state.PlayerNavState.currentLocation.station == station) {
         printf("\nAlready at %s.", station->name);
-        return 1;
+        return true;
     }
     // Calculate fuel requirement
     double stationDistance = planet->orbitalDistance + station->orbitalDistance;
@@ -1353,22 +1409,22 @@ static inline bool do_travel(char *commandArguments) {
     bool result = travel_to_celestial(g_state.CurrentStarSystem, &g_state.PlayerNavState, CELESTIAL_STATION, station);
     if (result) {
         printf("\nArrived at %s (%.2f AU from star)", station->name, g_state.PlayerNavState.distanceFromStar);
-        return 1;
+        return true;
     } else {
         printf("\nFailed to travel to %s.", station->name);
-        return 0;
+        return false;
     }
 }
 
 // Docks with a station if at a station location
-static inline bool do_dock(char *commandArguments) {
-    (void)(commandArguments); // Unused parameter
+[[maybe_unused]] static inline bool do_dock(const char *command_arguments) {
+    (void)(command_arguments); // Unused parameter
 
     // Validate star system data
     if (!g_state.CurrentStarSystem) {
         printf("\nError: Star system data not available. System might not be "
                "properly initialized.");
-        return 0;
+        return false;
     }
 
     // Check the player's current location type
@@ -1411,7 +1467,7 @@ static inline bool do_dock(char *commandArguments) {
                    "the system.");
         }
 
-        return 0;
+        return false;
     }
 
     // Validate station data
@@ -1419,7 +1475,7 @@ static inline bool do_dock(char *commandArguments) {
     if (!station) {
         printf("\nError: Station data not available. Cannot complete docking "
                "procedure.");
-        return 0;
+        return false;
     }
 
     // Find the parent planet for better location context
@@ -1492,22 +1548,22 @@ static inline bool do_dock(char *commandArguments) {
     game_time_get_formatted(timeBuffer, sizeof(timeBuffer));
     printf("%s", timeBuffer);
 
-    return 1;
+    return true;
 }
 
 /**
  * Lands on a planet surface, similar to docking at a station.
  * This establishes a planetside base for trading and other activities.
  */
-static inline bool do_land(char *commandArguments) {
-    (void)(commandArguments); // Unused parameter
+[[maybe_unused]] static inline bool do_land(const char *command_arguments) {
+    (void)(command_arguments); // Unused parameter
 
     // Validate star system data
 
     if (!g_state.CurrentStarSystem) {
         printf("\nError: Star system data not available. System might not be "
                "properly initialized.");
-        return 0;
+        return false;
     }
 
     // Check the player's current location type
@@ -1543,7 +1599,7 @@ static inline bool do_land(char *commandArguments) {
                    "the system.");
         }
 
-        return 0;
+        return false;
     }
     // At this point, we're at a planet and can land
     Planet *planet = g_state.PlayerNavState.currentLocation.planet;
@@ -1569,7 +1625,7 @@ static inline bool do_land(char *commandArguments) {
                 }
             }
         }
-        return 0;
+        return false;
     }
 
     if (planet->type == 3) { // Ice Giant
@@ -1593,7 +1649,7 @@ static inline bool do_land(char *commandArguments) {
                 }
             }
         }
-        return 0;
+        return false;
     }
 
     // Landing procedure and feedback
@@ -1687,10 +1743,10 @@ static inline bool do_land(char *commandArguments) {
         printf("\n\nTrading post established. Use 'mkt' to view available goods.");
     }
 
-    return 1;
+    return true;
 }
 
-static inline void update_all_system_markets() {
+[[maybe_unused]] static inline void update_all_system_markets() {
     // Check if star system data is properly initialized
 
     if (!g_state.CurrentStarSystem) {
@@ -1719,12 +1775,12 @@ static inline void update_all_system_markets() {
 
 // Compare markets across different stations in the system or with the planet
 // market
-static inline bool do_compare_markets(char *commandArguments) {
-    (void)commandArguments;                                                // Mark as unused
+[[maybe_unused]] static inline bool do_compare_markets(const char *command_arguments) {
+    (void)command_arguments;                                                // Mark as unused
     if (!g_state.CurrentStarSystem || !g_state.CurrentStarSystem->planSys) // Added planSys check for safety
     {
         printf("\\nError: Star system data not available for market comparison.");
-        return 0;
+        return false;
     }
 
     MarketType baseMarketToCompare; // Changed MarketInfo to MarketType
@@ -1737,7 +1793,7 @@ static inline bool do_compare_markets(char *commandArguments) {
         Planet *currentPlanet = g_state.PlayerNavState.currentLocation.planet;
         if (!currentPlanet) {
             printf("\nError: Current planet data is invalid for comparison.");
-            return 0;
+            return false;
         }
 
         snprintf(baseLocationName, MAX_LEN, "%s", currentPlanet->name);
@@ -1752,7 +1808,7 @@ static inline bool do_compare_markets(char *commandArguments) {
         Station *currentStation = g_state.PlayerNavState.currentLocation.station;
         if (!currentStation) {
             printf("\nError: Current station data is invalid for comparison.");
-            return 0;
+            return false;
         }
         snprintf(baseLocationName, MAX_LEN, "%s", currentStation->name);
         isPlanetBase = 0;
@@ -1789,7 +1845,7 @@ static inline bool do_compare_markets(char *commandArguments) {
     } else {
         printf("\nYou must be docked at a station or landed on a planet to compare "
                "markets.");
-        return 0;
+        return false;
     }
 
     printf("\n=== MARKET COMPARISON ===");
@@ -1893,15 +1949,15 @@ static inline bool do_compare_markets(char *commandArguments) {
         }
     }
 
-    return 1;
+    return true;
 }
 
-static inline bool do_ship_status(char *commandArguments) {
-    (void)(commandArguments); // Mark commandArguments as unused
+[[maybe_unused]] static inline bool do_ship_status(const char *command_arguments) {
+    (void)(command_arguments); // Mark commandArguments as unused
 
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data is not available.");
-        return 0;
+        return false;
     }
 
     // Note: We don't synchronize fuel here as the ship's fuel value should be
@@ -1943,21 +1999,21 @@ static inline bool do_ship_status(char *commandArguments) {
     }
 
     printf("\n");
-    return 1;
+    return true;
 }
 
-static inline bool do_repair(char *commandArguments) {
-    (void)(commandArguments); // Mark commandArguments as unused
+[[maybe_unused]] static inline bool do_repair(const char *command_arguments) {
+    (void)(command_arguments); // Mark commandArguments as unused
 
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data is not available.");
-        return 0;
+        return false;
     }
 
     // Check if repair is needed
     if (g_state.PlayerShipPtr->attributes.hullStrength >= g_state.PlayerShipPtr->shipType->baseHullStrength) {
         printf("\nYour ship doesn't need any repairs.");
-        return 1;
+        return true;
     }
 
     // Calculate repair cost - 10 credits per unit of hull damage
@@ -1969,7 +2025,7 @@ static inline bool do_repair(char *commandArguments) {
     if (g_state.Cash < repairCost * 10) // Convert to internal units
     {
         printf("\nYou can't afford the repairs. Cost: %.1f credits", (float)repairCost);
-        return 0;
+        return false;
     }
 
     // Perform the repair
@@ -1977,15 +2033,15 @@ static inline bool do_repair(char *commandArguments) {
     g_state.PlayerShipPtr->attributes.hullStrength = g_state.PlayerShipPtr->shipType->baseHullStrength;
 
     printf("\nShip repaired for %.1f credits. Hull integrity restored to 100%%.", (float)repairCost);
-    return 1;
+    return true;
 }
 
-static inline bool do_ship_details(char *commandArguments) {
+[[maybe_unused]] static inline bool do_ship_details(const char *commandArguments) {
     (void)(commandArguments); // Mark commandArguments as unused
 
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data is not available.");
-        return 0;
+        return false;
     }
 
     // Synchronize ship fuel with global state before displaying details
@@ -1993,7 +2049,7 @@ static inline bool do_ship_details(char *commandArguments) {
 
     // Call the detailed ship status display function from elite_ship_types.h
     DisplayShipStatus(g_state.PlayerShipPtr);
-    return 1;
+    return true;
 }
 
 /**
@@ -2001,20 +2057,20 @@ static inline bool do_ship_details(char *commandArguments) {
  * Usage: equip <equipment_name>
  * Available equipment depends on the current system's tech level.
  */
-static inline bool do_purchase_equipment(char *commandArguments) {
+[[maybe_unused]] static inline bool do_purchase_equipment(const char *command_arguments) {
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data not available.");
-        return 0;
+        return false;
     }
 
     // Check if we are docked at a station
     if (g_state.PlayerNavState.currentLocationType != CELESTIAL_STATION) {
         printf("\nYou must be docked at a station to purchase equipment.");
-        return 0;
+        return false;
     }
 
     // Check if an equipment name was provided
-    if (commandArguments == NULL || commandArguments[0] == '\0') {
+    if (command_arguments == NULL || command_arguments[0] == '\0') {
         printf("\nUsage: equip <equipment_name>");
         printf("\n\nAvailable Equipment:");
         printf("\n- ecm          - Electronic Counter Measures (600 CR)");
@@ -2031,11 +2087,11 @@ static inline bool do_purchase_equipment(char *commandArguments) {
         printf("\n  Example: equip beam");
         printf("\n  Note: You must be docked at a station to purchase equipment");
         printf("\n        Equipment availability depends on the system's tech level");
-        return 1;
+        return true;
     }
     // Normalize input to lowercase for case-insensitive matching
     char equipName[MAX_LEN];
-    snprintf(equipName, MAX_LEN, "%s", commandArguments);
+    snprintf(equipName, MAX_LEN, "%s", command_arguments);
 
     // Convert to lowercase
     for (char *p = equipName; *p; ++p) {
@@ -2088,14 +2144,14 @@ static inline bool do_purchase_equipment(char *commandArguments) {
             printf("\nInsufficient credits to purchase Cargo Bay Extension. "
                    "Required: %d, Available: %.1f",
                    cost, (float)g_state.Cash / 10.0f);
-            return 0;
+            return false;
         }
 
         if (techLevel < requiredTechLevel) {
             printf("\nCargo Bay Extensions not available at this tech level. "
                    "Required: %d, Current: %d",
                    requiredTechLevel + 1, techLevel + 1);
-            return 0;
+            return false;
         }
         // Directly apply the upgrade
         g_state.Cash -= cost;
@@ -2106,7 +2162,7 @@ static inline bool do_purchase_equipment(char *commandArguments) {
 
         printf("\nCargo Bay Extension installed. New capacity: %d tonnes.",
                g_state.PlayerShipPtr->attributes.cargoCapacityTons);
-        return 1;
+        return true;
     } else if (strcmp(equipName, "pulse") == 0) {
         equipType.weaponType = WEAPON_TYPE_PULSE_LASER;
         slotType = EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON;
@@ -2146,14 +2202,14 @@ static inline bool do_purchase_equipment(char *commandArguments) {
         if (g_state.PlayerShipPtr->attributes.missilesLoadedHoming >=
             g_state.PlayerShipPtr->attributes.missilePylons * MISSILE_PYLON_CAPACITY) {
             printf("\nCannot purchase more missiles. All pylons are full.");
-            return 0;
+            return false;
         }
 
         if (g_state.Cash < COST_MISSILE_HOMING * 10) {
             printf("\nInsufficient credits to purchase missile. Required: %d, "
                    "Available: %.1f",
                    COST_MISSILE_HOMING, (float)g_state.Cash / 10.0f);
-            return 0;
+            return false;
         }
 
         g_state.Cash -= COST_MISSILE_HOMING * 10;
@@ -2161,11 +2217,11 @@ static inline bool do_purchase_equipment(char *commandArguments) {
         printf("\nMissile purchased. Current missile count: %d/%d",
                g_state.PlayerShipPtr->attributes.missilesLoadedHoming,
                g_state.PlayerShipPtr->attributes.missilePylons * MISSILE_PYLON_CAPACITY);
-        return 1;
+        return true;
     } else {
         printf("\nUnknown equipment: %s", equipName);
         printf("\nUse 'equip' without parameters to see available equipment.");
-        return 0;
+        return false;
     }
     // Attempt to purchase the selected equipment
     bool result = PurchaseEquipment(g_state.PlayerShipPtr, formalName, slotType, equipType, cost, requiredTechLevel,
@@ -2180,16 +2236,16 @@ static inline bool do_purchase_equipment(char *commandArguments) {
  * @param commandArguments Arguments provided to the command (unused)
  * @return 1 if the command was processed successfully
  */
-static inline bool do_inventory_display(char *commandArguments) {
-    (void)commandArguments; // Mark as unused
+[[maybe_unused]] static inline bool do_inventory_display(const char *command_arguments) {
+    (void)command_arguments; // Mark as unused
 
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data not available.");
-        return 0;
+        return false;
     }
 
     ListEquipmentInventory(g_state.PlayerShipPtr);
-    return 1;
+    return true;
 }
 
 /**
@@ -2198,33 +2254,33 @@ static inline bool do_inventory_display(char *commandArguments) {
  * @param commandArguments Arguments provided to the command (slot number)
  * @return 1 if the equipment was stored successfully
  */
-static inline bool do_store_equipment(char *commandArguments) {
+[[maybe_unused]] static inline bool do_store_equipment(const char *command_arguments) {
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data not available.");
-        return 0;
+        return false;
     }
 
     // Check if we're in combat
     if (g_state.InCombat) {
         printf("\nCannot modify ship configuration during combat.");
-        return 0;
+        return false;
     }
 
     // Check if a slot number was provided
-    if (commandArguments == NULL || commandArguments[0] == '\0') {
+    if (command_arguments == NULL || command_arguments[0] == '\0') {
         printf("\nUsage: store <slot_number>");
         printf("\n\nAvailable Equipment Slots:");
         PrintEquipmentSlots(g_state.PlayerShipPtr);
-        return 0;
+        return false;
     }
 
     // Parse the slot number
-    int slotNumber = atoi(commandArguments);
+    int slotNumber = atoi(command_arguments);
 
     // Check if the slot number is valid
     if (slotNumber < 0 || slotNumber >= MAX_EQUIPMENT_SLOTS) {
         printf("\nInvalid slot number. Valid range: 0-%d", MAX_EQUIPMENT_SLOTS - 1);
-        return 0;
+        return false;
     }
 
     // Try to store the equipment
@@ -2238,34 +2294,36 @@ static inline bool do_store_equipment(char *commandArguments) {
  * slot_number)
  * @return 1 if the equipment was equipped successfully
  */
-static inline bool do_equip_from_inventory(char *commandArguments) {
+[[maybe_unused]] static inline bool do_equip_from_inventory(const char *command_arguments) {
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data not available.");
-        return 0;
+        return false;
     }
 
     // Check if we're in combat
     if (g_state.InCombat) {
         printf("\nCannot modify ship configuration during combat.");
-        return 0;
+        return false;
     }
     // Check if arguments were provided
-    if (commandArguments == NULL || commandArguments[0] == '\0') {
+    if (command_arguments == NULL || command_arguments[0] == '\0') {
         printf("\nUsage: use <inventory_index> <slot_number>\n");
         printf("Example: use 0 1  (equips item from inventory slot 0 to equipment "
                "slot 1)\n");
         printf("\nUse 'inv' command to view your inventory and 'shipinfo' to see "
                "available slots.\n");
-        return 0;
+        return false;
     } // Parse the arguments - we need two numbers: inventory index and slot
     // number
+    char arg_copy[MAX_LEN];
+    snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments);
     char arg1[MAX_LEN];
     char arg2[MAX_LEN];
     int invIndex = -1;
     int slotNumber = -1;
     // Extract the arguments
     char *saveptr;
-    char *token = safe_strtok(commandArguments, " \t", &saveptr);
+    char *token = safe_strtok(arg_copy, " \t", &saveptr);
     if (token != NULL) {
         snprintf(arg1, MAX_LEN, "%s", token);
         invIndex = atoi(arg1);
@@ -2280,17 +2338,17 @@ static inline bool do_equip_from_inventory(char *commandArguments) {
                    "equipment slot 1)\n");
             printf("\nUse 'inv' command to view your inventory and 'shipinfo' to see "
                    "available slots.\n");
-            return 0;
+            return false;
         }
     } // Check if both arguments were provided and are valid
     if (invIndex < 0 || invIndex >= MAX_EQUIPMENT_INVENTORY) {
         printf("\nInvalid inventory index. Valid range: 0-%d\n", MAX_EQUIPMENT_INVENTORY - 1);
-        return 0;
+        return false;
     }
 
     if (slotNumber < 0 || slotNumber >= MAX_EQUIPMENT_SLOTS) {
         printf("\nInvalid slot number. Valid range: 0-%d\n", MAX_EQUIPMENT_SLOTS - 1);
-        return 0;
+        return false;
     }
 
     // Try to equip the item from inventory
@@ -2298,7 +2356,7 @@ static inline bool do_equip_from_inventory(char *commandArguments) {
 }
 
 // Ship trading commands
-static inline bool do_shipyard(char *args) {
+[[maybe_unused]] static inline bool do_shipyard(const char *args) {
     (void)args; // Mark args as unused
 
     // Check if player is docked at a station
@@ -2306,7 +2364,7 @@ static inline bool do_shipyard(char *args) {
     // Need to be both at a station AND docked
     if (g_state.PlayerNavState.currentLocationType != CELESTIAL_STATION || g_state.PlayerLocationType != 10) {
         printf("Error: You must be docked at a station to access the shipyard.\n");
-        return 0;
+        return false;
     }
 
     // Get current system info
@@ -2315,15 +2373,15 @@ static inline bool do_shipyard(char *args) {
     DisplayShipyard(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, g_state.PlayerShipPtr,
                     g_state.currentGameTimeSeconds);
 
-    return 1;
+    return true;
 }
 
-static inline bool do_compareship(char *args) {
+[[maybe_unused]] static inline bool do_compareship(const char *args) {
     // Check if arguments are provided
     if (args == NULL || args[0] == '\0') {
         printf("Error: Please specify a ship to compare with.\n");
         printf("Usage: compareship <shipname>\n");
-        return 0;
+        return false;
     }
 
     // Get player ship
@@ -2331,16 +2389,16 @@ static inline bool do_compareship(char *args) {
     // Compare ships
     CompareShips(g_state.PlayerShipPtr, (const char *)args);
 
-    return 1;
+    return true;
 }
 
-static inline bool do_buyship(char *args) {
+[[maybe_unused]] static inline bool do_buyship(const char *args) {
     // Check if player is docked at a station
 
     // Need to be both at a station AND docked
     if (g_state.PlayerNavState.currentLocationType != CELESTIAL_STATION || g_state.PlayerLocationType != 10) {
         printf("Error: You must be docked at a station to purchase a ship.\n");
-        return 0;
+        return false;
     }
 
     // Check if arguments are provided
@@ -2348,7 +2406,7 @@ static inline bool do_buyship(char *args) {
         printf("Error: Please specify a ship to buy.\n");
         printf("Usage: buyship <ID or shipname> [notrade]\n");
         printf("Example: buyship 1  or  buyship \"Cobra Mk III\"\n");
-        return 0;
+        return false;
     }
 
     // Get current system info and player ship
@@ -2392,7 +2450,7 @@ static inline bool do_buyship(char *args) {
         if (!GetShipNameByID(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, shipID, actualShipName,
                              MAX_SHIP_NAME_LENGTH)) {
             printf("Error: Invalid ship ID: %d\n", shipID);
-            return 0;
+            return false;
         }
     } else {
         // The argument is a ship name, just copy it
@@ -2407,20 +2465,20 @@ static inline bool do_buyship(char *args) {
  * Command handler for the 'upgrade' command
  * Shows available ship upgrades or purchases a specific upgrade
  */
-static inline bool do_upgrade(char *commandArguments) { return UpgradeCommand(commandArguments); }
+[[maybe_unused]] static inline bool do_upgrade(const char *command_arguments) { return UpgradeCommand(command_arguments); }
 
 /**
  * Display detailed fuel information for the current ship
  */
-static inline bool show_fuel_status(char *commandArguments) {
+[[maybe_unused]] static inline bool show_fuel_status(const char *command_arguments) {
     // Unused parameter
-    (void)commandArguments;
+    (void)command_arguments;
 
     // Forward declaration for function from elite_player_state.h
 
     // Call the function that displays detailed fuel information
     display_ship_fuel_status();
-    return 1;
+    return true;
 }
 
 /**
@@ -2435,43 +2493,45 @@ static inline bool show_fuel_status(char *commandArguments) {
  * @param commandArguments Arguments provided to the command
  * @return 1 if the cargo was successfully jettisoned
  */
-static inline bool do_jettison(char *commandArguments) {
+[[maybe_unused]] static inline bool do_jettison(const char *command_arguments) {
     if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data not available.");
-        return 0;
+        return false;
     }
 
-    if (commandArguments == NULL || strlen(commandArguments) == 0) {
+    if (command_arguments == NULL || strlen(command_arguments) == 0) {
         printf("\nUsage: jettison <cargo_name> <quantity>");
         printf("\nUsage: jettison all");
         printf("\nExample: jettison Food 5");
-        return 0;
+        return false;
     }
 
     // Check if the "all" flag was used
-    if (StringCompareIgnoreCase(commandArguments, "all") == 0) {
+    if (StringCompareIgnoreCase(command_arguments, "all") == 0) {
         // Special case: jettison all cargo
-        return JettisonAllCargo(g_state.PlayerShipPtr);
+        return jettison_all_cargo(g_state.PlayerShipPtr);
     } // Parse the arguments
     char cargoName[MAX_LEN];
     char quantityStr[MAX_LEN];
+    char arg_copy[MAX_LEN];
+    snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments);
 
     // Split the command arguments to get the cargo name
-    split_string_at_first_space(commandArguments, cargoName);
+    split_string_at_first_space(arg_copy, cargoName);
 
     // Get the quantity part
-    commandArguments = strip_leading_trailing_spaces(commandArguments);
+    char *trimmed_qty = strip_leading_trailing_spaces(arg_copy);
 
     // If quantity is not provided, default to 1
     int quantity = 1;
-    if (strlen(commandArguments) > 0) {
-        snprintf(quantityStr, MAX_LEN, "%s", commandArguments);
+    if (trimmed_qty != NULL && strlen(trimmed_qty) > 0) {
+        snprintf(quantityStr, MAX_LEN, "%s", trimmed_qty);
         quantity = atoi(quantityStr);
     }
     // Verify quantity is valid
     if (quantity <= 0) {
         printf("\nInvalid quantity. Please specify a positive number.");
-        return 0;
+        return false;
     }
     // No need to modify cargo name capitalization since we use case-insensitive
     // comparison The StringCompareIgnoreCase function will handle different
@@ -2479,9 +2539,9 @@ static inline bool do_jettison(char *commandArguments) {
 
     // First, check if the cargo exists in the player's ship
     bool cargoFound = 0;
-    if (!GetCargoQuantity(g_state.PlayerShipPtr, cargoName)) {
+    if (!get_cargo_quantity(g_state.PlayerShipPtr, cargoName)) {
         printf("\nError: %s not found in cargo hold.", cargoName);
-        return 0;
+        return false;
     }
 
     // Find the cargo index in the global g_state.tradnames array
@@ -2495,15 +2555,14 @@ static inline bool do_jettison(char *commandArguments) {
     if (!cargoFound) {
         printf("\nError: Unable to find cargo in global inventory. Please report "
                "this bug.");
-        return 0;
+        return false;
     }
 
     // Call the JettisonCargo function to remove from player ship
-    if (JettisonCargo(g_state.PlayerShipPtr, cargoName, quantity)) {
+    if (jettison_cargo(g_state.PlayerShipPtr, cargoName, quantity)) {
         printf("\nSuccessfully jettisoned %d units of %s.", quantity, cargoName);
-        return 1;
-    } else {
-        printf("\nFailed to jettison %s. Check cargo name and quantity.", cargoName);
-        return 0;
+        return true;
     }
+    printf("\nFailed to jettison %s. Check cargo name and quantity.", cargoName);
+    return false;
 }

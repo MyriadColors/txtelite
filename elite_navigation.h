@@ -62,7 +62,7 @@ static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB) 
  * @see distance - Function used to calculate distances between planets
  * @see string_begins_with - Function that checks if a string begins with another string
  */
-static inline PlanetNum find_matching_system_name(char *searchName) {
+static inline PlanetNum find_matching_system_name(const char *searchName) {
     PlanetNum syscount;
     PlanetNum p = g_state.CurrentPlanet; // Global variable
     uint16_t d = 0xFFFF;                 // Initialize with max uint16_t value

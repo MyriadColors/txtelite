@@ -7,14 +7,16 @@
  * The implementation is contained entirely within this header file.
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #include "elite_galaxy.h"
-#include "elite_market.h"
+#include "elite_navigation_types.h"
 #include "elite_player_state.h"
+#include "elite_ship_components.h"
 #include "elite_star_system.h"
 #include "elite_state.h"
 #include "platform_compat.h" // For cross-platform compatibility
@@ -36,26 +38,30 @@
  * @param size Size of the fullPath buffer
  * @return 1 if the directory exists or was created successfully, 0 otherwise
  */
-static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t size) {
+static inline bool get_save_file_path(const char *filename, char *full_path, size_t size) {
     // Create the save directory if it doesn't exist
     platform_stat_struct st = {0};
     if (platform_stat(SAVE_DIRECTORY, &st) == -1) {
         if (MKDIR(SAVE_DIRECTORY) != 0) {
             printf("Error: Could not create directory '%s'.\n", SAVE_DIRECTORY);
-            return 0;
+            return false;
         }
     }
 
     // Check if filename already contains the directory
     if (strncmp(filename, SAVE_DIRECTORY, strlen(SAVE_DIRECTORY)) == 0) {
         // Filename already includes the directory path
-        snprintf(fullPath, size, "%s", filename);
+        int written = snprintf(full_path, size, "%s", filename);
+        if (written < 0 || (size_t)written >= size) {
+            printf("Error: Save file path is too long or could not be formatted.\n");
+            return false;
+        }
     } else {
         // Construct the full path using cross-platform path separator
-        platform_make_path(fullPath, size, SAVE_DIRECTORY, filename);
+        platform_make_path(full_path, size, SAVE_DIRECTORY, filename);
     }
 
-    return 1;
+    return true;
 }
 
 // Structure for the save file header
@@ -64,7 +70,7 @@ typedef struct {
     uint16_t version;     // Save format version
     time_t timestamp;     // When the save was created
     char description[64]; // Optional description
-} SaveHeader;
+} save_header_t;
 
 // Structure for the game state
 typedef struct {
@@ -97,7 +103,7 @@ typedef struct {
     // Ship data
     char shipClassName[MAX_SHIP_NAME_LENGTH];
     ShipCoreAttributes shipAttributes;
-} SaveGameState;
+} save_game_state_t;
 
 /**
  * @brief Saves the current game state to a file
@@ -109,36 +115,42 @@ typedef struct {
  *
  * @return 1 if the save operation succeeded, 0 if any error occurred
  */
-static inline bool save_game(const char *filename, const char *description) {
-    char fullPath[256];
+// This header exposes optional save functionality; not every translation unit uses it.
+// The implementation is intentionally kept together to preserve the save transaction order.
+[[maybe_unused]] static inline bool save_game(const char *filename, const char *description) { // NOLINT(readability-function-size, readability-function-cognitive-complexity)
+    char full_path[256];
 
     // Get the full path with save directory
-    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath))) {
-        return 0;
+    if (!get_save_file_path(filename, full_path, sizeof(full_path))) {
+        return false;
     }
-    FILE *file = safe_fopen(fullPath, "wb");
+    FILE *file = safe_fopen(full_path, "wb");
     if (!file) {
-        printf("Error: Could not open file '%s' for writing.\n", fullPath);
-        return 0;
+        printf("Error: Could not open file '%s' for writing.\n", full_path);
+        return false;
     }
     // Prepare header
-    SaveHeader header;
+    save_header_t header;
     memset(&header, 0, sizeof(header));
     memcpy(header.signature, SAVE_SIGNATURE, 7);
     header.version = SAVE_VERSION;
     header.timestamp = time(NULL);
     if (description) {
-        snprintf(header.description, sizeof(header.description), "%s", description);
+        if (snprintf(header.description, sizeof(header.description), "%s", description) < 0) {
+            printf("Error: Failed to format save description.\n");
+            fclose(file);
+            return false;
+        }
     } else {
         // Create a default description
-        char timeStr[32];
+        char time_str[32];
         struct tm timeBuffer;
         if (safe_localtime(&header.timestamp, &timeBuffer) == 0) {
-            strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeBuffer);
         } else {
-            snprintf(timeStr, sizeof(timeStr), "Unknown time");
+            snprintf(time_str, sizeof(time_str), "Unknown time");
         }
-        snprintf(header.description, sizeof(header.description), "%s - %s (Galaxy %d)", timeStr,
+        snprintf(header.description, sizeof(header.description), "%s - %s (Galaxy %d)", time_str,
                  g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
     }
 
@@ -150,7 +162,7 @@ static inline bool save_game(const char *filename, const char *description) {
     }
 
     // Prepare game state
-    SaveGameState state;
+    save_game_state_t state;
     memset(&state, 0, sizeof(state));
 
     state.seed = g_state.SEED;
@@ -225,7 +237,7 @@ static inline bool save_game(const char *filename, const char *description) {
 static inline bool load_game(const char *filename) {
     char fullPath[256];
 
-    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath))) {
+    if (!get_save_file_path(filename, fullPath, sizeof(fullPath))) {
         return 0;
     }
 
@@ -235,7 +247,7 @@ static inline bool load_game(const char *filename) {
         return 0;
     }
     // Read header
-    SaveHeader header;
+    save_header_t header;
     if (fread(&header, sizeof(header), 1, file) != 1) {
         printf("Error: Failed to read save header.\n");
         fclose(file);
@@ -257,7 +269,7 @@ static inline bool load_game(const char *filename) {
     }
 
     // Read game state
-    SaveGameState state;
+    save_game_state_t state;
     if (fread(&state, sizeof(state), 1, file) != 1) {
         printf("Error: Failed to read game state.\n");
         fclose(file);
@@ -376,7 +388,7 @@ static inline bool show_save_info(const char *filename) {
     char fullPath[256];
 
     // Get the full path with save directory
-    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath))) {
+    if (!get_save_file_path(filename, fullPath, sizeof(fullPath))) {
         return 0;
     }
 
@@ -386,7 +398,7 @@ static inline bool show_save_info(const char *filename) {
         return 0;
     }
     // Read header
-    SaveHeader header;
+    save_header_t header;
     if (fread(&header, sizeof(header), 1, file) != 1) {
         printf("Error: Failed to read save header.\n");
         fclose(file);
@@ -412,7 +424,7 @@ static inline bool show_save_info(const char *filename) {
     printf("Description: %s\n", header.description);
 
     fclose(file);
-    return 1;
+    return true;
 }
 
 // GetSaveFilePath function has been moved to the top of the file
@@ -423,10 +435,16 @@ static inline bool show_save_info(const char *filename) {
  * @param buffer Buffer to write the filename to.
  * @param size Size of the buffer.
  */
-static inline void get_default_save_filename(char *buffer, size_t size) {
+[[maybe_unused]] static inline void get_default_save_filename(char *buffer, size_t size) {
     char filename[MAX_PATH];
-    snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav", g_state.Galaxy[g_state.CurrentPlanet].name,
-             g_state.GalaxyNum);
+    int written = snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav",
+                           g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
+    if (written < 0 || (size_t)written >= sizeof(filename)) {
+        if (size > 0) {
+            buffer[0] = '\0';
+        }
+        return;
+    }
     platform_make_path(buffer, size, SAVE_DIRECTORY, filename);
 }
 
@@ -444,25 +462,9 @@ static inline bool create_save_directory() {
         // Directory does not exist, attempt to create it
         if (MKDIR(SAVE_DIRECTORY) != 0) {
             printf("Error: Failed to create save directory '%s'.\n", SAVE_DIRECTORY);
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 
-/**
- * @brief Gets the full path for a save file in the designated save directory.
- *
- * This function constructs the full file path for a save file by combining the save directory,
- * the base filename, and the file extension. It ensures that the directory separator is correct
- * for the current platform.
- *
- * @param buffer Buffer to write the file path to.
- * @param size Size of the buffer.
- * @param filename Base filename without path or extension.
- */
-static inline void get_save_file_path(char *buffer, size_t size, const char *filename) {
-    char fullFilename[MAX_PATH];
-    snprintf(fullFilename, sizeof(fullFilename), "%s.sav", filename);
-    platform_make_path(buffer, size, SAVE_DIRECTORY, fullFilename);
-}

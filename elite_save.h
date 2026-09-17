@@ -12,12 +12,12 @@
 #include <string.h>
 #include <time.h>
 
-#include "platform_compat.h"      // For cross-platform compatibility
-#include "elite_state.h"
-#include "elite_player_state.h"
 #include "elite_galaxy.h"
 #include "elite_market.h"
+#include "elite_player_state.h"
 #include "elite_star_system.h"
+#include "elite_state.h"
+#include "platform_compat.h" // For cross-platform compatibility
 
 // Version identifier for the save file format
 #define SAVE_VERSION 2
@@ -30,33 +30,27 @@
 
 /**
  * Helper function to ensure the saves directory exists and construct the full path.
- * 
+ *
  * @param filename The base filename for the save
  * @param fullPath Buffer to store the full path
  * @param size Size of the fullPath buffer
  * @return 1 if the directory exists or was created successfully, 0 otherwise
  */
-static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t size)
-{
+static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t size) {
     // Create the save directory if it doesn't exist
     platform_stat_struct st = {0};
-    if (platform_stat(SAVE_DIRECTORY, &st) == -1)
-    {
-        if (MKDIR(SAVE_DIRECTORY) != 0)
-        {
+    if (platform_stat(SAVE_DIRECTORY, &st) == -1) {
+        if (MKDIR(SAVE_DIRECTORY) != 0) {
             printf("Error: Could not create directory '%s'.\n", SAVE_DIRECTORY);
             return 0;
         }
     }
 
     // Check if filename already contains the directory
-    if (strncmp(filename, SAVE_DIRECTORY, strlen(SAVE_DIRECTORY)) == 0) 
-    {
+    if (strncmp(filename, SAVE_DIRECTORY, strlen(SAVE_DIRECTORY)) == 0) {
         // Filename already includes the directory path
         snprintf(fullPath, size, "%s", filename);
-    } 
-    else 
-    {
+    } else {
         // Construct the full path using cross-platform path separator
         platform_make_path(fullPath, size, SAVE_DIRECTORY, filename);
     }
@@ -65,8 +59,7 @@ static inline bool GetSaveFilePath(const char *filename, char *fullPath, size_t 
 }
 
 // Structure for the save file header
-typedef struct
-{
+typedef struct {
     char signature[8];    // "TXTELITE"
     uint16_t version;     // Save format version
     time_t timestamp;     // When the save was created
@@ -74,8 +67,7 @@ typedef struct
 } SaveHeader;
 
 // Structure for the game state
-typedef struct
-{
+typedef struct {
     // Galaxy and seed data
     struct SeedType seed;
     struct FastSeedType rndSeed;
@@ -85,7 +77,7 @@ typedef struct
     int currentPlanet;
     int32_t cash;
     uint16_t fuel;
-    
+
     // Legacy cargo fields (kept in save format for now, but populated from PlayerShip)
     uint16_t holdSpace;
     uint16_t shipHold[COMMODITY_ARRAY_SIZE];
@@ -117,51 +109,41 @@ typedef struct
  *
  * @return 1 if the save operation succeeded, 0 if any error occurred
  */
-static inline bool save_game(const char *filename, const char *description)
-{
+static inline bool save_game(const char *filename, const char *description) {
     char fullPath[256];
-    
+
     // Get the full path with save directory
-    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
-    {
+    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath))) {
         return 0;
     }
-      FILE *file = safe_fopen(fullPath, "wb");
-    if (!file)
-    {
+    FILE *file = safe_fopen(fullPath, "wb");
+    if (!file) {
         printf("Error: Could not open file '%s' for writing.\n", fullPath);
         return 0;
     }
     // Prepare header
     SaveHeader header;
     memset(&header, 0, sizeof(header));
-    memcpy(header.signature, SAVE_SIGNATURE, 7); 
+    memcpy(header.signature, SAVE_SIGNATURE, 7);
     header.version = SAVE_VERSION;
-    header.timestamp = time(NULL);    if (description)
-    {
+    header.timestamp = time(NULL);
+    if (description) {
         snprintf(header.description, sizeof(header.description), "%s", description);
-    }
-    else
-    {
+    } else {
         // Create a default description
         char timeStr[32];
         struct tm timeBuffer;
-        if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
-        {
+        if (safe_localtime(&header.timestamp, &timeBuffer) == 0) {
             strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
-        }
-        else
-        {
+        } else {
             snprintf(timeStr, sizeof(timeStr), "Unknown time");
         }
-        snprintf(header.description, sizeof(header.description),
-                 "%s - %s (Galaxy %d)",
-                 timeStr, g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
+        snprintf(header.description, sizeof(header.description), "%s - %s (Galaxy %d)", timeStr,
+                 g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
     }
 
     // Write header
-    if (fwrite(&header, sizeof(header), 1, file) != 1)
-    {
+    if (fwrite(&header, sizeof(header), 1, file) != 1) {
         printf("Error: Failed to write save header.\n");
         fclose(file);
         return 0;
@@ -170,20 +152,21 @@ static inline bool save_game(const char *filename, const char *description)
     // Prepare game state
     SaveGameState state;
     memset(&state, 0, sizeof(state));
-    
+
     state.seed = g_state.SEED;
     state.rndSeed = g_state.RndSeed;
     state.galaxyNum = g_state.GalaxyNum;
     state.currentPlanet = g_state.CurrentPlanet;
     state.cash = g_state.Cash;
     state.fuel = g_state.Fuel;
-    
+
     // Sync legacy cargo fields from PlayerShipPtr
     if (g_state.PlayerShipPtr) {
-        state.holdSpace = g_state.PlayerShipPtr->attributes.cargoCapacityTons - g_state.PlayerShipPtr->attributes.currentCargoTons;
+        state.holdSpace =
+            g_state.PlayerShipPtr->attributes.cargoCapacityTons - g_state.PlayerShipPtr->attributes.currentCargoTons;
         snprintf(state.shipClassName, MAX_SHIP_NAME_LENGTH, "%s", g_state.PlayerShipPtr->shipClassName);
         state.shipAttributes = g_state.PlayerShipPtr->attributes;
-        
+
         // Populate shipHold array from PlayerShipPtr->cargo
         for (int i = 0; i <= LAST_TRADE; i++) {
             for (int j = 0; j < MAX_CARGO_SLOTS; j++) {
@@ -204,26 +187,18 @@ static inline bool save_game(const char *filename, const char *description)
     state.currentPlanetIndex = 0;
     state.currentStationIndex = 0;
 
-    if (g_state.PlayerNavState.currentLocationType == CELESTIAL_PLANET)
-    {
-        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++)
-        {
-            if (g_state.PlayerNavState.currentLocation.planet == &g_state.CurrentStarSystem->planets[i])
-            {
+    if (g_state.PlayerNavState.currentLocationType == CELESTIAL_PLANET) {
+        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++) {
+            if (g_state.PlayerNavState.currentLocation.planet == &g_state.CurrentStarSystem->planets[i]) {
                 state.currentPlanetIndex = i;
                 break;
             }
         }
-    }
-    else if (g_state.PlayerNavState.currentLocationType == CELESTIAL_STATION)
-    {
-        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++)
-        {
+    } else if (g_state.PlayerNavState.currentLocationType == CELESTIAL_STATION) {
+        for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++) {
             Planet *planet = &g_state.CurrentStarSystem->planets[i];
-            for (uint8_t j = 0; j < planet->numStations; j++)
-            {
-                if (g_state.PlayerNavState.currentLocation.station == planet->stations[j])
-                {
+            for (uint8_t j = 0; j < planet->numStations; j++) {
+                if (g_state.PlayerNavState.currentLocation.station == planet->stations[j]) {
                     state.currentPlanetIndex = i;
                     state.currentStationIndex = j;
                     break;
@@ -233,8 +208,7 @@ static inline bool save_game(const char *filename, const char *description)
     }
 
     // Write game state
-    if (fwrite(&state, sizeof(state), 1, file) != 1)
-    {
+    if (fwrite(&state, sizeof(state), 1, file) != 1) {
         printf("Error: Failed to write game state.\n");
         fclose(file);
         return 0;
@@ -248,52 +222,43 @@ static inline bool save_game(const char *filename, const char *description)
 /**
  * @brief Loads game state from a saved file
  */
-static inline bool load_game(const char *filename)
-{
+static inline bool load_game(const char *filename) {
     char fullPath[256];
-    
-    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
-    {
+
+    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath))) {
         return 0;
     }
-    
+
     FILE *file = safe_fopen(fullPath, "rb");
-    if (!file)
-    {
+    if (!file) {
         printf("Error: Could not open file '%s' for reading.\n", fullPath);
         return 0;
     }
     // Read header
     SaveHeader header;
-    if (fread(&header, sizeof(header), 1, file) != 1)
-    {
+    if (fread(&header, sizeof(header), 1, file) != 1) {
         printf("Error: Failed to read save header.\n");
         fclose(file);
         return 0;
     }
 
     // Verify signature
-    if (strncmp(header.signature, SAVE_SIGNATURE, 7) != 0)
-    {
-        printf("Error: Invalid save file format. Expected '%s', found '%.7s'.\n",
-               SAVE_SIGNATURE, header.signature);
+    if (strncmp(header.signature, SAVE_SIGNATURE, 7) != 0) {
+        printf("Error: Invalid save file format. Expected '%s', found '%.7s'.\n", SAVE_SIGNATURE, header.signature);
         fclose(file);
         return 0;
     }
 
     // Verify version
-    if (header.version != SAVE_VERSION)
-    {
-        printf("Error: Incompatible save file version %d (expected %d).\n",
-               header.version, SAVE_VERSION);
+    if (header.version != SAVE_VERSION) {
+        printf("Error: Incompatible save file version %d (expected %d).\n", header.version, SAVE_VERSION);
         fclose(file);
         return 0;
     }
 
     // Read game state
     SaveGameState state;
-    if (fread(&state, sizeof(state), 1, file) != 1)
-    {
+    if (fread(&state, sizeof(state), 1, file) != 1) {
         printf("Error: Failed to read game state.\n");
         fclose(file);
         return 0;
@@ -311,22 +276,23 @@ static inline bool load_game(const char *filename)
     g_state.CurrentPlanet = state.currentPlanet;
     g_state.Cash = state.cash;
     g_state.Fuel = state.fuel;
-    
+
     // PlayerShip restoration
     if (g_state.PlayerShipPtr) {
         g_state.PlayerShipPtr->attributes = state.shipAttributes;
         // In a more complete implementation, we'd lookup shipType by shipClassName
-        
+
         // Restore cargo from saved shipHold array
         for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
             g_state.PlayerShipPtr->cargo[i].quantity = 0;
             snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
         }
-        
+
         int cargoSlot = 0;
         for (int i = 0; i <= LAST_TRADE; i++) {
             if (state.shipHold[i] > 0 && cargoSlot < MAX_CARGO_SLOTS) {
-                snprintf(g_state.PlayerShipPtr->cargo[cargoSlot].name, MAX_SHIP_NAME_LENGTH, "%s", g_state.tradnames[i]);
+                snprintf(g_state.PlayerShipPtr->cargo[cargoSlot].name, MAX_SHIP_NAME_LENGTH, "%s",
+                         g_state.tradnames[i]);
                 g_state.PlayerShipPtr->cargo[cargoSlot].quantity = state.shipHold[i];
                 cargoSlot++;
             }
@@ -334,7 +300,7 @@ static inline bool load_game(const char *filename)
     }
 
     g_state.LocalMarket = state.localMarket;
-    g_state.currentGameTimeSeconds = state.gameTimeSeconds; 
+    g_state.currentGameTimeSeconds = state.gameTimeSeconds;
 
     // Initialize star system for the current planet
     initialize_star_system_for_current_planet();
@@ -344,59 +310,41 @@ static inline bool load_game(const char *filename)
     g_state.PlayerNavState.distanceFromStar = state.distanceFromStar;
 
     // Reconstruct the pointers based on saved indices
-    if (state.currentLocationType == CELESTIAL_STAR)
-    {
+    if (state.currentLocationType == CELESTIAL_STAR) {
         g_state.PlayerNavState.currentLocation.star = &g_state.CurrentStarSystem->centralStar;
-    }
-    else if (state.currentLocationType == CELESTIAL_PLANET)
-    {
-        if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets)
-        {
-            g_state.PlayerNavState.currentLocation.planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
-        }
-        else
-        {
+    } else if (state.currentLocationType == CELESTIAL_PLANET) {
+        if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets) {
+            g_state.PlayerNavState.currentLocation.planet =
+                &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
+        } else {
             g_state.PlayerNavState.currentLocation.planet = &g_state.CurrentStarSystem->planets[0];
             g_state.PlayerNavState.distanceFromStar = g_state.PlayerNavState.currentLocation.planet->orbitalDistance;
         }
-    }
-    else if (state.currentLocationType == CELESTIAL_STATION)
-    {
-        if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets)
-        {
+    } else if (state.currentLocationType == CELESTIAL_STATION) {
+        if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets) {
             Planet *planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
-            if (state.currentStationIndex < planet->numStations)
-            {
+            if (state.currentStationIndex < planet->numStations) {
                 g_state.PlayerNavState.currentLocation.station = planet->stations[state.currentStationIndex];
-            }
-            else
-            {
+            } else {
                 g_state.PlayerNavState.currentLocationType = CELESTIAL_PLANET;
                 g_state.PlayerNavState.currentLocation.planet = planet;
                 g_state.PlayerNavState.distanceFromStar = planet->orbitalDistance;
             }
-        }
-        else
-        {
+        } else {
             g_state.PlayerNavState.currentLocationType = CELESTIAL_PLANET;
             g_state.PlayerNavState.currentLocation.planet = &g_state.CurrentStarSystem->planets[0];
             g_state.PlayerNavState.distanceFromStar = g_state.PlayerNavState.currentLocation.planet->orbitalDistance;
         }
-    }
-    else if (state.currentLocationType == CELESTIAL_NAV_BEACON)
-    {
+    } else if (state.currentLocationType == CELESTIAL_NAV_BEACON) {
         g_state.PlayerNavState.distanceFromStar = g_state.CurrentStarSystem->navBeaconDistance;
-    }    
-    
+    }
+
     // Show load information
     char timeStr[32];
     struct tm timeBuffer;
-    if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
-    {
+    if (safe_localtime(&header.timestamp, &timeBuffer) == 0) {
         strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
-    }
-    else
-    {
+    } else {
         snprintf(timeStr, sizeof(timeStr), "Unknown time");
     }
     printf("Game loaded from '%s'.\n", filename);
@@ -406,7 +354,6 @@ static inline bool load_game(const char *filename)
 
     return 1;
 }
-
 
 /**
  * @brief Displays information about a saved game file.
@@ -425,47 +372,38 @@ static inline bool load_game(const char *filename)
  *
  * @note The function handles its own error messages, printing them to stdout
  */
-static inline bool show_save_info(const char *filename)
-{
+static inline bool show_save_info(const char *filename) {
     char fullPath[256];
-    
+
     // Get the full path with save directory
-    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath)))
-    {
+    if (!GetSaveFilePath(filename, fullPath, sizeof(fullPath))) {
         return 0;
     }
-    
+
     FILE *file = safe_fopen(fullPath, "rb");
-    if (!file)
-    {
+    if (!file) {
         printf("Error: Could not open file '%s' for reading.\n", fullPath);
         return 0;
     }
     // Read header
     SaveHeader header;
-    if (fread(&header, sizeof(header), 1, file) != 1)
-    {
+    if (fread(&header, sizeof(header), 1, file) != 1) {
         printf("Error: Failed to read save header.\n");
         fclose(file);
         return 0;
     }
 
     // Verify signature
-    if (strncmp(header.signature, SAVE_SIGNATURE, 7) != 0)
-    {
-        printf("Error: Invalid save file format. Expected '%s', found '%.7s'.\n",
-               SAVE_SIGNATURE, header.signature);
+    if (strncmp(header.signature, SAVE_SIGNATURE, 7) != 0) {
+        printf("Error: Invalid save file format. Expected '%s', found '%.7s'.\n", SAVE_SIGNATURE, header.signature);
         fclose(file);
         return 0;
-    }    // Display information
+    } // Display information
     char timeStr[32];
     struct tm timeBuffer;
-    if (safe_localtime(&header.timestamp, &timeBuffer) == 0)
-    {
+    if (safe_localtime(&header.timestamp, &timeBuffer) == 0) {
         strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
-    }
-    else
-    {
+    } else {
         snprintf(timeStr, sizeof(timeStr), "Unknown time");
     }
     printf("Save file: %s\n", filename);
@@ -485,10 +423,10 @@ static inline bool show_save_info(const char *filename)
  * @param buffer Buffer to write the filename to.
  * @param size Size of the buffer.
  */
-static inline void get_default_save_filename(char *buffer, size_t size)
-{
+static inline void get_default_save_filename(char *buffer, size_t size) {
     char filename[MAX_PATH];
-    snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav", g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
+    snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav", g_state.Galaxy[g_state.CurrentPlanet].name,
+             g_state.GalaxyNum);
     platform_make_path(buffer, size, SAVE_DIRECTORY, filename);
 }
 
@@ -500,14 +438,11 @@ static inline void get_default_save_filename(char *buffer, size_t size)
  *
  * @return 1 if the directory exists or was created successfully, 0 if an error occurred
  */
-static inline bool create_save_directory()
-{
+static inline bool create_save_directory() {
     platform_stat_struct st = {0};
-    if (platform_stat(SAVE_DIRECTORY, &st) == -1)
-    {
+    if (platform_stat(SAVE_DIRECTORY, &st) == -1) {
         // Directory does not exist, attempt to create it
-        if (MKDIR(SAVE_DIRECTORY) != 0)
-        {
+        if (MKDIR(SAVE_DIRECTORY) != 0) {
             printf("Error: Failed to create save directory '%s'.\n", SAVE_DIRECTORY);
             return 0;
         }
@@ -526,8 +461,7 @@ static inline bool create_save_directory()
  * @param size Size of the buffer.
  * @param filename Base filename without path or extension.
  */
-static inline void get_save_file_path(char *buffer, size_t size, const char *filename)
-{
+static inline void get_save_file_path(char *buffer, size_t size, const char *filename) {
     char fullFilename[MAX_PATH];
     snprintf(fullFilename, sizeof(fullFilename), "%s.sav", filename);
     platform_make_path(buffer, size, SAVE_DIRECTORY, fullFilename);

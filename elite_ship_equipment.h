@@ -8,21 +8,16 @@
  * @param playerShip Pointer to the PlayerShip structure
  * @return 1 if fuel scoops are installed, 0 otherwise
  */
-static inline bool HasFuelScoops(const PlayerShip *playerShip)
-{
-    if (playerShip == NULL)
-    {
+static inline bool HasFuelScoops(const PlayerShip *playerShip) {
+    if (playerShip == NULL) {
         return 0;
     }
 
     // Iterate through equipment slots
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
-        if (playerShip->equipment[i].isActive &&
-            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
+        if (playerShip->equipment[i].isActive && playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
-            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS)
-        {
+            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS) {
             return 1;
         }
     }
@@ -36,21 +31,17 @@ static inline bool HasFuelScoops(const PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return 1 if ECM is installed, 0 otherwise
  */
-static inline bool HasECM(const PlayerShip *playerShip)
-{
-    if (playerShip == NULL)
-    {
+static inline bool HasECM(const PlayerShip *playerShip) {
+    if (playerShip == NULL) {
         return 0;
     }
 
     // Iterate through equipment slots
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
         if (playerShip->equipment[i].isActive &&
             (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
              playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) &&
-            playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
-        {
+            playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM) {
             return 1;
         }
     }
@@ -64,21 +55,16 @@ static inline bool HasECM(const PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return 1 if docking computer is installed, 0 otherwise
  */
-static inline bool HasDockingComputer(const PlayerShip *playerShip)
-{
-    if (playerShip == NULL)
-    {
+static inline bool HasDockingComputer(const PlayerShip *playerShip) {
+    if (playerShip == NULL) {
         return 0;
     }
 
     // Iterate through equipment slots
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
-        if (playerShip->equipment[i].isActive &&
-            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
+        if (playerShip->equipment[i].isActive && playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
-            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
-        {
+            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER) {
             return 1;
         }
     }
@@ -92,30 +78,25 @@ static inline bool HasDockingComputer(const PlayerShip *playerShip)
  * @param playerShip Pointer to the PlayerShip structure
  * @return 1 if ECM was successfully activated, 0 otherwise
  */
-static inline bool ActivateECM(PlayerShip *playerShip)
-{
-    if (playerShip == NULL)
-    {
+static inline bool ActivateECM(PlayerShip *playerShip) {
+    if (playerShip == NULL) {
         return 0;
     }
 
     // Check if ship has ECM
     bool hasECM = 0;
 
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
         if (playerShip->equipment[i].isActive &&
             (playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
              playerShip->equipment[i].slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) &&
-            playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
-        {
+            playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM) {
             hasECM = 1;
             break;
         }
     }
 
-    if (!hasECM)
-    {
+    if (!hasECM) {
         printf("Error: Your ship is not equipped with ECM System.\n");
         return 0;
     }
@@ -131,30 +112,24 @@ static inline bool ActivateECM(PlayerShip *playerShip)
  * @param distance The distance to the station (used to determine docking time)
  * @return 1 if docking computer was activated successfully, 0 otherwise
  */
-static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance)
-{
-    if (playerShip == NULL)
-    {
+static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distance) {
+    if (playerShip == NULL) {
         return 0;
     }
 
     // Check if ship has docking computer
     bool hasDockingComputer = 0;
 
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
-        if (playerShip->equipment[i].isActive &&
-            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
+        if (playerShip->equipment[i].isActive && playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
-            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
-        {
+            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER) {
             hasDockingComputer = 1;
             break;
         }
     }
 
-    if (!hasDockingComputer)
-    {
+    if (!hasDockingComputer) {
         printf("Error: Your ship is not equipped with a Docking Computer.\n");
         return 0;
     }
@@ -179,37 +154,29 @@ static inline bool ActivateDockingComputer(PlayerShip *playerShip, double distan
  * @param playerShip Pointer to the PlayerShip structure
  * @return 1 if scan was successful, 0 otherwise
  */
-static inline bool UseScanner(PlayerShip *playerShip)
-{
-    if (playerShip == NULL)
-    {
+static inline bool UseScanner(PlayerShip *playerShip) {
+    if (playerShip == NULL) {
         return 0;
     }
 
     // Check if ship has advanced scanner
     bool hasUpgradedScanner = 0;
 
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
-        if (playerShip->equipment[i].isActive &&
-            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
+        if (playerShip->equipment[i].isActive && playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
-            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE)
-        {
+            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE) {
             hasUpgradedScanner = 1;
             break;
         }
     }
 
     // Perform scan
-    if (hasUpgradedScanner)
-    {
+    if (hasUpgradedScanner) {
         printf("Advanced scanner activated. Extended range and detailed scan initiated.\n");
         // Advanced scanner would provide more detailed information
         // This would normally integrate with the navigation system
-    }
-    else
-    {
+    } else {
         printf("Basic scanner activated. Standard scan initiated.\n");
         // Basic scanner would provide standard information
     }
@@ -225,37 +192,30 @@ static inline bool UseScanner(PlayerShip *playerShip)
  * @param criticalDamage Whether the ship has taken critical damage
  * @return 1 if escape pod was successfully deployed, 0 otherwise
  */
-static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
-{
-    if (playerShip == NULL)
-    {
+static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage) {
+    if (playerShip == NULL) {
         return 0;
     }
 
     // Check if ship has escape pod
     bool hasEscapePod = 0;
 
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i)
-    {
-        if (playerShip->equipment[i].isActive &&
-            playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
+        if (playerShip->equipment[i].isActive && playerShip->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             playerShip->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
-            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD)
-        {
+            playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD) {
             hasEscapePod = 1;
             break;
         }
     }
 
-    if (!hasEscapePod)
-    {
+    if (!hasEscapePod) {
         printf("Error: Your ship is not equipped with an Escape Pod.\n");
         return 0;
     }
 
     // Only allow escape pod use if ship is critically damaged or override for testing
-    if (!criticalDamage)
-    {
+    if (!criticalDamage) {
         printf("Escape pod can only be deployed in case of critical ship damage.\n");
         return 0;
     }
@@ -289,21 +249,16 @@ static inline bool DeployEscapePod(PlayerShip *playerShip, bool criticalDamage)
  * @param slotType The weapon slot to check (forward or aft)
  * @return The damage output value, or 0.0 if no weapon is installed
  */
-static inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType slotType)
-{
+static inline double GetWeaponDamage(const PlayerShip *playerShip, EquipmentSlotType slotType) {
     if (playerShip == NULL ||
-        (slotType != EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON && slotType != EQUIPMENT_SLOT_TYPE_AFT_WEAPON))
-    {
+        (slotType != EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON && slotType != EQUIPMENT_SLOT_TYPE_AFT_WEAPON)) {
         return 0.0;
     }
 
     // Check if the weapon slot has an active weapon
-    if (playerShip->equipment[slotType].isActive)
-    {
+    if (playerShip->equipment[slotType].isActive) {
         return playerShip->equipment[slotType].damageOutput;
     }
 
     return 0.0;
 }
-
-

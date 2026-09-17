@@ -1,0 +1,17 @@
+---
+# Default settings for the entire project
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+AllowShortBlocksOnASingleLine: false
+
+---
+# Language-specific overrides
+Language: C
+PointerAlignment: Left
+AccessModifierOffset: -4
+
+---
+Language: JavaScript
+ColumnLimit: 80
+TabWidth: 2

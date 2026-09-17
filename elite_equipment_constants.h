@@ -26,10 +26,8 @@
  * @param equipIndex Equipment index to check
  * @return 1 if equipment is present and active, 0 otherwise
  */
-static inline bool CheckEquipmentActive(const PlayerShip *playerShip, int equipIndex)
-{
-    if (playerShip == NULL || equipIndex < 0 || equipIndex >= MAX_EQUIPMENT_SLOTS)
-    {
+static inline bool CheckEquipmentActive(const PlayerShip *playerShip, int equipIndex) {
+    if (playerShip == NULL || equipIndex < 0 || equipIndex >= MAX_EQUIPMENT_SLOTS) {
         return 0;
     }
 
@@ -41,85 +39,59 @@ static inline bool CheckEquipmentActive(const PlayerShip *playerShip, int equipI
  *
  * @param playerShip Pointer to the player's ship
  */
-static inline void MapEquipmentIndices(PlayerShip *playerShip)
-{
-    if (playerShip == NULL)
-    {
+static inline void MapEquipmentIndices(PlayerShip *playerShip) {
+    if (playerShip == NULL) {
         return;
     }
 
     // Create a temporary backup of the equipment array
     ShipEquipmentItem originalEquipment[MAX_EQUIPMENT_SLOTS];
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++)
-    {
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++) {
         originalEquipment[i] = playerShip->equipment[i];
     }
 
     // Reset all equipment in our standard indices to make sure mapping is fresh
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++)
-    {
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++) {
         playerShip->equipment[i].isActive = 0;
-        if (i >= EQUIP_ECM_SYSTEM && i <= EQUIP_MILITARY_LASER)
-        {
+        if (i >= EQUIP_ECM_SYSTEM && i <= EQUIP_MILITARY_LASER) {
             // Only reset specialized equipment slots, not the original equipment slots
             memset(playerShip->equipment[i].name, 0, MAX_SHIP_NAME_LENGTH);
         }
     }
 
     // Restore original equipment
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++)
-    {
-        if (originalEquipment[i].isActive)
-        {
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++) {
+        if (originalEquipment[i].isActive) {
             playerShip->equipment[i] = originalEquipment[i];
         }
     }
 
     // Map equipment to our standard indices for easy status checks
     // These are logical mappings, not physical slot replacements
-    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++)
-    {
-        if (playerShip->equipment[i].isActive)
-        {
+    for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++) {
+        if (playerShip->equipment[i].isActive) {
             EquipmentSlotType slotType = playerShip->equipment[i].slotType;
 
             if (slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 &&
-                playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM)
-            {
+                playerShip->equipment[i].typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM) {
                 // Map to ECM standard index
                 playerShip->equipment[EQUIP_ECM_SYSTEM].isActive = 1;
-            }
-            else if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4)
-            {
-                if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS)
-                {
+            } else if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4) {
+                if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS) {
                     playerShip->equipment[EQUIP_FUEL_SCOOP].isActive = 1;
-                }
-                else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER)
-                {
+                } else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER) {
                     playerShip->equipment[EQUIP_DOCKING_COMPUTER].isActive = 1;
-                }
-                else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD)
-                {
+                } else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD) {
                     playerShip->equipment[EQUIP_ESCAPE_POD].isActive = 1;
-                }
-                else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE)
-                {
+                } else if (playerShip->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE) {
                     playerShip->equipment[EQUIP_SCANNER_UPGRADE].isActive = 1;
                 }
-            }
-            else if (slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON)
-            {
-                if (playerShip->equipment[i].typeSpecific.weaponType == WEAPON_TYPE_MINING_LASER)
-                {
+            } else if (slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON) {
+                if (playerShip->equipment[i].typeSpecific.weaponType == WEAPON_TYPE_MINING_LASER) {
                     playerShip->equipment[EQUIP_MINING_LASER].isActive = 1;
-                }
-                else if (playerShip->equipment[i].typeSpecific.weaponType == WEAPON_TYPE_BEAM_LASER)
-                {
+                } else if (playerShip->equipment[i].typeSpecific.weaponType == WEAPON_TYPE_BEAM_LASER) {
                     playerShip->equipment[EQUIP_BEAM_LASER].isActive = 1;
-                }
-                else if (playerShip->equipment[i].typeSpecific.weaponType == WEAPON_TYPE_MILITARY_LASER)
-                {
+                } else if (playerShip->equipment[i].typeSpecific.weaponType == WEAPON_TYPE_MILITARY_LASER) {
                     playerShip->equipment[EQUIP_MILITARY_LASER].isActive = 1;
                 }
             }

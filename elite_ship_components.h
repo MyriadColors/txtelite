@@ -1,8 +1,8 @@
 #pragma once
 
+#include <stdbool.h> // For bool
 #include <stddef.h>  // For NULL
 #include <stdint.h>  // For uint16_t, int32_t
-#include <stdbool.h> // For bool
 #include <string.h>  // For string functions
 
 // --- Constants for Equipment Types ---
@@ -15,7 +15,7 @@
 #endif
 
 #ifndef MAX_CARGO_SLOTS
-#define MAX_CARGO_SLOTS 50     // Max types of cargo a ship can hold
+#define MAX_CARGO_SLOTS 50 // Max types of cargo a ship can hold
 #endif
 
 #ifndef MAX_EQUIPMENT_INVENTORY
@@ -30,8 +30,7 @@
 
 // --- Enumerations ---
 
-typedef enum WeaponType
-{
+typedef enum WeaponType {
     WEAPON_TYPE_NONE,
     WEAPON_TYPE_PULSE_LASER,
     WEAPON_TYPE_BEAM_LASER,
@@ -42,14 +41,12 @@ typedef enum WeaponType
     WEAPON_TYPE_REAR_LASER // Generic rear laser, specific type can be an attribute
 } WeaponType;
 
-typedef enum DefensiveSystemType
-{
+typedef enum DefensiveSystemType {
     DEFENSIVE_SYSTEM_TYPE_NONE,
-    DEFENSIVE_SYSTEM_TYPE_ECM              // Electronic Counter-Measures
+    DEFENSIVE_SYSTEM_TYPE_ECM // Electronic Counter-Measures
 } DefensiveSystemType;
 
-typedef enum UtilitySystemType
-{
+typedef enum UtilitySystemType {
     UTILITY_SYSTEM_TYPE_NONE,
     UTILITY_SYSTEM_TYPE_ESCAPE_POD,
     UTILITY_SYSTEM_TYPE_FUEL_SCOOPS,
@@ -59,15 +56,13 @@ typedef enum UtilitySystemType
 } UtilitySystemType;
 
 // --- Named Union for Equipment Specifics ---
-typedef union EquipmentTypeSpecifics
-{
+typedef union EquipmentTypeSpecifics {
     WeaponType weaponType;
     DefensiveSystemType defensiveType;
     UtilitySystemType utilityType;
 } EquipmentTypeSpecifics;
 
-typedef enum EquipmentSlotType
-{
+typedef enum EquipmentSlotType {
     EQUIPMENT_SLOT_TYPE_NONE,
     EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
     EQUIPMENT_SLOT_TYPE_AFT_WEAPON,
@@ -81,8 +76,7 @@ typedef enum EquipmentSlotType
 
 // --- Structures ---
 
-typedef struct ShipCoreAttributes
-{
+typedef struct ShipCoreAttributes {
     int hullStrength;
     double shieldStrengthFront;
     double shieldStrengthAft;
@@ -94,8 +88,7 @@ typedef struct ShipCoreAttributes
     int missilesLoadedDumbfire;
 } ShipCoreAttributes;
 
-typedef struct ShipEquipmentItem
-{
+typedef struct ShipEquipmentItem {
     char name[MAX_SHIP_NAME_LENGTH];
     EquipmentSlotType slotType;          // What kind of slot this is (e.g. Forward Weapon)
     int isActive;                        // 0 for empty/damaged, 1 for active
@@ -105,8 +98,7 @@ typedef struct ShipEquipmentItem
     double damageOutput; // For weapons
 } ShipEquipmentItem;
 
-typedef struct CargoItem
-{
+typedef struct CargoItem {
     char name[MAX_SHIP_NAME_LENGTH]; // Name of the commodity
     int quantity;                    // Number of units
     int purchasePrice;               // Price per unit when bought (for player reference)
@@ -114,10 +106,8 @@ typedef struct CargoItem
 
 // --- Helper Functions (Names from types) ---
 
-static inline const char *GetWeaponTypeName(WeaponType type)
-{
-    switch (type)
-    {
+static inline const char *GetWeaponTypeName(WeaponType type) {
+    switch (type) {
     case WEAPON_TYPE_PULSE_LASER:
         return "Pulse Laser";
     case WEAPON_TYPE_BEAM_LASER:
@@ -138,10 +128,8 @@ static inline const char *GetWeaponTypeName(WeaponType type)
     }
 }
 
-static inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type)
-{
-    switch (type)
-    {
+static inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type) {
+    switch (type) {
     case DEFENSIVE_SYSTEM_TYPE_ECM:
         return "ECM System";
     case DEFENSIVE_SYSTEM_TYPE_NONE:
@@ -150,10 +138,8 @@ static inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type)
     }
 }
 
-static inline const char *GetUtilitySystemTypeName(UtilitySystemType type)
-{
-    switch (type)
-    {
+static inline const char *GetUtilitySystemTypeName(UtilitySystemType type) {
+    switch (type) {
     case UTILITY_SYSTEM_TYPE_ESCAPE_POD:
         return "Escape Pod";
     case UTILITY_SYSTEM_TYPE_FUEL_SCOOPS:

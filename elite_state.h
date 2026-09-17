@@ -14,12 +14,12 @@
 // =====================================
 // Standard Library Includes
 // =====================================
+#include <assert.h> // For static_assert
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <assert.h> // For static_assert
 
 // =====================================
 // Type Definitions
@@ -76,21 +76,18 @@ struct PlayerShip;
 // for complex in-system navigation functionality
 
 // Struct definitions
-struct FastSeedType
-{
+struct FastSeedType {
     uint8_t a, b, c, d;
 };
 
-struct SeedType
-{
+struct SeedType {
     uint16_t a;
     uint16_t b;
     uint16_t c;
     uint16_t d;
 };
 
-struct PlanSys
-{
+struct PlanSys {
     uint16_t x;
     uint16_t y;
     uint16_t economy;
@@ -103,8 +100,7 @@ struct PlanSys
     char name[12];
 };
 
-typedef struct
-{
+typedef struct {
     uint16_t basePrice;
     int16_t gradient;
     uint16_t baseQuant;
@@ -113,8 +109,7 @@ typedef struct
     char name[20];
 } TradeGood;
 
-typedef struct
-{
+typedef struct {
     uint16_t quantity[COMMODITY_ARRAY_SIZE];
     uint16_t price[COMMODITY_ARRAY_SIZE];
 } MarketType;
@@ -180,19 +175,14 @@ int GetMaxFuel(void);
 /**
  * Initializes the game time to zero.
  */
-static inline void game_time_initialize(void)
-{
-    g_state.currentGameTimeSeconds = 0;
-}
+static inline void game_time_initialize(void) { g_state.currentGameTimeSeconds = 0; }
 
 /**
  * Advances the game time by a specified number of seconds.
  * @param seconds_to_add The number of seconds to add to the current game time.
  */
-static inline void game_time_advance(uint32_t seconds_to_add)
-{
-    if (seconds_to_add > 0)
-    {
+static inline void game_time_advance(uint32_t seconds_to_add) {
+    if (seconds_to_add > 0) {
         g_state.currentGameTimeSeconds += seconds_to_add;
     }
 }
@@ -201,10 +191,7 @@ static inline void game_time_advance(uint32_t seconds_to_add)
  * Gets the current total game time in seconds.
  * @return The current game time in seconds.
  */
-static inline uint64_t game_time_get_seconds(void)
-{
-    return g_state.currentGameTimeSeconds;
-}
+static inline uint64_t game_time_get_seconds(void) { return g_state.currentGameTimeSeconds; }
 
 /**
  * Formats the current game time into a human-readable string.
@@ -212,10 +199,8 @@ static inline uint64_t game_time_get_seconds(void)
  * @param buffer The character buffer to write the formatted time string to.
  * @param buffer_size The size of the buffer.
  */
-static inline void game_time_get_formatted(char *buffer, size_t buffer_size)
-{
-    if (buffer == NULL || buffer_size == 0)
-    {
+static inline void game_time_get_formatted(char *buffer, size_t buffer_size) {
+    if (buffer == NULL || buffer_size == 0) {
         return;
     }
 
@@ -241,8 +226,7 @@ static inline void game_time_get_formatted(char *buffer, size_t buffer_size)
 
     uint64_t current_seconds = time_val;
 
-    (void)snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu",
-             (unsigned long long)years, (unsigned long long)days,
-             (unsigned long long)hours, (unsigned long long)minutes, (unsigned long long)current_seconds);
+    (void)snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu", (unsigned long long)years,
+                   (unsigned long long)days, (unsigned long long)hours, (unsigned long long)minutes,
+                   (unsigned long long)current_seconds);
 }
-

@@ -1,13 +1,13 @@
 #pragma once
 
+#include "elite_market.h"           // For generate_market
+#include "elite_navigation_types.h" // For NavigationState and CelestialType
 #include "elite_state.h"
-#include "elite_navigation_types.h"  // For NavigationState and CelestialType
-#include "elite_utils.h"  // For float_to_int_round, random_byte, string_begins_with
-#include "elite_market.h" // For generate_market
-#include <math.h>         // For sqrt
-#include <stdint.h>       // For uint16_t
-#include <stdbool.h>      // For bool
-#include <stddef.h>       // For size_t
+#include "elite_utils.h" // For float_to_int_round, random_byte, string_begins_with
+#include <math.h>        // For sqrt
+#include <stdbool.h>     // For bool
+#include <stddef.h>      // For size_t
+#include <stdint.h>      // For uint16_t
 
 // Constants
 #define GAL_SIZE 256 // Galaxy size
@@ -16,8 +16,7 @@
 struct PlanSys;
 
 // Calculates fuel requirement for in-system travel based on distance
-static inline double calculate_travel_fuel_requirement(double distanceInAU)
-{
+static inline double calculate_travel_fuel_requirement(double distanceInAU) {
     // Base fuel requirement: 0.025 liters per AU
     // This is much less than hyperspace travel which consumes ~10 liters per 0.1 LY
     return distanceInAU * 0.025;
@@ -41,8 +40,7 @@ static inline void initialize_star_system_for_current_planet(void);
  *
  * @return The scaled distance between the two systems as a 16-bit unsigned integer.
  */
-static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB)
-{
+static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB) {
     // Using doubles for intermediate calculations for precision, as in original.
     double dx = (double)systemA.x - systemB.x;
     double dy = (double)systemA.y - systemB.y;
@@ -64,19 +62,16 @@ static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB)
  * @see distance - Function used to calculate distances between planets
  * @see string_begins_with - Function that checks if a string begins with another string
  */
-static inline PlanetNum find_matching_system_name(char *searchName)
-{
+static inline PlanetNum find_matching_system_name(char *searchName) {
     PlanetNum syscount;
     PlanetNum p = g_state.CurrentPlanet; // Global variable
-    uint16_t d = 0xFFFF;         // Initialize with max uint16_t value
+    uint16_t d = 0xFFFF;                 // Initialize with max uint16_t value
 
-    for (syscount = 0; syscount < GAL_SIZE; ++syscount)
-    {
+    for (syscount = 0; syscount < GAL_SIZE; ++syscount) {
         if (string_begins_with(searchName, g_state.Galaxy[syscount].name)) // Galaxy is global
         {
             uint16_t dist_to_current = distance(g_state.Galaxy[syscount], g_state.Galaxy[g_state.CurrentPlanet]);
-            if (dist_to_current < d)
-            {
+            if (dist_to_current < d) {
                 d = dist_to_current;
                 p = syscount;
             }
@@ -102,8 +97,7 @@ static inline PlanetNum find_matching_system_name(char *searchName)
  *
  * @see random_byte(), generate_market(), initialize_star_system_for_current_planet()
  */
-static inline void execute_jump_to_planet(PlanetNum planetIndex)
-{
+static inline void execute_jump_to_planet(PlanetNum planetIndex) {
     g_state.CurrentPlanet = planetIndex; // Global variable
     // Galaxy is a global variable, random_byte from elite_utils, generate_market from elite_market
     g_state.LocalMarket = generate_market(random_byte(), g_state.Galaxy[planetIndex]); // Global variable

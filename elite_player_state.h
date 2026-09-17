@@ -1,13 +1,13 @@
 #pragma once
 
-#include "elite_navigation.h"          // For NavigationState definition
-#include "elite_state.h"               // Unified header for constants, structures, and globals
-#include "elite_market.h"              // For generate_market(), init_tradnames()
-#include "elite_galaxy.h"              // For build_galaxy_data()
-#include "elite_utils.h"               // For minimum_value
-#include "elite_star_system.h"         // For StarSystem
-#include "elite_player_ship.h"          // For PlayerShip structure and functions
 #include "elite_equipment_constants.h" // For equipment mapping functions
+#include "elite_galaxy.h"              // For build_galaxy_data()
+#include "elite_market.h"              // For generate_market(), init_tradnames()
+#include "elite_navigation.h"          // For NavigationState definition
+#include "elite_player_ship.h"         // For PlayerShip structure and functions
+#include "elite_star_system.h"         // For StarSystem
+#include "elite_state.h"               // Unified header for constants, structures, and globals
+#include "elite_utils.h"               // For minimum_value
 
 /**
  * @brief Initializes the player's state at the start of a new game.
@@ -33,8 +33,7 @@
  * @warning If memory allocation fails for the player ship, an error message is
  *          printed and the function returns without completing initialization.
  */
-static inline void initialize_player_state(void)
-{
+static inline void initialize_player_state(void) {
     // Set initial seed for Galaxy 1, but allow customization from my_rand seed
     // Use the current state of my_rand to derive galaxy seed values
     uint32_t randSeed = my_rand();
@@ -52,27 +51,25 @@ static inline void initialize_player_state(void)
     g_state.RndSeed.d = (uint8_t)((randSeed >> 24) & 0xFF);
 
     g_state.NativeRand = 0; // Set to 0 as per original logic for predictable generation initially
-    g_state.GalaxyNum = 1;      // Start in Galaxy 1
+    g_state.GalaxyNum = 1;  // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed
-    build_galaxy_data(g_state.SEED); 
-    
+    build_galaxy_data(g_state.SEED);
+
     // Set current planet to Lave (planet 7 in galaxy 1)
     g_state.CurrentPlanet = NUM_FOR_LAVE; // NUM_FOR_LAVE is defined in elite_state.h
-    
+
     // Populate LocalMarket for the starting planet. Use random fluctuation instead of 0.
     // Galaxy[CurrentPlanet] is now valid after build_galaxy_data()
     g_state.LocalMarket = generate_market(random_byte(), g_state.Galaxy[g_state.CurrentPlanet]);
 
     // Initialize player ship
-    if (g_state.PlayerShipPtr != NULL)
-    {
+    if (g_state.PlayerShipPtr != NULL) {
         free(g_state.PlayerShipPtr);
     }
 
     g_state.PlayerShipPtr = (PlayerShip *)malloc(sizeof(PlayerShip));
-    if (g_state.PlayerShipPtr == NULL)
-    {
+    if (g_state.PlayerShipPtr == NULL) {
         printf("Error: Could not allocate memory for player ship!\n");
         return;
     }
@@ -82,7 +79,7 @@ static inline void initialize_player_state(void)
     // Now set fuel based on the ship's max fuel capacity
     g_state.Fuel = GetMaxFuel(); // Get the max fuel based on the ship type
 
-    g_state.Cash = 1000;    // Start with 100.0 credits (1000 internal units)
+    g_state.Cash = 1000; // Start with 100.0 credits (1000 internal units)
 
     // Initialize the tradenames array for command parsing
     init_tradnames();
@@ -107,10 +104,8 @@ static inline void initialize_player_state(void)
  *
  * @note This function is defined as inline to reduce function call overhead.
  */
-static inline void cleanup_player_ship(void)
-{
-    if (g_state.PlayerShipPtr != NULL)
-    {
+static inline void cleanup_player_ship(void) {
+    if (g_state.PlayerShipPtr != NULL) {
         // Any additional cleanup for ship resources would go here
 
         free(g_state.PlayerShipPtr);
@@ -137,11 +132,9 @@ static inline void cleanup_player_ship(void)
  * @note This function assumes that CurrentPlanet and Galaxy are valid global variables.
  * @note PlayerNavState is reset completely before being initialized with new values.
  */
-static inline void initialize_star_system_for_current_planet(void)
-{
+static inline void initialize_star_system_for_current_planet(void) {
     // Clean up any existing star system
-    if (g_state.CurrentStarSystem != NULL)
-    {
+    if (g_state.CurrentStarSystem != NULL) {
         cleanup_star_system(g_state.CurrentStarSystem);
         free(g_state.CurrentStarSystem);
         g_state.CurrentStarSystem = NULL;
@@ -149,8 +142,7 @@ static inline void initialize_star_system_for_current_planet(void)
 
     // Allocate a new star system
     g_state.CurrentStarSystem = (struct StarSystem *)malloc(sizeof(struct StarSystem));
-    if (g_state.CurrentStarSystem == NULL)
-    {
+    if (g_state.CurrentStarSystem == NULL) {
         printf("Error: Could not allocate memory for star system!\n");
         return;
     }
@@ -179,34 +171,27 @@ static inline void initialize_star_system_for_current_planet(void)
  * @note Assumes 100 liters of fuel equals 1 light year of range
  */
 
-static inline void display_ship_status_brief(void)
-{
-    if (g_state.PlayerShipPtr == NULL)
-    {
+static inline void display_ship_status_brief(void) {
+    if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data is not available.\n");
         return;
     }
 
-    printf("\nShip: %s (%s) - ",
-           g_state.PlayerShipPtr->shipName,
-           g_state.PlayerShipPtr->shipClassName);
+    printf("\nShip: %s (%s) - ", g_state.PlayerShipPtr->shipName, g_state.PlayerShipPtr->shipClassName);
 
     // Calculate hull percentage
-    int hullPercentage = (g_state.PlayerShipPtr->attributes.hullStrength * 100) / g_state.PlayerShipPtr->shipType->baseHullStrength;
+    int hullPercentage =
+        (g_state.PlayerShipPtr->attributes.hullStrength * 100) / g_state.PlayerShipPtr->shipType->baseHullStrength;
     printf("Hull: %d%% - ", hullPercentage);
     // Display fuel information including consumption rate
     double currentFuelLY = g_state.PlayerShipPtr->attributes.fuelLiters / 100.0;
     double maxFuelLY = g_state.PlayerShipPtr->shipType->maxFuelLY;
     double fuelPercent = (currentFuelLY / maxFuelLY) * 100.0;
 
-    printf("Fuel: %.1f/%.1f LY (%.0f%%) - ",
-           currentFuelLY,
-           maxFuelLY,
-           fuelPercent);
+    printf("Fuel: %.1f/%.1f LY (%.0f%%) - ", currentFuelLY, maxFuelLY, fuelPercent);
 
     // Show cargo capacity
-    printf("Cargo: %d/%d tons",
-           g_state.PlayerShipPtr->attributes.currentCargoTons,
+    printf("Cargo: %d/%d tons", g_state.PlayerShipPtr->attributes.currentCargoTons,
            g_state.PlayerShipPtr->attributes.cargoCapacityTons);
 }
 
@@ -223,8 +208,7 @@ static inline void display_ship_status_brief(void)
  *         - Returns the desired amount if the player can afford it
  *         - Returns the maximum affordable amount otherwise
  */
-static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
-{
+static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount) {
     int currentFuelCost = GetFuelCost();
     if (currentFuelCost <= 0)
         return 0; // Avoid division by zero if FuelCost is invalid
@@ -244,10 +228,8 @@ static inline uint16_t calculate_fuel_purchase(uint16_t desiredAmount)
  * This function shows the current fuel level, maximum capacity, consumption rate,
  * and estimated range based on the ship's specifications.
  */
-static inline void display_ship_fuel_status(void)
-{
-    if (g_state.PlayerShipPtr == NULL)
-    {
+static inline void display_ship_fuel_status(void) {
+    if (g_state.PlayerShipPtr == NULL) {
         printf("\nError: Ship data is not available.\n");
         return;
     }
@@ -271,13 +253,10 @@ static inline void display_ship_fuel_status(void)
 
     // Display cost to refill
     double fuelNeeded = maxFuelLY - currentFuelLY;
-    if (fuelNeeded > 0)
-    {
+    if (fuelNeeded > 0) {
         int totalCost = (int)((fuelNeeded * 10.0) * consumptionRate);
         printf("Cost to refill:   %d credits\n", totalCost);
-    }
-    else
-    {
+    } else {
         printf("Fuel tanks are full\n");
     }
 }

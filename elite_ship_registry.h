@@ -7,7 +7,7 @@
 /**
  * Structure defining a ship type with its base specifications
  */
-typedef struct ShipType {
+typedef struct ship_type_t {
     char className[MAX_SHIP_NAME_LENGTH]; // e.g., "Cobra Mk III"
     int baseHullStrength;                 // Base hull strength
     double baseShieldStrengthFront;       // Base front shield strength
@@ -25,7 +25,7 @@ typedef struct ShipType {
     bool hasStandardHyperdrive;           // Whether ship has a standard hyperdrive
     bool hasStandardShields;              // Whether ship has standard shields
     bool includesPulseLaser;              // Whether ship comes with a pulse laser
-} ShipType;
+} ship_type_t;
 
 // Maximum number of ship types that can be registered
 #ifndef MAX_SHIP_TYPES
@@ -35,93 +35,96 @@ typedef struct ShipType {
 /**
  * Ship registry to store all available ship types
  */
-typedef struct ShipRegistry {
-    ShipType shipTypes[MAX_SHIP_TYPES]; // Array to store all ship types
+typedef struct ship_registry_t {
+    ship_type_t ship_type_ts[MAX_SHIP_TYPES]; // Array to store all ship types
     int registeredShipCount;            // Number of registered ship types
-} ShipRegistry;
+} ship_registry_t;
 
 // The global ship registry
-static ShipRegistry shipRegistry = {.registeredShipCount = 0};
+static ship_registry_t g_ship_registry = {.registeredShipCount = 0};
 
 /**
  * Register a new ship type in the registry
  *
- * @return Pointer to the registered ship type, or NULL if registration failed
+ * @return Pointer to the registered ship type, or nullptr if registration failed
  */
-static inline const ShipType *
-RegisterShipType(const char *className, int baseHullStrength, double baseShieldStrengthFront,
-                 double baseShieldStrengthAft, double maxFuelLY, double fuelConsumptionRate, int baseCargoCapacityTons,
-                 int initialMissilePylons, double baseCost, int baseSpeed, int baseManeuverability,
-                 int defaultWeaponSlots, int defaultDefensiveSlots, int defaultUtilitySlots, bool hasStandardHyperdrive,
-                 bool hasStandardShields, bool includesPulseLaser) {
+static inline const ship_type_t *
+register_ship_type_t(const char *class_name, int base_hull_strength, double base_shield_strength_front,
+                 double base_shield_strength_aft, double max_fuel_ly, double fuel_consumption_rate, int base_cargo_capacity_tons,
+                 int initial_missile_pylons, double base_cost, int base_speed, int base_maneuverability,
+                 int default_weapon_slots, int default_defensive_slots, int default_utility_slots, bool has_standard_hyperdrive,
+                 bool has_standard_shields, bool includes_pulse_laser) {
     // Check if we have space for a new ship type
-    if (shipRegistry.registeredShipCount >= MAX_SHIP_TYPES) {
+    if (g_ship_registry.registeredShipCount >= MAX_SHIP_TYPES) {
         printf("Error: Cannot register more ship types. Maximum limit reached.\n");
-        return NULL;
+        return nullptr;
     }
 
     // Get a reference to the new ship type slot
-    ShipType *newShipType = &shipRegistry.shipTypes[shipRegistry.registeredShipCount];
+    ship_type_t *newship_type_t = &g_ship_registry.ship_type_ts[g_ship_registry.registeredShipCount];
 
     // Initialize the new ship type with provided values
-    snprintf(newShipType->className, MAX_SHIP_NAME_LENGTH, "%s", className);
-    newShipType->className[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure null termination
-    newShipType->baseHullStrength = baseHullStrength;
-    newShipType->baseShieldStrengthFront = baseShieldStrengthFront;
-    newShipType->baseShieldStrengthAft = baseShieldStrengthAft;
-    newShipType->maxFuelLY = maxFuelLY;
-    newShipType->fuelConsumptionRate = fuelConsumptionRate;
-    newShipType->baseCargoCapacityTons = baseCargoCapacityTons;
-    newShipType->initialMissilePylons = initialMissilePylons;
-    newShipType->baseCost = baseCost;
-    newShipType->baseSpeed = baseSpeed;
-    newShipType->baseManeuverability = baseManeuverability;
-    newShipType->defaultWeaponSlots = defaultWeaponSlots;
-    newShipType->defaultDefensiveSlots = defaultDefensiveSlots;
-    newShipType->defaultUtilitySlots = defaultUtilitySlots;
-    newShipType->hasStandardHyperdrive = hasStandardHyperdrive;
-    newShipType->hasStandardShields = hasStandardShields;
-    newShipType->includesPulseLaser = includesPulseLaser;
+    int written = snprintf(newship_type_t->className, MAX_SHIP_NAME_LENGTH, "%s", class_name);
+    if (written < 0) {
+        return nullptr;
+    }
+    newship_type_t->className[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure nullptr termination
+    newship_type_t->baseHullStrength = base_hull_strength;
+    newship_type_t->baseShieldStrengthFront = base_shield_strength_front;
+    newship_type_t->baseShieldStrengthAft = base_shield_strength_aft;
+    newship_type_t->maxFuelLY = max_fuel_ly;
+    newship_type_t->fuelConsumptionRate = fuel_consumption_rate;
+    newship_type_t->baseCargoCapacityTons = base_cargo_capacity_tons;
+    newship_type_t->initialMissilePylons = initial_missile_pylons;
+    newship_type_t->baseCost = base_cost;
+    newship_type_t->baseSpeed = base_speed;
+    newship_type_t->baseManeuverability = base_maneuverability;
+    newship_type_t->defaultWeaponSlots = default_weapon_slots;
+    newship_type_t->defaultDefensiveSlots = default_defensive_slots;
+    newship_type_t->defaultUtilitySlots = default_utility_slots;
+    newship_type_t->hasStandardHyperdrive = has_standard_hyperdrive;
+    newship_type_t->hasStandardShields = has_standard_shields;
+    newship_type_t->includesPulseLaser = includes_pulse_laser;
 
     // Increment the counter
-    shipRegistry.registeredShipCount++;
+    g_ship_registry.registeredShipCount++;
 
     // Return a pointer to the newly registered ship type
-    return newShipType;
+    return newship_type_t;
 }
 
 /**
  * Get a pointer to a ship type by its class name
  *
  * @param className The class name of the ship type to find
- * @return Pointer to the ShipType, or NULL if not found
+ * @return Pointer to the ship_type_t, or nullptr if not found
  */
-static inline const ShipType *GetShipTypeByName(const char *className) {
-    if (className == NULL) {
-        return NULL;
+[[maybe_unused]] static inline const ship_type_t *get_ship_type_t_by_name(const char *class_name) {
+    if (class_name == nullptr) {
+        return nullptr;
     }
 
     // Search through the registry for a matching ship type
-    for (int i = 0; i < shipRegistry.registeredShipCount; i++) {
-        if (strcmp(className, shipRegistry.shipTypes[i].className) == 0) {
-            return &shipRegistry.shipTypes[i];
+    for (int i = 0; i < g_ship_registry.registeredShipCount; i++) {
+        if (strcmp(class_name, g_ship_registry.ship_type_ts[i].className) == 0) {
+            return &g_ship_registry.ship_type_ts[i];
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /**
  * Initialize the ship registry with predefined ship types
  */
-static inline void InitializeShipRegistry(void) {
+[[maybe_unused]] static inline void intialize_ship_registry_t(void) {
     // Only initialize if the registry is empty
-    if (shipRegistry.registeredShipCount > 0) {
+    if (g_ship_registry.registeredShipCount > 0) {
         return;
     }
 
     // Register Cobra Mk III
-    RegisterShipType("Cobra Mk III", // className
+    register_ship_type_t("Cobra Mk III", // className
                      100,            // baseHullStrength
                      50.0,           // baseShieldStrengthFront
                      50.0,           // baseShieldStrengthAft
@@ -135,13 +138,13 @@ static inline void InitializeShipRegistry(void) {
                      1,              // defaultWeaponSlots
                      1,              // defaultDefensiveSlots
                      2,              // defaultUtilitySlots
-                     1,              // hasStandardHyperdrive
-                     1,              // hasStandardShields
-                     1               // includesPulseLaser
+                     true,              // hasStandardHyperdrive
+                     true,              // hasStandardShields
+                     true               // includesPulseLaser
     );
 
     // Register Viper
-    RegisterShipType("Viper", // className
+    register_ship_type_t("Viper", // className
                      80,      // baseHullStrength
                      40.0,    // baseShieldStrengthFront
                      40.0,    // baseShieldStrengthAft
@@ -155,13 +158,13 @@ static inline void InitializeShipRegistry(void) {
                      2,       // defaultWeaponSlots
                      1,       // defaultDefensiveSlots
                      1,       // defaultUtilitySlots
-                     1,       // hasStandardHyperdrive
-                     1,       // hasStandardShields
-                     1        // includesPulseLaser
+                     true,       // hasStandardHyperdrive
+                     true,       // hasStandardShields
+                     true        // includesPulseLaser
     );
 
     // Register Asp Mk II
-    RegisterShipType("Asp Mk II", // className
+    register_ship_type_t("Asp Mk II", // className
                      120,         // baseHullStrength
                      60.0,        // baseShieldStrengthFront
                      60.0,        // baseShieldStrengthAft
@@ -175,13 +178,13 @@ static inline void InitializeShipRegistry(void) {
                      2,           // defaultWeaponSlots
                      2,           // defaultDefensiveSlots
                      2,           // defaultUtilitySlots
-                     1,           // hasStandardHyperdrive
-                     1,           // hasStandardShields
-                     1            // includesPulseLaser
+                     true,           // hasStandardHyperdrive
+                     true,           // hasStandardShields
+                     true            // includesPulseLaser
     );
 
     // Register Sidewinder
-    RegisterShipType("Sidewinder", // className
+    register_ship_type_t("Sidewinder", // className
                      50,           // baseHullStrength
                      30.0,         // baseShieldStrengthFront
                      30.0,         // baseShieldStrengthAft
@@ -195,13 +198,13 @@ static inline void InitializeShipRegistry(void) {
                      1,            // defaultWeaponSlots
                      1,            // defaultDefensiveSlots
                      1,            // defaultUtilitySlots
-                     1,            // hasStandardHyperdrive
-                     1,            // hasStandardShields
-                     1             // includesPulseLaser
+                     true,            // hasStandardHyperdrive
+                     true,            // hasStandardShields
+                     true             // includesPulseLaser
     );
 
     // Register Python
-    RegisterShipType("Python", // className
+    register_ship_type_t("Python", // className
                      200,      // baseHullStrength
                      80.0,     // baseShieldStrengthFront
                      80.0,     // baseShieldStrengthAft
@@ -215,13 +218,13 @@ static inline void InitializeShipRegistry(void) {
                      4,        // defaultWeaponSlots
                      2,        // defaultDefensiveSlots
                      3,        // defaultUtilitySlots
-                     1,        // hasStandardHyperdrive
-                     1,        // hasStandardShields
-                     1         // includesPulseLaser
+                     true,        // hasStandardHyperdrive
+                     true,        // hasStandardShields
+                     true         // includesPulseLaser
     );
 
     // Register Anaconda
-    RegisterShipType("Anaconda", // className
+    register_ship_type_t("Anaconda", // className
                      300,        // baseHullStrength
                      100.0,      // baseShieldStrengthFront
                      100.0,      // baseShieldStrengthAft
@@ -235,13 +238,13 @@ static inline void InitializeShipRegistry(void) {
                      4,          // defaultWeaponSlots
                      3,          // defaultDefensiveSlots
                      4,          // defaultUtilitySlots
-                     1,          // hasStandardHyperdrive
-                     1,          // hasStandardShields
-                     1           // includesPulseLaser
+                     true,          // hasStandardHyperdrive
+                     true,          // hasStandardShields
+                     true           // includesPulseLaser
     );
 
     // Register Fer-de-Lance
-    RegisterShipType("Fer-de-Lance", // className
+    register_ship_type_t("Fer-de-Lance", // className
                      150,            // baseHullStrength
                      80.0,           // baseShieldStrengthFront
                      80.0,           // baseShieldStrengthAft
@@ -255,8 +258,8 @@ static inline void InitializeShipRegistry(void) {
                      4,              // defaultWeaponSlots
                      2,              // defaultDefensiveSlots
                      2,              // defaultUtilitySlots
-                     1,              // hasStandardHyperdrive
-                     1,              // hasStandardShields
-                     1               // includesPulseLaser
+                     true,              // hasStandardHyperdrive
+                     true,              // hasStandardShields
+                     true               // includesPulseLaser
     );
 }

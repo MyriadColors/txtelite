@@ -1,11 +1,11 @@
 #pragma once
 
-#include "elite_player_ship.h" // For PlayerShip structure
-#include "elite_state.h"       // Unified header for constants, structures, and globals
-#include "elite_utils.h"       // For minimum_value
-#include "platform_compat.h"   // For StringCompareIgnoreCase
-#include <math.h>              // For floor (used in execute_buy_order)
-#include <string.h>            // For string operations (snprintf, strcmp, etc.)
+#include "elite_ship_components.h"
+#include "elite_state.h"     // Unified header for constants, structures, and globals
+#include "elite_utils.h"     // For minimum_value
+#include "platform_compat.h" // For StringCompareIgnoreCase
+#include <stdint.h>
+#include <stdio.h>
 
 // Define constants for market modifiers if not already defined elsewhere
 // These represent a 25% change.
@@ -13,42 +13,42 @@
 #define PRICE_INCREASE_FACTOR 1.25f
 #define QUANTITY_DECREASE_FACTOR 0.75f
 #define QUANTITY_INCREASE_FACTOR 1.25f
-#define NO_CHANGE_FACTOR 1.0f
+#define NO_CHANGE_FACTOR 1.0F
 
 // Enum for Station Specializations
-typedef enum StationSpecialization {
+typedef enum station_specialization_t {
     STATION_SPECIALIZATION_BALANCED = 0,
     STATION_SPECIALIZATION_INDUSTRIAL = 1,
     STATION_SPECIALIZATION_AGRICULTURAL = 2,
     STATION_SPECIALIZATION_MINING = 3,
-    NUM_STATION_SPECIALIZATIONS // Keep this last for array sizing
-} StationSpecialization;
+    NUM_STATION_SPECIALIZATIONS = 4 // Keep this last for array sizing
+} station_specialization_t;
 
-// Enum for Planet Market Types (using "MarketType" to distinguish from general planet properties if any)
-typedef enum PlanetMarketType {
+// Enum for planet_tMarket Types (using "MarketType" to distinguish from general planet properties if any)
+typedef enum planet_market_type_t {
     PLANET_MARKET_TYPE_ROCKY_AIRLESS = 0,
     PLANET_MARKET_TYPE_TERRESTRIAL = 1,
     PLANET_MARKET_TYPE_GAS_GIANT = 2,
     PLANET_MARKET_TYPE_ICE_GIANT_WORLD = 3,
-    NUM_PLANET_MARKET_TYPES // Keep this last for array sizing
-} PlanetMarketType;
+    NUM_PLANET_MARKET_TYPES = 4 // Keep this last for array sizing
+} planet_market_type_t;
 
 // Structure to hold market modifiers for a single commodity
-typedef struct MarketModifier {
+typedef struct market_modifier_t {
     float priceFactor; // Added priceFactor
     float quantityFactor;
-} MarketModifier;
+} market_modifier_t;
 
 // This macro was originally with the Commodities array definition
 #define POLITICALLY_CORRECT 0
 /* Set to 1 for NES-sanitised trade goods */
 
 // UnitNames array, static within this header
-static char UnitNames[][5] = {"t", "kg", "g"};
+static char g_unit_names[][5] = {"t", "kg", "g"};
 
 // Commodities array, static within this header
 // Defines NUM_STANDARD_COMMODITIES (10) items
-static TradeGood Commodities[] = {
+static trade_good_t g_commodities[] = {
     {0x13, -0x02, 0x06, 0x01, 0, "Food        "}, {0x14, -0x01, 0x0A, 0x03, 0, "Textiles    "},
     {0x41, -0x03, 0x02, 0x07, 0, "Radioactives"},
 #if POLITICALLY_CORRECT
@@ -67,10 +67,10 @@ static TradeGood Commodities[] = {
 };
 
 // Market Modifiers for Station Specializations
-// Indexed by [StationSpecialization][CommodityIndex]
+// Indexed by [station_specialization_t][CommodityIndex]
 // Commodity Indices: 0:Food, 1:Textiles, 2:Radioactives, 3:Slaves, 4:Liquor, 5:Luxuries, 6:Narcotics, 7:Computers,
 // 8:Machinery, 9:Alloys
-static MarketModifier stationSpecializationModifiers[NUM_STATION_SPECIALIZATIONS][NUM_STANDARD_COMMODITIES] = {
+[[maybe_unused]] static market_modifier_t g_station_specialization_modifiers[NUM_STATION_SPECIALIZATIONS][NUM_STANDARD_COMMODITIES] = {
     // STATION_SPECIALIZATION_BALANCED (0) - Minor or no strong modifications
     {{NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
      {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
@@ -122,9 +122,9 @@ static MarketModifier stationSpecializationModifiers[NUM_STATION_SPECIALIZATIONS
      {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
      {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR}}};
 
-// Market Modifiers for Planet Types
-// Indexed by [PlanetMarketType][CommodityIndex]
-static MarketModifier planetTypeModifiers[NUM_PLANET_MARKET_TYPES][NUM_STANDARD_COMMODITIES] = {
+// Market Modifiers for planet_tTypes
+// Indexed by [planet_market_type_t][CommodityIndex]
+[[maybe_unused]] static market_modifier_t g_planet_type_modifiers[NUM_PLANET_MARKET_TYPES][NUM_STANDARD_COMMODITIES] = {
     // PLANET_MARKET_TYPE_ROCKY_AIRLESS (0)
     // Produces: Radioactives (2), Alloys (9)
     // Consumes: Food (0), Textiles (1)
@@ -181,12 +181,17 @@ static MarketModifier planetTypeModifiers[NUM_PLANET_MARKET_TYPES][NUM_STANDARD_
 // Initializes the global tradnames array.
 // Copies names for the first NUM_STANDARD_COMMODITIES.
 // Clears remaining entries up to LAST_TRADE.
-static inline void init_tradnames(void) {
+[[maybe_unused]] static inline void init_tradnames(void) {
     uint16_t i;
     // Copy names from the Commodities array
     for (i = 0; i < NUM_STANDARD_COMMODITIES; i++) {
-        if (i < (sizeof(Commodities) / sizeof(Commodities[0]))) {
-            snprintf(g_state.tradnames[i], MAX_LEN, "%s", Commodities[i].name);
+        if (i < (sizeof(g_commodities) / sizeof(g_commodities[0]))) {
+            int written = snprintf(g_state.tradnames[i], MAX_LEN, "%s", g_commodities[i].name);
+            if (written < 0) {
+                g_state.tradnames[i][0] = '\0';
+            } else if ((size_t)written >= MAX_LEN) {
+                g_state.tradnames[i][MAX_LEN - 1] = '\0';
+            }
         } else {
             g_state.tradnames[i][0] = '\0';
         }
@@ -201,22 +206,22 @@ static inline void init_tradnames(void) {
 
 // Generates market data for a given planet system and fluctuation.
 // MarketType arrays are sized COMMODITY_ARRAY_SIZE (ALIEN_ITEMS_IDX + 1).
-static inline MarketType generate_market(uint16_t fluctuation, struct PlanSys planetSystem) {
-    MarketType market;
+[[maybe_unused]] static inline market_type_t generate_market(uint16_t fluctuation, struct plan_sys_t planet_system) {
+    market_type_t market;
     uint16_t i;
 
     for (i = 0; i < NUM_STANDARD_COMMODITIES; i++) {
         int32_t q;
-        int32_t product = (planetSystem.economy) * (Commodities[i].gradient);
-        int32_t changing = fluctuation & (Commodities[i].maskByte);
-        q = (Commodities[i].baseQuant) + changing - product;
+        int32_t product = (planet_system.economy) * (g_commodities[i].gradient);
+        int32_t changing = fluctuation & (g_commodities[i].maskByte);
+        q = (g_commodities[i].baseQuant) + changing - product;
         q = q & 0xFF;
         if (q & 0x80) {
             q = 0;
         }
         market.quantity[i] = (uint16_t)(q & 0x3F);
 
-        q = (Commodities[i].basePrice) + changing + product;
+        q = (g_commodities[i].basePrice) + changing + product;
         q = q & 0xFF;
         market.price[i] = (uint16_t)(q * 4);
     }
@@ -233,141 +238,149 @@ static inline MarketType generate_market(uint16_t fluctuation, struct PlanSys pl
 }
 
 // Displays the market information.
-static inline void display_market_info(MarketType marketData) {
+[[maybe_unused]] static inline void display_market_info(market_type_t market_data) {
     uint16_t i;
     printf("ITEM          PRICE  QTY UNIT CARGO");
 
     // Only show the actual defined commodities (NUM_STANDARD_COMMODITIES)
     // This matches the original game behavior more closely
     for (i = 0; i < NUM_STANDARD_COMMODITIES; i++) {
-        uint16_t cargoQty = 0;
-        if (g_state.PlayerShipPtr != NULL) {
+        uint16_t cargo_qty = 0;
+        if (g_state.PlayerShipPtr != nullptr) {
             for (int j = 0; j < MAX_CARGO_SLOTS; j++) {
                 if (g_state.PlayerShipPtr->cargo[j].quantity > 0 &&
-                    StringCompareIgnoreCase(g_state.PlayerShipPtr->cargo[j].name, Commodities[i].name) == 0) {
-                    cargoQty += g_state.PlayerShipPtr->cargo[j].quantity;
+                    StringCompareIgnoreCase(g_state.PlayerShipPtr->cargo[j].name, g_commodities[i].name) == 0) {
+                    cargo_qty += g_state.PlayerShipPtr->cargo[j].quantity;
                 }
             }
         }
 
         printf("\n");
-        printf("%-12s", Commodities[i].name);
-        printf("   %5.1f", ((float)(marketData.price[i]) / 10));
-        printf("   %3u", marketData.quantity[i]);
-        printf(" %-3s", UnitNames[Commodities[i].units]);
-        printf("   %3u", cargoQty);
+        printf("%-12s", g_commodities[i].name);
+        printf("   %5.1f", ((double)market_data.price[i] / 10.0));
+        printf("   %3u", market_data.quantity[i]);
+        printf(" %-3s", g_unit_names[g_commodities[i].units]);
+        printf("   %3u", cargo_qty);
     }
     printf("\n");
 }
 
 // Executes a buy order for a given item and amount.
-static inline uint16_t execute_buy_order(uint16_t itemIndex, uint16_t amount) {
-    uint16_t t;
-    if (g_state.Cash < 0) {
-        t = 0;
-    } else {
-        if (itemIndex >= COMMODITY_ARRAY_SIZE)
-            return 0;
-
-        t = minimum_value(g_state.LocalMarket.quantity[itemIndex], amount);
-
-        if (itemIndex < NUM_STANDARD_COMMODITIES) {
-            if ((Commodities[itemIndex].units) == TONNES_UNIT) {
-                uint16_t holdSpace = 0;
-                if (g_state.PlayerShipPtr != NULL) {
-                    holdSpace = g_state.PlayerShipPtr->attributes.cargoCapacityTons -
-                                g_state.PlayerShipPtr->attributes.currentCargoTons;
-                }
-                t = minimum_value(holdSpace, t);
-            }
-        }
-
-        if (g_state.LocalMarket.price[itemIndex] > 0) {
-            t = minimum_value(t, (uint16_t)floor((double)g_state.Cash / g_state.LocalMarket.price[itemIndex]));
-        } else if (g_state.Cash > 0 && g_state.LocalMarket.quantity[itemIndex] > 0 &&
-                   g_state.LocalMarket.price[itemIndex] == 0) {
-            // Free item, t is already min(available, requested)
-        } else {
-            t = 0;
-        }
+[[maybe_unused]] static inline uint16_t buy_order_quantity(uint16_t item_index, uint16_t amount) {
+    if (g_state.Cash < 0 || item_index >= COMMODITY_ARRAY_SIZE) {
+        return 0;
     }
 
-    if (itemIndex >= COMMODITY_ARRAY_SIZE || t == 0)
-        return 0;
+    uint16_t quantity = minimum_value(g_state.LocalMarket.quantity[item_index], amount);
+    if (item_index < NUM_STANDARD_COMMODITIES && g_commodities[item_index].units == TONNES_UNIT) {
+        uint16_t hold_space = 0;
+        if (g_state.PlayerShipPtr != nullptr) {
+            hold_space = (uint8_t)(g_state.PlayerShipPtr->attributes.cargoCapacityTons -
+                                   g_state.PlayerShipPtr->attributes.currentCargoTons);
+        }
+        quantity = minimum_value(hold_space, quantity);
+    }
 
-    // Update PlayerShip cargo
-    if (g_state.PlayerShipPtr != NULL) {
-        int slot = -1;
-        // Try to find existing slot
+    if (g_state.LocalMarket.price[item_index] > 0) {
+        return minimum_value(quantity,
+                            (uint16_t)((double)g_state.Cash / g_state.LocalMarket.price[item_index]));
+    }
+    if (g_state.Cash > 0 && g_state.LocalMarket.quantity[item_index] > 0) {
+        return quantity;
+    }
+    return 0;
+}
+
+[[maybe_unused]] static inline int add_buy_order_cargo(uint16_t item_index, uint16_t quantity) {
+    if (g_state.PlayerShipPtr == nullptr) {
+        return 1;
+    }
+
+    int slot = -1;
+    for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
+        if (g_state.PlayerShipPtr->cargo[i].quantity > 0 &&
+            StringCompareIgnoreCase(g_state.PlayerShipPtr->cargo[i].name, g_commodities[item_index].name) == 0) {
+            slot = i;
+            break;
+        }
+    }
+    if (slot == -1) {
         for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
-            if (g_state.PlayerShipPtr->cargo[i].quantity > 0 &&
-                StringCompareIgnoreCase(g_state.PlayerShipPtr->cargo[i].name, Commodities[itemIndex].name) == 0) {
+            if (g_state.PlayerShipPtr->cargo[i].quantity == 0) {
+                int name_length = snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s",
+                                           g_commodities[item_index].name);
+                if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
+                    return 0;
+                }
                 slot = i;
+                g_state.PlayerShipPtr->cargo[slot].purchasePrice = g_state.LocalMarket.price[item_index] / 10;
                 break;
             }
         }
-
-        // If not found, find empty slot
-        if (slot == -1) {
-            for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
-                if (g_state.PlayerShipPtr->cargo[i].quantity == 0) {
-                    slot = i;
-                    snprintf(g_state.PlayerShipPtr->cargo[slot].name, MAX_SHIP_NAME_LENGTH, "%s",
-                             Commodities[itemIndex].name);
-                    g_state.PlayerShipPtr->cargo[slot].purchasePrice = g_state.LocalMarket.price[itemIndex] / 10;
-                    break;
-                }
-            }
-        }
-
-        if (slot != -1) {
-            g_state.PlayerShipPtr->cargo[slot].quantity += t;
-            if (Commodities[itemIndex].units == TONNES_UNIT) {
-                g_state.PlayerShipPtr->attributes.currentCargoTons += t;
-            }
-        } else {
-            // No cargo slots available
-            return 0;
-        }
+    }
+    if (slot == -1) {
+        return 0;
     }
 
-    g_state.LocalMarket.quantity[itemIndex] -= t;
-    g_state.Cash -= (int32_t)t * (g_state.LocalMarket.price[itemIndex]);
+    g_state.PlayerShipPtr->cargo[slot].quantity += quantity;
+    if (g_commodities[item_index].units == TONNES_UNIT) {
+        g_state.PlayerShipPtr->attributes.currentCargoTons += quantity;
+    }
+    return 1;
+}
+
+[[maybe_unused]] static inline uint16_t execute_buy_order(uint16_t item_index, uint16_t amount) {
+    uint16_t t = buy_order_quantity(item_index, amount);
+    if (t == 0) {
+        return 0;
+    }
+    if (!add_buy_order_cargo(item_index, t)) {
+        return 0;
+    }
+
+    g_state.LocalMarket.quantity[item_index] -= t;
+    g_state.Cash -= (int32_t)t * (g_state.LocalMarket.price[item_index]);
 
     return t;
 }
 
 // Executes a sell order for a given item and amount.
-static inline uint16_t execute_sell_order(uint16_t itemIndex, uint16_t amount) {
-    if (itemIndex >= COMMODITY_ARRAY_SIZE || g_state.PlayerShipPtr == NULL)
+[[maybe_unused]] static inline uint16_t execute_sell_order(uint16_t item_index, uint16_t amount) {
+    if (item_index >= COMMODITY_ARRAY_SIZE || g_state.PlayerShipPtr == nullptr) {
         return 0;
+    }
 
-    uint16_t cargoQty = 0;
+    uint16_t cargo_qty = 0;
     int slot = -1;
     for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
         if (g_state.PlayerShipPtr->cargo[i].quantity > 0 &&
-            StringCompareIgnoreCase(g_state.PlayerShipPtr->cargo[i].name, Commodities[itemIndex].name) == 0) {
-            cargoQty = g_state.PlayerShipPtr->cargo[i].quantity;
+            StringCompareIgnoreCase(g_state.PlayerShipPtr->cargo[i].name, g_commodities[item_index].name) == 0) {
+            cargo_qty = (uint8_t)g_state.PlayerShipPtr->cargo[i].quantity;
             slot = i;
             break;
         }
     }
 
-    uint16_t t = minimum_value(cargoQty, amount);
-    if (t == 0)
+    uint16_t t = minimum_value(cargo_qty, amount);
+    if (t == 0) {
         return 0;
+    }
 
     g_state.PlayerShipPtr->cargo[slot].quantity -= t;
     if (g_state.PlayerShipPtr->cargo[slot].quantity == 0) {
-        snprintf(g_state.PlayerShipPtr->cargo[slot].name, MAX_SHIP_NAME_LENGTH, "Empty");
+        int written = snprintf(g_state.PlayerShipPtr->cargo[slot].name,
+                               MAX_SHIP_NAME_LENGTH, "Empty");
+        if (written < 0 || written >= MAX_SHIP_NAME_LENGTH) {
+            g_state.PlayerShipPtr->cargo[slot].name[0] = '\0';
+        }
     }
 
-    if (Commodities[itemIndex].units == TONNES_UNIT) {
+    if (g_commodities[item_index].units == TONNES_UNIT) {
         g_state.PlayerShipPtr->attributes.currentCargoTons -= t;
     }
 
-    g_state.LocalMarket.quantity[itemIndex] += t;
-    g_state.Cash += (int32_t)t * (g_state.LocalMarket.price[itemIndex]);
+    g_state.LocalMarket.quantity[item_index] += t;
+    g_state.Cash += (int32_t)t * (g_state.LocalMarket.price[item_index]);
 
     return t;
 }

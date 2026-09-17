@@ -52,7 +52,7 @@ static bool (*g_command_functions[NUM_COMMANDS])(const char *) = {do_buy,
 
 // Function to parse and execute commands
 [[maybe_unused]] static inline bool parse_and_execute_command(const char *command_string) {
-    if (command_string == NULL) {
+    if (command_string == nullptr) {
         return false;
     }
     char cmd_buffer[MAX_LEN];

@@ -43,7 +43,6 @@ of Elite with no combat or missions.
 #include "elite_equipment_constants.h" // For equipment indices
 #include "elite_player_ship.h"         // For ship initialization and status functions
 #include "elite_player_state.h"        // For player state initialization
-#include "elite_ship_upgrades.h"       // For equipment access
 #include "elite_star_system.h"         // For star system data
 #include "elite_state.h"               // Unified header for constants, structures, and globals
 #include "elite_utils.h"               // For string handling and other utilities
@@ -52,24 +51,24 @@ of Elite with no combat or missions.
 // =====================================
 // Global State Definition
 // =====================================
-GameState g_state = {.ExitStatus = EXIT_SUCCESS,
+game_state_t g_state = {.ExitStatus = EXIT_SUCCESS,
                      .CurrentSystemName = "Lave",
                      .CurrentSystemEconomy = 0,
                      .PlayerLocationType = 0,
                      .InCombat = false,
                      .currentGameTimeSeconds = 0,
-                     .PlayerShipPtr = NULL,
-                     .CurrentStarSystem = NULL,
+                     .PlayerShipPtr = nullptr,
+                     .CurrentStarSystem = nullptr,
                      .PlayerNavState = {0}};
 
 const uint16_t BASE_0 = 0x5A4A;
 const uint16_t BASE_1 = 0x0248;
 const uint16_t BASE_2 = 0xB753;
 
-char GovNames[GOV_MAX_COUNT][MAX_LEN] = {"Anarchy",   "Feudal",      "Multi-gov", "Dictatorship",
+char g_gov_names[GOV_MAX_COUNT][MAX_LEN] = {"Anarchy",   "Feudal",      "Multi-gov", "Dictatorship",
                                          "Communist", "Confederacy", "Democracy", "Corporate State"};
 
-char EconNames[ECON_MAX_COUNT][MAX_LEN] = {"Rich Ind",    "Average Ind", "Poor Ind",     "Mainly Ind",
+char g_econ_names[ECON_MAX_COUNT][MAX_LEN] = {"Rich Ind",    "Average Ind", "Poor Ind",     "Mainly Ind",
                                            "Mainly Agri", "Rich Agri",   "Average Agri", "Poor Agri"};
 
 /**
@@ -77,11 +76,11 @@ char EconNames[ECON_MAX_COUNT][MAX_LEN] = {"Rich Ind",    "Average Ind", "Poor I
  *
  * @return Cost of fuel unit (for 0.1 LY of travel)
  */
-int GetFuelCost(void) {
-    if (g_state.PlayerShipPtr == NULL) {
+int get_fuel_cost(void) {
+    if (g_state.PlayerShipPtr == nullptr) {
         return 2; // Default value if ship not initialized
     }
-    return (int)g_state.PlayerShipPtr->shipType->fuelConsumptionRate;
+    return (int)g_state.PlayerShipPtr->ship_type_t->fuelConsumptionRate;
 }
 
 /**
@@ -89,11 +88,11 @@ int GetFuelCost(void) {
  *
  * @return Maximum fuel capacity in tenths of LY
  */
-int GetMaxFuel(void) {
-    if (g_state.PlayerShipPtr == NULL) {
+int get_max_fuel(void) {
+    if (g_state.PlayerShipPtr == nullptr) {
         return 70; // Default value if ship not initialized
     }
-    return (int)(g_state.PlayerShipPtr->shipType->maxFuelLY * 10.0); // Convert from LY to 0.1 LY units
+    return (int)(g_state.PlayerShipPtr->ship_type_t->maxFuelLY * 10.0); // Convert from LY to 0.1 LY units
 }
 
 /* ================= *
@@ -103,33 +102,33 @@ int GetMaxFuel(void) {
 // Function to display the current game status
 static void display_game_status(char* location_buffer) {
     // Enhanced status display with ship information
-    if (g_state.PlayerShipPtr != NULL) { // Calculate hull percentage
+    if (g_state.PlayerShipPtr != nullptr) { // Calculate hull percentage
         int hull_percentage =
-            (g_state.PlayerShipPtr->attributes.hullStrength * 100) / g_state.PlayerShipPtr->shipType->baseHullStrength;
+            (g_state.PlayerShipPtr->attributes.hullStrength * 100) / g_state.PlayerShipPtr->ship_type_t->baseHullStrength;
         // Prepare equipment status string
         char equipment_status[MAX_LEN] = "";
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_ECM_SYSTEM)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_ECM_SYSTEM)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "ECM ");
         }
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_FUEL_SCOOP)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_FUEL_SCOOP)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "FuelScoop ");
         }
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_DOCKING_COMPUTER)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_DOCKING_COMPUTER)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "DockCmp ");
         }
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_MINING_LASER)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_MINING_LASER)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "Mining ");
         }
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_BEAM_LASER)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_BEAM_LASER)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "Beam ");
         }
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_MILITARY_LASER)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_MILITARY_LASER)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "Military ");
         }
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_SCANNER_UPGRADE)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "Scanner ");
         }
-        if (CheckEquipmentActive(g_state.PlayerShipPtr, EQUIP_ESCAPE_POD)) {
+        if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_ESCAPE_POD)) {
             safe_strcat(equipment_status, sizeof(equipment_status), "EscPod ");
         }
         if (strlen(equipment_status) == 0) {
@@ -154,7 +153,7 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
             // Get seed value from next argument
-            seed = (unsigned int)strtol(argv[i + 1], NULL, 10);
+            seed = (unsigned int)strtol(argv[i + 1], nullptr, 10);
             i++; // Skip the next argument as we've already processed it
             printf("\nUsing custom seed: %u\n", seed);
         }

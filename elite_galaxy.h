@@ -3,9 +3,10 @@
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include "elite_utils.h" // For tweak_seed
 #include <assert.h>      // For debug assertions
+#include <stdint.h>
 
 // Cleaner, dot-free planet naming pairs.
-static const char planet_name_pairs[] = "LEXEGEZACEBISO"
+static const char PLANET_NAME_PAIRS[] = "LEXEGEZACEBISO"
                                         "USESARMAINDIREA"
                                         "ERATENBERALAVETI"
                                         "EDORQUANTEISRION";
@@ -19,7 +20,7 @@ static inline uint8_t rotate_left(uint8_t value) {
     // A 6502 ROL instruction shifts all bits left, moving bit 7 to the Carry
     // flag and the Carry flag into bit 0. This implementation simplifies it
     // by rotating bit 7 directly into bit 0.
-    return (value << 1) | (value >> 7);
+    return (uint8_t)(((uint16_t)value << 1) | (value >> 7));
 }
 
 /**
@@ -39,8 +40,8 @@ static inline uint16_t twist(uint16_t value) {
  * Each call to this function transitions to the next galaxy in a cycle of 8.
  * @param seed A pointer to the seed to be modified.
  */
-static inline void next_galaxy(struct SeedType *seed) {
-    assert(seed != NULL);
+[[maybe_unused]] static inline void next_galaxy(struct seed_type_t *seed) {
+    assert(seed != nullptr);
     seed->a = twist(seed->a);
     seed->b = twist(seed->b);
     seed->c = twist(seed->c);
@@ -52,15 +53,15 @@ static inline void next_galaxy(struct SeedType *seed) {
  * This function is pure; it does not modify the input seed. It creates a local
  * copy to ensure the generation process is predictable and free of side effects.
  * @param seed A constant pointer to the initial seed.
- * @return A fully generated PlanSys structure.
+ * @return A fully generated plan_sys_t structure.
  */
-static inline struct PlanSys make_system(const struct SeedType *seed) {
-    assert(seed != NULL);
-    struct PlanSys system;
-    struct SeedType local_seed = *seed; // Use a local copy for generation
+static inline struct plan_sys_t make_system(const struct seed_type_t *seed) {
+    assert(seed != nullptr);
+    struct plan_sys_t system;
+    struct seed_type_t local_seed = *seed; // Use a local copy for generation
 
     // --- System Coordinates and Basic Attributes ---
-    const bool long_name_flag = (local_seed.a & 0x40); // Bit 6 of seed.a
+    const bool LONG_NAME_FLAG = (local_seed.a & 0x40) != 0; // Bit 6 of seed.a
     system.x = local_seed.b >> 8;
     system.y = local_seed.a >> 8;
 
@@ -92,16 +93,16 @@ static inline struct PlanSys make_system(const struct SeedType *seed) {
     system.goatSoupSeed.c = local_seed.c & 0xFF;
     system.goatSoupSeed.d = local_seed.c >> 8;
 
-    // --- Planet Name Generation ---
+    // --- planet_tName Generation ---
     char *name_ptr = system.name;
-    const int num_pairs = long_name_flag ? 4 : 3;
-    for (int i = 0; i < num_pairs; ++i) {
+    const int NUM_PAIRS = (int)LONG_NAME_FLAG ? 4 : 3;
+    for (int i = 0; i < NUM_PAIRS; ++i) {
         uint8_t pair_index = 2 * ((local_seed.c >> 8) & 0x1F); // Get a value from 0-62
-        *name_ptr++ = planet_name_pairs[pair_index];
-        *name_ptr++ = planet_name_pairs[pair_index + 1];
+        *name_ptr++ = PLANET_NAME_PAIRS[pair_index];
+        *name_ptr++ = PLANET_NAME_PAIRS[pair_index + 1];
         tweak_seed(&local_seed); // "Stir" the seed for the next pair
     }
-    *name_ptr = '\0'; // Null-terminate the string
+    *name_ptr = '\0'; // nullptr-terminate the string
 
     return system;
 }
@@ -110,7 +111,7 @@ static inline struct PlanSys make_system(const struct SeedType *seed) {
  * @brief Populates the global Galaxy array with systems generated from a seed.
  * @param seed The initial seed for the galaxy.
  */
-static inline void build_galaxy_data(struct SeedType seed) {
+[[maybe_unused]] static inline void build_galaxy_data(struct seed_type_t seed) {
     g_state.SEED = seed;
     for (uint16_t i = 0; i < GAL_SIZE; ++i) {
         g_state.Galaxy[i] = make_system(&g_state.SEED);

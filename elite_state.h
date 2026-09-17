@@ -1,6 +1,5 @@
 #pragma once
 
-// Other game constants
 #define MAX_CARGO_ITEMS 50
 #define MAX_EQUIPMENT_SLOTS 10
 /**
@@ -24,7 +23,7 @@
 // =====================================
 // Type Definitions
 // =====================================
-typedef uint16_t PlanetNum; // For planet/system indexing
+typedef uint16_t planet_num_t; // For planet/system indexing
 
 // =====================================
 // Game Constants
@@ -50,7 +49,7 @@ typedef uint16_t PlanetNum; // For planet/system indexing
 #define ECON_MAX_COUNT 8 // Number of economy types
 #define MAX_MISSIONS 10
 
-// Planet system constants
+// planet_tsystem constants
 #define NUM_FOR_LAVE 7 // Lave is 7th generated planet in galaxy one
 #define NUM_FOR_ZAONCE 129
 #define NUM_FOR_DISO 147
@@ -67,27 +66,25 @@ static_assert(GAL_SIZE == 256, "Galaxy size must be 256");
 // Data Structures
 // =====================================
 // Forward declarations
-struct FastSeedType;
-struct StarSystem;
-struct PlayerShip;
+struct fast_seed_type_t;
 
 // Navigation State is defined in elite_navigation_types.h to avoid circular dependencies
 // The actual definition includes CelestialType enum and location union
 // for complex in-system navigation functionality
 
 // Struct definitions
-struct FastSeedType {
+struct fast_seed_type_t {
     uint8_t a, b, c, d;
 };
 
-struct SeedType {
+struct seed_type_t {
     uint16_t a;
     uint16_t b;
     uint16_t c;
     uint16_t d;
 };
 
-struct PlanSys {
+struct plan_sys_t {
     uint16_t x;
     uint16_t y;
     uint16_t economy;
@@ -96,7 +93,7 @@ struct PlanSys {
     uint16_t population;
     uint16_t productivity;
     uint16_t radius;
-    struct FastSeedType goatSoupSeed;
+    struct fast_seed_type_t goatSoupSeed;
     char name[12];
 };
 
@@ -107,21 +104,18 @@ typedef struct {
     uint16_t maskByte;
     uint16_t units;
     char name[20];
-} TradeGood;
+} trade_good_t;
 
 typedef struct {
     uint16_t quantity[COMMODITY_ARRAY_SIZE];
     uint16_t price[COMMODITY_ARRAY_SIZE];
-} MarketType;
+} market_type_t;
 
 // =====================================
 // Global Variables
 // =====================================
-#include "elite_navigation_types.h"
 
-// Forward declarations
-struct StarSystem;
-struct PlayerShip;
+#include "elite_navigation_types.h"
 
 /**
  * Encapsulates the global game state to improve organization and modularity.
@@ -130,22 +124,22 @@ typedef struct {
     int ExitStatus;
     bool NativeRand;
 
-    struct PlanSys Galaxy[GAL_SIZE];
-    struct SeedType SEED;
-    struct FastSeedType RndSeed;
+    struct plan_sys_t Galaxy[GAL_SIZE];
+    struct seed_type_t SEED;
+    struct fast_seed_type_t RndSeed;
 
     int CurrentPlanet;
     uint16_t GalaxyNum;
     int32_t Cash;
     uint16_t Fuel;
-    MarketType LocalMarket;
+    market_type_t LocalMarket;
 
     uint64_t currentGameTimeSeconds;
 
     struct StarSystem *CurrentStarSystem;
-    struct NavigationState PlayerNavState;
+    struct navigation_state_t PlayerNavState;
 
-    struct PlayerShip *PlayerShipPtr;
+    struct player_ship_t *PlayerShipPtr;
 
     char CurrentSystemName[20];
     int CurrentSystemEconomy;
@@ -153,9 +147,9 @@ typedef struct {
     bool InCombat;
 
     char tradnames[LAST_TRADE + 1][MAX_LEN];
-} GameState;
+} game_state_t;
 
-extern GameState g_state;
+extern game_state_t g_state;
 
 // Base seeds for galaxy generation (constant)
 extern const uint16_t BASE_0;
@@ -163,25 +157,25 @@ extern const uint16_t BASE_1;
 extern const uint16_t BASE_2;
 
 // Names and descriptors (read-only lookup tables)
-extern char GovNames[GOV_MAX_COUNT][MAX_LEN];
-extern char EconNames[ECON_MAX_COUNT][MAX_LEN];
+extern char g_gov_names[GOV_MAX_COUNT][MAX_LEN];
+extern char g_econ_names[ECON_MAX_COUNT][MAX_LEN];
 
 // Function declarations (implementations are later in this file or in txtelite.c)
-int GetFuelCost(void);
-int GetMaxFuel(void);
+int get_fuel_cost(void);
+int get_max_fuel(void);
 
 // --- Game Time Functions ---
 
 /**
  * Initializes the game time to zero.
  */
-static inline void game_time_initialize(void) { g_state.currentGameTimeSeconds = 0; }
+[[maybe_unused]] static inline void game_time_initialize(void) { g_state.currentGameTimeSeconds = 0; }
 
 /**
  * Advances the game time by a specified number of seconds.
  * @param seconds_to_add The number of seconds to add to the current game time.
  */
-static inline void game_time_advance(uint32_t seconds_to_add) {
+[[maybe_unused]] static inline void game_time_advance(uint32_t seconds_to_add) {
     if (seconds_to_add > 0) {
         g_state.currentGameTimeSeconds += seconds_to_add;
     }
@@ -191,7 +185,7 @@ static inline void game_time_advance(uint32_t seconds_to_add) {
  * Gets the current total game time in seconds.
  * @return The current game time in seconds.
  */
-static inline uint64_t game_time_get_seconds(void) { return g_state.currentGameTimeSeconds; }
+[[maybe_unused]] static inline uint64_t game_time_get_seconds(void) { return g_state.currentGameTimeSeconds; }
 
 /**
  * Formats the current game time into a human-readable string.
@@ -199,30 +193,30 @@ static inline uint64_t game_time_get_seconds(void) { return g_state.currentGameT
  * @param buffer The character buffer to write the formatted time string to.
  * @param buffer_size The size of the buffer.
  */
-static inline void game_time_get_formatted(char *buffer, size_t buffer_size) {
-    if (buffer == NULL || buffer_size == 0) {
+[[maybe_unused]] static inline void game_time_get_formatted(char *buffer, size_t buffer_size) {
+    if (buffer == nullptr || buffer_size == 0) {
         return;
     }
 
     uint64_t time_val = g_state.currentGameTimeSeconds;
 
-    const uint64_t secs_in_minute = 60;
-    const uint64_t secs_in_hour = 60 * secs_in_minute;
-    const uint64_t secs_in_day = 24 * secs_in_hour;
+    const uint64_t SECS_IN_MINUTE = 60;
+    const uint64_t SECS_IN_HOUR = 60 * SECS_IN_MINUTE;
+    const uint64_t SECS_IN_DAY = 24 * SECS_IN_HOUR;
     // Using a simplified year for game purposes.
-    const uint64_t secs_in_year = 365 * secs_in_day;
+    const uint64_t SECS_IN_YEAR = 365 * SECS_IN_DAY;
 
-    uint64_t years = time_val / secs_in_year;
-    time_val %= secs_in_year;
+    uint64_t years = time_val / SECS_IN_YEAR;
+    time_val %= SECS_IN_YEAR;
 
-    uint64_t days = time_val / secs_in_day;
-    time_val %= secs_in_day;
+    uint64_t days = time_val / SECS_IN_DAY;
+    time_val %= SECS_IN_DAY;
 
-    uint64_t hours = time_val / secs_in_hour;
-    time_val %= secs_in_hour;
+    uint64_t hours = time_val / SECS_IN_HOUR;
+    time_val %= SECS_IN_HOUR;
 
-    uint64_t minutes = time_val / secs_in_minute;
-    time_val %= secs_in_minute;
+    uint64_t minutes = time_val / SECS_IN_MINUTE;
+    time_val %= SECS_IN_MINUTE;
 
     uint64_t current_seconds = time_val;
 

@@ -1,15 +1,18 @@
 #pragma once
 
+#include <ctype.h>
+#include <stdio.h>
+
 #include "elite_galaxy.h"
 #include "elite_state.h" // Unified header for constants, structures, and globals
 
 // Definition for planetary description generation
-struct DescChoice {
+struct desc_choice_t {
     const char *options[5];
 };
 
 // Data for goat_soup planetary description generator
-static struct DescChoice descList[] = {
+static struct desc_choice_t g_desc_list[] = {
     /* 81 */ {{"fabled", "notable", "well known", "famous", "noted"}},
     /* 82 */ {{"very", "mildly", "most", "reasonably", ""}},
     /* 83 */ {{"ancient", "\x95", "great", "vast", "pink"}},
@@ -65,20 +68,68 @@ static struct DescChoice descList[] = {
  *       of numbers for the same initial seed values.
  */
 static inline int gen_rnd_number(void) {
-    int a, x;
+    int a;
+    int x;
     x = (g_state.RndSeed.a * 2) & 0xFF;
     a = x + g_state.RndSeed.c;
-    if (g_state.RndSeed.a > 127)
+    if (g_state.RndSeed.a > 127) {
         a++;
-    g_state.RndSeed.a = a & 0xFF;
-    g_state.RndSeed.c = x;
+    }
+    g_state.RndSeed.a = (uint8_t)(a & 0xFF);
+    g_state.RndSeed.c = (uint8_t)x;
 
     a = a / 256; /* a = any carry left from above */
     x = g_state.RndSeed.b;
     a = (a + x + g_state.RndSeed.d) & 0xFF;
-    g_state.RndSeed.b = a;
-    g_state.RndSeed.d = x;
+    g_state.RndSeed.b = (uint8_t)a;
+    g_state.RndSeed.d = (uint8_t)x;
     return a;
+}
+
+/**
+ * @brief Helper to print the planet name with the first letter uppercase and the rest lowercase.
+ */
+static inline void goat_soup_print_planet_name(const struct plan_sys_t *planet_system) {
+    int i = 1;
+    printf("%c", planet_system->name[0]);
+    while (planet_system->name[i] != '\0') {
+        printf("%c", tolower(planet_system->name[i++]));
+    }
+}
+
+/**
+ * @brief Helper to print the planet name in adjective form (e.g. Martian).
+ */
+static inline void goat_soup_print_adjective_name(const struct plan_sys_t *planet_system) {
+    int i = 1;
+    printf("%c", planet_system->name[0]);
+    while (planet_system->name[i] != '\0') {
+        if ((planet_system->name[i + 1] != '\0') ||
+            ((planet_system->name[i] != 'E') && (planet_system->name[i] != 'I'))) {
+            printf("%c", tolower(planet_system->name[i]));
+        }
+        i++;
+    }
+    printf("ian");
+}
+
+/**
+ * @brief Helper to print a random planet-like name using character pairs.
+ */
+static inline void goat_soup_print_random_name(void) {
+    int len = gen_rnd_number() & 3;
+    const size_t max_pairs = (sizeof(PLANET_NAME_PAIRS) / 2) - 1;
+    for (int i = 0; i <= len; i++) {
+        // The random name generation uses the same pairs as planet naming.
+        // The index is carefully calculated to prevent out-of-bounds access.
+        size_t x = 2 * ((size_t)gen_rnd_number() % max_pairs);
+        if (i == 0) {
+            printf("%c", PLANET_NAME_PAIRS[x]);
+        } else {
+            printf("%c", tolower(PLANET_NAME_PAIRS[x]));
+        }
+        printf("%c", tolower(PLANET_NAME_PAIRS[x + 1]));
+    }
 }
 
 /**
@@ -89,72 +140,43 @@ static inline int gen_rnd_number(void) {
  * - ASCII characters (< 0x80) are printed directly
  * - Codes between 0x81-0xA4 select random text options from descList
  * - Special codes 0xB0-0xB2 insert planet-specific content:
- *   - 0xB0: Planet name (first letter capital, rest lowercase)
- *   - 0xB1: Planet name in adjective form (e.g., "Martian")
+ *   - 0xB0: planet_tname (first letter capital, rest lowercase)
+ *   - 0xB1: planet_tname in adjective form (e.g., "Martian")
  *   - 0xB2: Random name generated using character pairs
  *
  * The function recursively processes templates, allowing for nested text generation.
  *
- * @param sourceString The template string to process
- * @param planetSystem Pointer to the planet system data structure
- *
- * @note There may be a potential bug in the 0xB2 case (random name generation)
- *       where the random index could potentially access out-of-bounds memory.
+ * @param source_string The template string to process
+ * @param planet_system Pointer to the planet system data structure
  */
-static inline void goat_soup(const char *sourceString, struct PlanSys *planetSystem) {
+// NOLINTNEXTLINE(misc-no-recursion)
+static inline void goat_soup(const char *source_string, const struct plan_sys_t *planet_system) {
     for (;;) {
-        int c = *(sourceString++);
-        c &= 0xff; // Ensure char is treated as unsigned
-        if (c == '\0')
+        int c = (unsigned char)*(source_string++);
+        if (c == '\0') {
             break;
-        if (c < 0x80)
+        }
+        if (c < 0x80) {
             printf("%c", c);
-        else {
-            if (c <= 0xA4) {
-                int rnd = gen_rnd_number();
-                goat_soup(descList[c - 0x81].options[(rnd >= 0x33) + (rnd >= 0x66) + (rnd >= 0x99) + (rnd >= 0xCC)],
-                          planetSystem);
-            } else
-                switch (c) {
-                case 0xB0: /* planet name */
-                {
-                    int i = 1;
-                    printf("%c", planetSystem->name[0]);
-                    while (planetSystem->name[i] != '\0')
-                        printf("%c", tolower(planetSystem->name[i++]));
-                } break;
-                case 0xB1: /* <planet name>ian */
-                {
-                    int i = 1;
-                    printf("%c", planetSystem->name[0]);
-                    while (planetSystem->name[i] != '\0') {
-                        if ((planetSystem->name[i + 1] != '\0') ||
-                            ((planetSystem->name[i] != 'E') && (planetSystem->name[i] != 'I')))
-                            printf("%c", tolower(planetSystem->name[i]));
-                        i++;
-                    }
-                    printf("ian");
-                } break;
-                case 0xB2: /* random name */
-                {
-                    int i;
-                    int len = gen_rnd_number() & 3;
-                    for (i = 0; i <= len; i++) {
-                        // The random name generation uses the same pairs as planet naming.
-                        // The index is carefully calculated to prevent out-of-bounds access.
-                        int x = 2 * (gen_rnd_number() % (sizeof(planet_name_pairs) / 2 - 1));
-                        if (i == 0) {
-                            printf("%c", planet_name_pairs[x]);
-                        } else {
-                            printf("%c", tolower(planet_name_pairs[x]));
-                        }
-                        printf("%c", tolower(planet_name_pairs[x + 1]));
-                    }
-                } break;
-                default:
-                    printf("<bad char in data [%X]>", c);
-                    return;
-                }
+        } else if (c <= 0xA4) {
+            int rnd = gen_rnd_number();
+            goat_soup(g_desc_list[c - 0x81].options[(rnd >= 0x33) + (rnd >= 0x66) + (rnd >= 0x99) + (rnd >= 0xCC)],
+                      planet_system);
+        } else {
+            switch (c) {
+            case 0xB0: /* planet name */
+                goat_soup_print_planet_name(planet_system);
+                break;
+            case 0xB1: /* <planet name>ian */
+                goat_soup_print_adjective_name(planet_system);
+                break;
+            case 0xB2: /* random name */
+                goat_soup_print_random_name();
+                break;
+            default:
+                printf("<bad char in data [%X]>", c);
+                return;
+            }
         }
     }
 }
@@ -164,7 +186,7 @@ static inline void goat_soup(const char *sourceString, struct PlanSys *planetSys
  *
  * This function outputs details about a planetary system, including its name, position,
  * economy type, government type, technology level, productivity, radius, and population.
- * The format of the output depends on the `useCompressedOutput` parameter.
+ * The format of the output depends on the `use_compressed_output` parameter.
  *
  * In compressed mode, it displays a single line with:
  * - System name
@@ -183,34 +205,34 @@ static inline void goat_soup(const char *sourceString, struct PlanSys *planetSys
  * - Population (in billions)
  * - A descriptive sentence generated using the goat_soup function
  *
- * @param planetSystemInfo The planetary system information structure to be displayed
- * @param useCompressedOutput If 1, outputs in single-line format; if 0, outputs in detailed format
+ * @param planet_system_info The planetary system information structure to be displayed
+ * @param use_compressed_output If true, outputs in single-line format; if false, outputs in detailed format
  *
- * @note Relies on global arrays EconNames and GovNames from elite_globals.h
+ * @note Relies on global arrays g_econ_names and g_gov_names from elite_state.h
  * @note When using detailed format, modifies the global RndSeed variable for goat_soup generation
  */
-static inline void print_system_info(struct PlanSys planetSystemInfo, bool useCompressedOutput) {
-    if (useCompressedOutput) {
-        printf("%10s", planetSystemInfo.name);
-        printf(" TL: %2i ", (planetSystemInfo.techLev) + 1);
-        printf("%12s", EconNames[planetSystemInfo.economy]); // EconNames from elite_globals.h
-        printf(" %15s", GovNames[planetSystemInfo.govType]); // GovNames from elite_globals.h
+static inline void print_system_info(struct plan_sys_t planet_system_info, bool use_compressed_output) {
+    if (use_compressed_output) {
+        printf("%10s", planet_system_info.name);
+        printf(" TL: %2i ", (planet_system_info.techLev) + 1);
+        printf("%12s", g_econ_names[planet_system_info.economy]); // g_econ_names from elite_state.h
+        printf(" %15s", g_gov_names[planet_system_info.govType]); // g_gov_names from elite_state.h
     } else {
         printf("\n\nSystem:  ");
-        printf("%s", planetSystemInfo.name);
-        printf("\nPosition (%i,", planetSystemInfo.x);
-        printf("%i)", planetSystemInfo.y);
-        printf("\nEconomy: (%i) ", planetSystemInfo.economy);
-        printf("%s", EconNames[planetSystemInfo.economy]); // EconNames from elite_globals.h
-        printf("\nGovernment: (%i) ", planetSystemInfo.govType);
-        printf("%s", GovNames[planetSystemInfo.govType]); // GovNames from elite_globals.h
-        printf("\nTech Level: %2i", (planetSystemInfo.techLev) + 1);
-        printf("\nTurnover: %u", (planetSystemInfo.productivity));
-        printf("\nRadius: %u", planetSystemInfo.radius);
-        printf("\nPopulation: %u Billion", (planetSystemInfo.population) >> 3);
+        printf("%s", planet_system_info.name);
+        printf("\nPosition (%i,", planet_system_info.x);
+        printf("%i)", planet_system_info.y);
+        printf("\nEconomy: (%i) ", planet_system_info.economy);
+        printf("%s", g_econ_names[planet_system_info.economy]); // g_econ_names from elite_state.h
+        printf("\nGovernment: (%i) ", planet_system_info.govType);
+        printf("%s", g_gov_names[planet_system_info.govType]); // g_gov_names from elite_state.h
+        printf("\nTech Level: %2i", (planet_system_info.techLev) + 1);
+        printf("\nTurnover: %u", (planet_system_info.productivity));
+        printf("\nRadius: %u", planet_system_info.radius);
+        printf("\nPopulation: %u Billion", (planet_system_info.population) >> 3);
 
-        g_state.RndSeed = planetSystemInfo.goatSoupSeed; // RndSeed is global
+        g_state.RndSeed = planet_system_info.goatSoupSeed; // RndSeed is global
         printf("\n");
-        goat_soup("\x8F is \x97.", &planetSystemInfo);
+        goat_soup("\x8F is \x97.", &planet_system_info);
     }
 }

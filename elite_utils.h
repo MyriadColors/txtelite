@@ -3,158 +3,191 @@
 #include "elite_state.h" // Unified header for constants, structures, and globals
 #include <ctype.h>       // For isspace, toupper functions
 #include <math.h>        // For floor, etc.
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // Note: NativeRand and ExitStatus are now members of g_state in elite_state.h
 
-static unsigned int lastrand_for_my_rand = 0; // Renamed to avoid potential conflicts if lastrand is used elsewhere
+static unsigned int g_lastrand_for_my_rand = 0; // Renamed to avoid potential conflicts if lastrand is used elsewhere
+static _Thread_local uint32_t g_native_rand_state = 1U;
 
-static inline void my_srand(unsigned int initialSeed) {
-    srand(initialSeed);
-    lastrand_for_my_rand = initialSeed - 1;
+[[maybe_unused]] static inline void my_srand(unsigned int initial_seed) {
+    srand(initial_seed);
+    g_lastrand_for_my_rand = initial_seed - 1;
+    g_native_rand_state = initial_seed != 0U ? initial_seed : 1U;
 }
 
 static inline int my_rand(void) {
-    int r;
+    uint32_t r;
 
-    if (g_state.NativeRand)
-        r = rand();
-    else { // As supplied by D McDonnell	from SAS Insititute C
-        r = (((((((((((lastrand_for_my_rand << 3) - lastrand_for_my_rand) << 3) + lastrand_for_my_rand) << 1) +
-                  lastrand_for_my_rand)
+    if (g_state.NativeRand) {
+        // Per-thread xorshift generator; avoid the global, thread-unsafe rand().
+        r = g_native_rand_state;
+        r ^= r << 13;
+        r ^= r >> 17;
+        r ^= r << 5;
+        g_native_rand_state = r;
+        r &= UINT32_C(0x7fffffff);
+    } else { // As supplied by D McDonnell	from SAS Insititute C
+        r = (((((((((((g_lastrand_for_my_rand << 3) - g_lastrand_for_my_rand) << 3) + g_lastrand_for_my_rand) << 1) +
+                  g_lastrand_for_my_rand)
                  << 4) -
-                lastrand_for_my_rand)
+                g_lastrand_for_my_rand)
                << 1) -
-              lastrand_for_my_rand) +
+              g_lastrand_for_my_rand) +
              0xe60) &
             0x7fffffff;
-        lastrand_for_my_rand = r - 1;
+        g_lastrand_for_my_rand = r - 1U;
     }
-    return (r);
+    return (int)r;
 }
 
-static inline char random_byte(void) { return (char)(my_rand() & 0xFF); }
+[[maybe_unused]] static inline char random_byte(void) { return (char)(my_rand() & 0xFF); }
 
-static inline uint16_t minimum_value(uint16_t valueA, uint16_t valueB) { return valueA < valueB ? valueA : valueB; }
+[[maybe_unused]] static inline uint16_t minimum_value(uint16_t value_a, uint16_t value_b) {
+    return value_a < value_b ? value_a : value_b;
+}
 
-static inline void stop(const char *messageString) // Made messageString const
+[[maybe_unused]] static inline void stop(const char *message_string) // Made messageString const
 {
-    printf("\n%s", messageString);
+    printf("\n%s", message_string);
     // ExitStatus will be used by the main exit call
-    exit(EXIT_FAILURE); // Or some other non-success status
+    // Defer termination to the owning thread instead of terminating the
+    // entire process from an arbitrary worker thread.
+    g_state.ExitStatus = EXIT_FAILURE;
 }
 
-static inline signed int float_to_int_round(double inputValue) { return ((signed int)floor(inputValue + 0.5)); }
+[[maybe_unused]] static inline signed int float_to_int_round(double input_value) {
+    const double ROUNDED_VALUE = floor(input_value + 0.5);
+    return (signed int)ROUNDED_VALUE;
+}
 
-static inline signed int float_to_int_floor(double inputValue) { return ((signed int)floor(inputValue)); }
+[[maybe_unused]] static inline signed int float_to_int_floor(double input_value) {
+    const double FLOORED_VALUE = floor(input_value);
+    return (signed int)FLOORED_VALUE;
+}
 
-static inline void tweak_seed(struct SeedType *seedToTweak) {
+[[maybe_unused]] static inline void tweak_seed(struct seed_type_t *seed_to_tweak) {
     uint16_t temp;
-    temp = ((*seedToTweak).a) + ((*seedToTweak).b) + ((*seedToTweak).c); /* 2 byte aritmetic */
-    (*seedToTweak).a = (*seedToTweak).b;
-    (*seedToTweak).b = (*seedToTweak).c;
-    (*seedToTweak).c = temp;
+    temp = ((*seed_to_tweak).a) + ((*seed_to_tweak).b) + ((*seed_to_tweak).c); /* 2 byte aritmetic */
+    (*seed_to_tweak).a = (*seed_to_tweak).b;
+    (*seed_to_tweak).b = (*seed_to_tweak).c;
+    (*seed_to_tweak).c = temp;
     // d is not updated in original algorithm, but should be handled for completeness
     // We could rotate d too, but it wasn't in the original algorithm
 }
 
 /* Remove all c's from string s */
-static inline void strip_char_from_string(char *inputString, const char charToStrip) {
-    size_t i = 0, j = 0;
+[[maybe_unused]] static inline void strip_char_from_string(char *input_string, const char CHAR_TO_STRIP) {
+    size_t i = 0;
+    size_t j = 0;
 
-    while (i < strlen(inputString)) {
-        if (inputString[i] != charToStrip) {
-            inputString[j] = inputString[i];
+    while (i < strlen(input_string)) {
+        if (input_string[i] != CHAR_TO_STRIP) {
+            input_string[j] = input_string[i];
             j++;
         }
         i++;
     }
 
-    inputString[j] = 0;
+    input_string[j] = 0;
 }
 
 /* Return nonzero iff string t begins with non-empty string s */
-static inline bool string_begins_with(const char *prefixString, const char *fullString) // Made params const
+static inline bool string_begins_with(const char *prefix_string, const char *full_string) // Made params const
 {
     size_t i = 0;
-    size_t l = strlen(prefixString);
+    size_t l = strlen(prefix_string);
     if (l > 0) {
         // Check if fullString is long enough
-        if (strlen(fullString) < l)
-            return 0;
-        while ((i < l) & (toupper(prefixString[i]) == toupper(fullString[i])))
+        if (strlen(full_string) < l) {
+            return false;
+        }
+        while ((i < l) & (toupper(prefix_string[i]) == toupper(full_string[i]))) {
             i++;
-        if (i == l)
-            return 1;
+        }
+        if (i == l) {
+            return true;
+        }
     }
-    return 0;
+    return false;
 }
 
 /*
  * Check string s against n options in string array a
  * If matches ith element return i+1 else return 0
  */
-static inline uint16_t match_string_in_array(const char *searchString, const char stringArray[][MAX_LEN],
-                                             uint16_t arraySize) // Made params const
+[[maybe_unused]] static inline uint16_t match_string_in_array(const char *search_string,
+                                                              const char string_array[][MAX_LEN],
+                                                              uint16_t array_size) // Made params const
 {
-    for (uint16_t i = 0; i < arraySize; i++) {
-        if (string_begins_with(searchString, stringArray[i]))
+    for (uint16_t i = 0; i < array_size; i++) {
+        if (string_begins_with(search_string, string_array[i])) {
             return i + 1;
+        }
     }
     return 0;
 }
 
 /* Strip leading and trailing space characters from the given string. */
-static inline char *strip_leading_trailing_spaces(char *inputString) {
+[[maybe_unused]] static inline char *strip_leading_trailing_spaces(char *input_string) {
     char *p;
-    if (inputString == NULL)
-        return NULL;                                                     // Handle NULL input
-    while (*inputString != '\0' && isspace((unsigned char)*inputString)) // Cast to unsigned char for isspace
-    {
-        ++inputString;
+    if (input_string == nullptr) {
+        return nullptr; // Handle nullptr input
     }
-    p = inputString + strlen(inputString);
-    while (p > inputString && isspace((unsigned char)*(p - 1))) // Cast to unsigned char for isspace
+    while (*input_string != '\0' && isspace((unsigned char)*input_string)) // Cast to unsigned char for isspace
+    {
+        ++input_string;
+    }
+    p = input_string + strlen(input_string);
+    while (p > input_string && isspace((unsigned char)*(p - 1))) // Cast to unsigned char for isspace
     {
         --p;
         *p = '\0';
     }
-    return inputString;
+    return input_string;
 }
 
 /* Split string s at first space, returning first 'word' in t & shortening s */
-static inline void split_string_at_first_space(char *inputString, char *firstWord) {
-    if (inputString == NULL || firstWord == NULL)
-        return; // Handle NULL input
+[[maybe_unused]] static inline void split_string_at_first_space(char *input_string, char *first_word) {
+    if (input_string == nullptr || first_word == nullptr) {
+        return; // Handle nullptr input
+    }
 
-    size_t l = strlen(inputString);
-    size_t i = 0, j = 0;
+    size_t l = strlen(input_string);
+    size_t i = 0;
+    size_t j = 0;
 
     /* Strip leading spaces */
-    while ((i < l) && isspace((unsigned char)inputString[i]))
+    while ((i < l) && isspace((unsigned char)input_string[i])) {
         i++; // Cast for isspace
+    }
 
     if (i == l) {
-        inputString[0] = 0;
-        firstWord[0] = 0;
+        input_string[0] = 0;
+        first_word[0] = 0;
         return;
     };
 
-    while ((i < l) && (inputString[i] != ' ')) {
-        firstWord[j] = inputString[i];
+    while ((i < l) && (input_string[i] != ' ')) {
+        first_word[j] = input_string[i];
         i++;
         j++;
     }
-    firstWord[j] = 0;
+    first_word[j] = 0;
 
     // If there was a space, skip it
-    if (i < l && inputString[i] == ' ')
+    if (i < l && input_string[i] == ' ') {
         i++;
+    }
 
     j = 0;
     while (i < l) {
-        inputString[j] = inputString[i];
+        input_string[j] = input_string[i];
         i++;
         j++;
     }
-    inputString[j] = 0;
+    input_string[j] = 0;
 }

@@ -1,6 +1,10 @@
 #pragma once
 
-#include "elite_player_ship.h" // Include the basic ship type definitions
+#include "elite_equipment_constants.h" // For map_equipment_indices
+#include "elite_ship_components.h"     // Include the basic ship type definitions
+#include "elite_state.h"
+#include <stdio.h>
+#include <string.h>
 
 // Maximum equipment items the player can have in inventory (not equipped)
 #define MAX_EQUIPMENT_INVENTORY 30
@@ -8,204 +12,210 @@
 /**
  * Stores equipment in the ship's inventory when removed from a slot.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @param equipment The equipment item to store
  * @return 1 if equipment was successfully stored, 0 if inventory is full
  */
-static inline bool StoreEquipmentInInventory(PlayerShip *playerShip, ShipEquipmentItem equipment) {
-    if (playerShip == NULL) {
-        return 0;
+static inline bool store_equipment_in_inventory(player_ship_t*player_ship, ship_equipment_item_t equipment) {
+    if (player_ship == nullptr) {
+        return false;
     }
 
     // Find first free inventory slot
     for (int i = 0; i < MAX_EQUIPMENT_INVENTORY; ++i) {
-        if (!playerShip->equipmentInventory[i].isActive) {
+        if (!player_ship->equipmentInventory[i].isActive) {
             // Store equipment in inventory
-            playerShip->equipmentInventory[i] = equipment;
-            playerShip->equipmentInventory[i].isActive = 1; // Mark as active in inventory
+            player_ship->equipmentInventory[i] = equipment;
+            player_ship->equipmentInventory[i].isActive = 1; // Mark as active in inventory
             printf("Stored %s in inventory slot %d.\n", equipment.name, i);
-            return 1;
+            return true;
         }
     }
 
     printf("Error: Equipment inventory is full. Cannot store %s.\n", equipment.name);
-    return 0;
+    return false;
 }
 
 /**
  * Remove equipment from a slot and store it in inventory.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @param slotType The slot to remove equipment from
  * @return 1 if equipment was successfully removed and stored, 0 otherwise
  */
-static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentSlotType slotType) {
-    if (playerShip == NULL || slotType >= MAX_EQUIPMENT_SLOTS) {
-        return 0;
+static inline bool remove_equipment_to_inventory(player_ship_t*player_ship, equipment_slot_type_t slot_type) {
+    if (player_ship == nullptr || slot_type >= MAX_EQUIPMENT_SLOTS) {
+        return false;
     }
 
     // Check if there's actually equipment installed
-    if (!playerShip->equipment[slotType].isActive) {
-        printf("Error: No equipment installed in slot %d.\n", slotType);
-        return 0;
+    if (!player_ship->equipment[slot_type].isActive) {
+        printf("Error: No equipment installed in slot %d.\n", slot_type);
+        return false;
     }
 
     // Save current equipment to add to inventory
-    ShipEquipmentItem equipToStore = playerShip->equipment[slotType];
-    char equipmentName[MAX_SHIP_NAME_LENGTH];
-    snprintf(equipmentName, MAX_SHIP_NAME_LENGTH, "%s", equipToStore.name);
-    // equipmentName[MAX_SHIP_NAME_LENGTH - 1] = '\\0'; // snprintf handles null termination
+    ship_equipment_item_t equip_to_store = player_ship->equipment[slot_type];
+    char equipment_name[MAX_SHIP_NAME_LENGTH];
+    int name_length = snprintf(equipment_name, MAX_SHIP_NAME_LENGTH, "%s", equip_to_store.name);
+    if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
+        printf("Error: Equipment name is invalid or too long.\n");
+        return false;
+    }
 
     // Special handling before removal
-    if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4) {
+    if (slot_type >= UTILITY_SYSTEM_1 && slot_type <= UTILITY_SYSTEM_4) {
         // Reverse cargo bay extension effect
-        if (playerShip->equipment[slotType].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION) {
+        if (player_ship->equipment[slot_type].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION) {
             // Check if removing cargo capacity would leave enough space for current cargo
-            if (playerShip->attributes.cargoCapacityTons - 5 < playerShip->attributes.currentCargoTons) {
+            if (player_ship->attributes.cargoCapacityTons - 5 < player_ship->attributes.currentCargoTons) {
                 printf("Error: Can't remove cargo bay extension while cargo hold contains more than %d tons.\n",
-                       playerShip->attributes.cargoCapacityTons - 5);
-                return 0;
+                       player_ship->attributes.cargoCapacityTons - 5);
+                return false;
             }
 
             // Decrease cargo capacity
-            playerShip->attributes.cargoCapacityTons -= 5;
+            player_ship->attributes.cargoCapacityTons -= 5;
         }
     }
 
     // Store equipment in inventory
-    if (!StoreEquipmentInInventory(playerShip, equipToStore)) {
-        return 0; // Failed to store in inventory (inventory full)
+    if (!store_equipment_in_inventory(player_ship, equip_to_store)) {
+        return false; // Failed to store in inventory (inventory full)
     }
 
     // Reset the equipment slot
-    playerShip->equipment[slotType].isActive = 0;
-    snprintf(playerShip->equipment[slotType].name, MAX_SHIP_NAME_LENGTH, "Empty");
+    player_ship->equipment[slot_type].isActive = 0;
+    memcpy(player_ship->equipment[slot_type].name, "Empty", sizeof("Empty"));
     // Leave other fields as they are - they'll be overwritten on next install
 
-    printf("Successfully removed %s from slot %d and stored in inventory.\n", equipmentName, slotType);
+    printf("Successfully removed %s from slot %d and stored in inventory.\n", equipment_name, slot_type);
 
     // Update equipment mapping for quick access
-    MapEquipmentIndices(playerShip);
+    map_equipment_indices(player_ship);
 
-    return 1;
+    return true;
 }
 
 /**
  * Equips an item from the inventory into an equipment slot.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @param inventoryIndex Index of the equipment in inventory
  * @param slotType The slot to equip the item to
  * @return 1 if equipment was successfully equipped, 0 otherwise
  */
-static inline bool EquipFromInventory(PlayerShip *playerShip, int inventoryIndex, EquipmentSlotType slotType) {
-    if (playerShip == NULL || inventoryIndex < 0 || inventoryIndex >= MAX_EQUIPMENT_INVENTORY || slotType < 0 ||
-        slotType >= MAX_EQUIPMENT_SLOTS) {
-        return 0;
+[[maybe_unused]] static inline bool equip_from_inventory(player_ship_t*player_ship, int inventory_index,
+                                                         equipment_slot_type_t slot_type) {
+    if (player_ship == nullptr || inventory_index < 0 || inventory_index >= MAX_EQUIPMENT_INVENTORY || slot_type < 0 ||
+        slot_type >= MAX_EQUIPMENT_SLOTS) {
+        return false;
     }
 
     // Check if the inventory slot has equipment
-    if (!playerShip->equipmentInventory[inventoryIndex].isActive) {
-        printf("Error: No equipment in inventory slot %d.\n", inventoryIndex);
-        return 0;
+    if (!player_ship->equipmentInventory[inventory_index].isActive) {
+        printf("Error: No equipment in inventory slot %d.\n", inventory_index);
+        return false;
     }
 
     // Get the inventory equipment
-    ShipEquipmentItem inventoryEquipment = playerShip->equipmentInventory[inventoryIndex];
+    ship_equipment_item_t inventory_equipment = player_ship->equipmentInventory[inventory_index];
 
     // Verify equipment compatibility with the target slot
-    bool isCompatible = 0;
+    bool is_compatible = false;
 
     // Check if the target slot and the equipment slot type are compatible
     // We organize the slot types by category and verify they are in the same category
-    if (slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON || slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
+    if (slot_type == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON || slot_type == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
         // For weapons, check if the original slot was any weapon slot
-        if (inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON ||
-            inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
-            isCompatible = 1;
+        if (inventory_equipment.slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON ||
+            inventory_equipment.slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
+            is_compatible = true;
         }
-    } else if (slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 || slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
+    } else if (slot_type == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 || slot_type == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
         // For defensive equipment, check if the original slot was any defensive slot
-        if (inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
-            inventoryEquipment.slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
-            isCompatible = 1;
+        if (inventory_equipment.slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 ||
+            inventory_equipment.slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
+            is_compatible = true;
         }
-    } else if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4) {
+    } else if (slot_type >= UTILITY_SYSTEM_1 && slot_type <= UTILITY_SYSTEM_4) {
         // For utility systems, check if the original slot was any utility slot
-        if (inventoryEquipment.slotType >= UTILITY_SYSTEM_1 && inventoryEquipment.slotType <= UTILITY_SYSTEM_4) {
-            isCompatible = 1;
+        if (inventory_equipment.slotType >= UTILITY_SYSTEM_1 && inventory_equipment.slotType <= UTILITY_SYSTEM_4) {
+            is_compatible = true;
         }
     }
 
-    if (!isCompatible) {
-        printf("Error: %s cannot be installed in slot %d. Incorrect slot type.\n", inventoryEquipment.name, slotType);
-        return 0;
+    if (!is_compatible) {
+        printf("Error: %s cannot be installed in slot %d. Incorrect slot type.\n", inventory_equipment.name, slot_type);
+        return false;
     }
 
     // Check if the target slot is already occupied
-    if (playerShip->equipment[slotType].isActive) {
+    if (player_ship->equipment[slot_type].isActive) {
         // Move the current equipment to inventory before replacing
-        if (!RemoveEquipmentToInventory(playerShip, slotType)) {
+        if (!remove_equipment_to_inventory(player_ship, slot_type)) {
             // If we couldn't store the current equipment (inventory full), abort
-            return 0;
+            return false;
         }
     }
 
     // Install the equipment from inventory
-    playerShip->equipment[slotType] = inventoryEquipment;
+    player_ship->equipment[slot_type] = inventory_equipment;
 
     // If this is a cargo bay extension, add the extra cargo capacity
-    if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4 &&
-        inventoryEquipment.typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION) {
-        playerShip->attributes.cargoCapacityTons += 5;
+    if (slot_type >= UTILITY_SYSTEM_1 && slot_type <= UTILITY_SYSTEM_4 &&
+        inventory_equipment.typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION) {
+        player_ship->attributes.cargoCapacityTons += 5;
     }
 
     // Clear the inventory slot
-    playerShip->equipmentInventory[inventoryIndex].isActive = 0;
-    snprintf(playerShip->equipmentInventory[inventoryIndex].name, MAX_SHIP_NAME_LENGTH, "Empty");
+    player_ship->equipmentInventory[inventory_index].isActive = 0;
+    if (snprintf(player_ship->equipmentInventory[inventory_index].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+        return false;
+    }
 
-    printf("Equipped %s from inventory to slot %d.\n", inventoryEquipment.name, slotType);
+    printf("Equipped %s from inventory to slot %d.\n", inventory_equipment.name, slot_type);
 
     // Update equipment mapping for quick access
-    MapEquipmentIndices(playerShip);
+    map_equipment_indices(player_ship);
 
-    return 1;
+    return true;
 }
 
 /**
  * Lists all equipment stored in the inventory.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  */
-static inline void ListEquipmentInventory(const PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+[[maybe_unused]] static inline void list_equipment_inventory(const player_ship_t*player_ship) {
+    if (player_ship == nullptr) {
         return;
     }
 
     printf("\n--- Equipment Inventory ---\n");
 
-    bool hasInventory = 0;
+    bool has_inventory = false;
     for (int i = 0; i < MAX_EQUIPMENT_INVENTORY; ++i) {
-        if (playerShip->equipmentInventory[i].isActive) {
-            hasInventory = 1;
+        if (player_ship->equipmentInventory[i].isActive) {
+            has_inventory = true;
 
             // Determine item type for better display
-            char itemType[20] = "Unknown";
-            EquipmentSlotType slotType = playerShip->equipmentInventory[i].slotType;
+            const char *item_type = "Unknown";
+            equipment_slot_type_t slot_type = player_ship->equipmentInventory[i].slotType;
 
-            if (slotType == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON || slotType == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
-                snprintf(itemType, sizeof(itemType), "Weapon");
-            } else if (slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 || slotType == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
-                snprintf(itemType, sizeof(itemType), "Defensive");
-            } else if (slotType >= UTILITY_SYSTEM_1 && slotType <= UTILITY_SYSTEM_4) {
-                snprintf(itemType, sizeof(itemType), "Utility");
+            if (slot_type == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON || slot_type == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
+                item_type = "Weapon";
+            } else if (slot_type == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 || slot_type == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
+                item_type = "Defensive";
+            } else if (slot_type >= UTILITY_SYSTEM_1 && slot_type <= UTILITY_SYSTEM_4) {
+                item_type = "Utility";
             }
 
-            printf("[%2d] %s (Type: %s)\n", i, playerShip->equipmentInventory[i].name, itemType);
+            printf("[%2d] %s (Type: %s)\n", i, player_ship->equipmentInventory[i].name, item_type);
         }
     }
 
-    if (!hasInventory) {
+    if (!has_inventory) {
         printf("No equipment in inventory.\n");
     }
     printf("---------------------------\n");
@@ -217,34 +227,40 @@ static inline void ListEquipmentInventory(const PlayerShip *playerShip) {
 /**
  * Prints the equipment slots of the player's ship.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship Pointer to the player_ship_tstructure
  */
-static inline void PrintEquipmentSlots(const PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+[[maybe_unused]] static inline void print_equipment_slots(const player_ship_t*player_ship) {
+    if (player_ship == nullptr) {
         return;
     }
 
     printf("\n--- Equipment Slots ---\n");
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
-        char slotTypeName[30] = "Unknown";
+        char slot_type_name[30] = "Unknown";
+        int written = 0;
 
         // Determine slot type name
         if (i == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON) {
-            snprintf(slotTypeName, sizeof(slotTypeName), "Forward Weapon");
+            written = snprintf(slot_type_name, sizeof(slot_type_name), "Forward Weapon");
         } else if (i == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
-            snprintf(slotTypeName, sizeof(slotTypeName), "Aft Weapon");
+            written = snprintf(slot_type_name, sizeof(slot_type_name), "Aft Weapon");
         } else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1) {
-            snprintf(slotTypeName, sizeof(slotTypeName), "Defensive System 1");
+            written = snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 1");
         } else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
-            snprintf(slotTypeName, sizeof(slotTypeName), "Defensive System 2");
+            written = snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 2");
         } else if (i >= UTILITY_SYSTEM_1 && i <= UTILITY_SYSTEM_4) {
-            sprintf(slotTypeName, "Utility System %d", (i - UTILITY_SYSTEM_1) + 1);
+            written = snprintf(slot_type_name, sizeof(slot_type_name), "Utility System %d",
+                               (i - UTILITY_SYSTEM_1) + 1);
+        }
+
+        if (written < 0 || (size_t)written >= sizeof(slot_type_name)) {
+            slot_type_name[0] = '\0';
         }
 
         // Print slot info
-        printf("\nSlot %d (%s): %s", i, slotTypeName,
-               playerShip->equipment[i].isActive ? playerShip->equipment[i].name : "Empty");
+        printf("\nSlot %d (%s): %s", i, slot_type_name,
+               player_ship->equipment[i].isActive ? player_ship->equipment[i].name : "Empty");
     }
 
     printf("\n");

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "elite_market.h"           // For generate_market
-#include "elite_navigation_types.h" // For NavigationState and CelestialType
 #include "elite_state.h"
 #include "elite_utils.h" // For float_to_int_round, random_byte, string_begins_with
 #include <math.h>        // For sqrt
@@ -13,17 +12,17 @@
 #define GAL_SIZE 256 // Galaxy size
 
 // Forward declarations for structures used in functions
-struct PlanSys;
+struct plan_sys_t;
 
 // Calculates fuel requirement for in-system travel based on distance
-static inline double calculate_travel_fuel_requirement(double distanceInAU) {
+[[maybe_unused]] static inline double calculate_travel_fuel_requirement(double distance_in_au) {
     // Base fuel requirement: 0.025 liters per AU
     // This is much less than hyperspace travel which consumes ~10 liters per 0.1 LY
-    return distanceInAU * 0.025;
+    return distance_in_au * 0.025;
 }
 
-// Forward declaration for function from elite_player_state.h
-static inline void initialize_star_system_for_current_planet(void);
+// Declaration for the function implemented by the player-state module.
+[[maybe_unused]] static inline void initialize_star_system_for_current_planet(void);
 
 /**
  * @brief Calculates the distance between two planetary systems.
@@ -40,11 +39,11 @@ static inline void initialize_star_system_for_current_planet(void);
  *
  * @return The scaled distance between the two systems as a 16-bit unsigned integer.
  */
-static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB) {
+static inline uint16_t distance(struct plan_sys_t system_a, struct plan_sys_t system_b) {
     // Using doubles for intermediate calculations for precision, as in original.
-    double dx = (double)systemA.x - systemB.x;
-    double dy = (double)systemA.y - systemB.y;
-    return (uint16_t)float_to_int_round(4 * sqrt(dx * dx + (dy * dy) / 4.0));
+    double dx = (double)system_a.x - system_b.x;
+    double dy = (double)system_a.y - system_b.y;
+    return (uint16_t)float_to_int_round(4 * sqrt((dx * dx) + ((dy * dy) / 4.0)));
 }
 
 /**
@@ -62,13 +61,13 @@ static inline uint16_t distance(struct PlanSys systemA, struct PlanSys systemB) 
  * @see distance - Function used to calculate distances between planets
  * @see string_begins_with - Function that checks if a string begins with another string
  */
-static inline PlanetNum find_matching_system_name(const char *searchName) {
-    PlanetNum syscount;
-    PlanetNum p = g_state.CurrentPlanet; // Global variable
+[[maybe_unused]] static inline planet_num_t find_matching_system_name(const char *search_name) {
+    planet_num_t syscount;
+    planet_num_t p = (planet_num_t)g_state.CurrentPlanet; // Global variable
     uint16_t d = 0xFFFF;                 // Initialize with max uint16_t value
 
     for (syscount = 0; syscount < GAL_SIZE; ++syscount) {
-        if (string_begins_with(searchName, g_state.Galaxy[syscount].name)) // Galaxy is global
+        if (string_begins_with(search_name, g_state.Galaxy[syscount].name)) // Galaxy is global
         {
             uint16_t dist_to_current = distance(g_state.Galaxy[syscount], g_state.Galaxy[g_state.CurrentPlanet]);
             if (dist_to_current < d) {
@@ -97,10 +96,10 @@ static inline PlanetNum find_matching_system_name(const char *searchName) {
  *
  * @see random_byte(), generate_market(), initialize_star_system_for_current_planet()
  */
-static inline void execute_jump_to_planet(PlanetNum planetIndex) {
-    g_state.CurrentPlanet = planetIndex; // Global variable
+[[maybe_unused]] static inline void execute_jump_to_planet(planet_num_t planet_index) {
+    g_state.CurrentPlanet = planet_index; // Global variable
     // Galaxy is a global variable, random_byte from elite_utils, generate_market from elite_market
-    g_state.LocalMarket = generate_market(random_byte(), g_state.Galaxy[planetIndex]); // Global variable
+    g_state.LocalMarket = generate_market((uint16_t)(unsigned char)random_byte(), g_state.Galaxy[planet_index]); // Global variable
 
     // Update the star system and navigation state for the new planet
     initialize_star_system_for_current_planet();

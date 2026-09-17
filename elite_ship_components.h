@@ -1,9 +1,8 @@
 #pragma once
 
 #include <stdbool.h> // For bool
-#include <stddef.h>  // For NULL
+#include <stddef.h>  // For nullptr
 #include <stdint.h>  // For uint16_t, int32_t
-#include <string.h>  // For string functions
 
 // --- Constants for Equipment Types ---
 #ifndef MAX_SHIP_NAME_LENGTH
@@ -30,7 +29,7 @@
 
 // --- Enumerations ---
 
-typedef enum WeaponType {
+typedef enum weapon_type_t {
     WEAPON_TYPE_NONE,
     WEAPON_TYPE_PULSE_LASER,
     WEAPON_TYPE_BEAM_LASER,
@@ -39,30 +38,30 @@ typedef enum WeaponType {
     WEAPON_TYPE_MISSILE_HOMING,
     WEAPON_TYPE_MISSILE_DUMBFIRE,
     WEAPON_TYPE_REAR_LASER // Generic rear laser, specific type can be an attribute
-} WeaponType;
+} weapon_type_t;
 
-typedef enum DefensiveSystemType {
+typedef enum defensive_system_type_t {
     DEFENSIVE_SYSTEM_TYPE_NONE,
     DEFENSIVE_SYSTEM_TYPE_ECM // Electronic Counter-Measures
-} DefensiveSystemType;
+} defensive_system_type_t;
 
-typedef enum UtilitySystemType {
+typedef enum utility_system_type_t {
     UTILITY_SYSTEM_TYPE_NONE,
     UTILITY_SYSTEM_TYPE_ESCAPE_POD,
     UTILITY_SYSTEM_TYPE_FUEL_SCOOPS,
     UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION, // Represents the upgrade itself
     UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER,
     UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE
-} UtilitySystemType;
+} utility_system_type_t;
 
 // --- Named Union for Equipment Specifics ---
-typedef union EquipmentTypeSpecifics {
-    WeaponType weaponType;
-    DefensiveSystemType defensiveType;
-    UtilitySystemType utilityType;
-} EquipmentTypeSpecifics;
+typedef union equipment_type_specifics_t {
+    weapon_type_t weaponType;
+    defensive_system_type_t defensiveType;
+    utility_system_type_t utilityType;
+} equipment_type_specifics_t;
 
-typedef enum EquipmentSlotType {
+typedef enum equipment_slot_type_t {
     EQUIPMENT_SLOT_TYPE_NONE,
     EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON,
     EQUIPMENT_SLOT_TYPE_AFT_WEAPON,
@@ -72,11 +71,11 @@ typedef enum EquipmentSlotType {
     UTILITY_SYSTEM_2,
     UTILITY_SYSTEM_3,
     UTILITY_SYSTEM_4
-} EquipmentSlotType;
+} equipment_slot_type_t;
 
 // --- Structures ---
 
-typedef struct ShipCoreAttributes {
+typedef struct ship_core_attributes_t {
     int hullStrength;
     double shieldStrengthFront;
     double shieldStrengthAft;
@@ -86,27 +85,39 @@ typedef struct ShipCoreAttributes {
     int missilePylons;
     int missilesLoadedHoming;
     int missilesLoadedDumbfire;
-} ShipCoreAttributes;
+} ship_core_attributes_t;
 
-typedef struct ShipEquipmentItem {
+typedef struct ship_equipment_item_t {
     char name[MAX_SHIP_NAME_LENGTH];
-    EquipmentSlotType slotType;          // What kind of slot this is (e.g. Forward Weapon)
-    int isActive;                        // 0 for empty/damaged, 1 for active
-    EquipmentTypeSpecifics typeSpecific; // Use the new named union
+    equipment_slot_type_t slotType;          // What kind of slot this is (e.g. Forward Weapon)
+    bool isActive;                        // 0 for empty/damaged, 1 for active
+    equipment_type_specifics_t typeSpecific; // Use the new named union
 
     // Common attributes
     double damageOutput; // For weapons
-} ShipEquipmentItem;
+} ship_equipment_item_t;
 
-typedef struct CargoItem {
+typedef struct cargo_item_t {
     char name[MAX_SHIP_NAME_LENGTH]; // Name of the commodity
     int quantity;                    // Number of units
     int purchasePrice;               // Price per unit when bought (for player reference)
-} CargoItem;
+} cargo_item_t;
+
+struct ship_type_t;
+
+typedef struct player_ship_t {
+    char shipName[MAX_SHIP_NAME_LENGTH];
+    char shipClassName[MAX_SHIP_NAME_LENGTH]; // e.g., "Cobra Mk III"
+    const struct ship_type_t *ship_type_t;    // Pointer to the ship type definition
+    ship_core_attributes_t attributes;
+    ship_equipment_item_t equipment[MAX_EQUIPMENT_SLOTS];              // Currently equipped items
+    ship_equipment_item_t equipmentInventory[MAX_EQUIPMENT_INVENTORY]; // Inventory of stored equipment
+    cargo_item_t cargo[MAX_CARGO_SLOTS];
+} player_ship_t;
 
 // --- Helper Functions (Names from types) ---
 
-static inline const char *GetWeaponTypeName(WeaponType type) {
+[[maybe_unused]] static inline const char *get_weapon_type_name(weapon_type_t type) {
     switch (type) {
     case WEAPON_TYPE_PULSE_LASER:
         return "Pulse Laser";
@@ -128,7 +139,7 @@ static inline const char *GetWeaponTypeName(WeaponType type) {
     }
 }
 
-static inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type) {
+[[maybe_unused]] static inline const char *get_defensive_system_type_name(defensive_system_type_t type) {
     switch (type) {
     case DEFENSIVE_SYSTEM_TYPE_ECM:
         return "ECM System";
@@ -138,7 +149,7 @@ static inline const char *GetDefensiveSystemTypeName(DefensiveSystemType type) {
     }
 }
 
-static inline const char *GetUtilitySystemTypeName(UtilitySystemType type) {
+[[maybe_unused]] static inline const char *get_utility_system_type_name(utility_system_type_t type) {
     switch (type) {
     case UTILITY_SYSTEM_TYPE_ESCAPE_POD:
         return "Escape Pod";

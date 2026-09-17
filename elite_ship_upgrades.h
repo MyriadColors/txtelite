@@ -1,23 +1,16 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "elite_equipment_constants.h"
+#include "elite_player_ship.h"
 #include "elite_ship_components.h"
-
-// Forward declarations of types from elite_player_ship.h (to avoid circular include)
-struct PlayerShip;
-typedef struct PlayerShip PlayerShip;
-
-// Forward declare functions from elite_player_ship.h
-static inline bool AddEquipment(PlayerShip *playerShip, EquipmentSlotType slotType, const char *equipmentName,
-                                EquipmentTypeSpecifics specificType, double damageOutput);
-
-static inline bool RemoveEquipment(PlayerShip *playerShip, EquipmentSlotType slotType);
-
-// Forward declare functions from elite_ship_inventory.h
-static inline bool RemoveEquipmentToInventory(PlayerShip *playerShip, EquipmentSlotType slotType);
-static inline void MapEquipmentIndices(PlayerShip *playerShip);
-
-#include "elite_equipment_constants.h" // For equipment indices
-#include "elite_state.h"               // For global state variables
+#include "elite_ship_inventory.h"
+#include "elite_state.h" // For global state variables
 
 // === Constants for equipment costs and upgrade values ===
 // Basic equipment costs (credits)
@@ -80,10 +73,10 @@ typedef struct ShipUpgradeParameters {
 
 // Default upgrade parameters
 static const ShipUpgradeParameters DEFAULT_UPGRADE_PARAMS = {"Default",
-                                                             1.0f,
-                                                             1.0f,
-                                                             1.0f,
-                                                             1.0f, // Cost multipliers (1.0 = standard)
+                                                             1.0F,
+                                                             1.0F,
+                                                             1.0F,
+                                                             1.0F, // Cost multipliers (1.0 = standard)
                                                              MAX_HULL_UPGRADE,
                                                              MAX_SHIELD_UPGRADE,
                                                              MAX_CARGO_UPGRADE,
@@ -93,7 +86,7 @@ static const ShipUpgradeParameters DEFAULT_UPGRADE_PARAMS = {"Default",
 static const ShipUpgradeParameters SHIP_UPGRADE_PARAMS[] = {
     // Cobra Mk III - baseline ship
     {
-        "Cobra Mk III", 1.0f, 1.0f, 1.0f, 1.0f, // Standard costs
+        "Cobra Mk III", 1.0F, 1.0F, 1.0F, 1.0F, // Standard costs
         40, 8, 5, 3                             // Moderate max levels
     },
     // Viper - combat-focused ship
@@ -103,7 +96,7 @@ static const ShipUpgradeParameters SHIP_UPGRADE_PARAMS[] = {
     },
     // Asp Mk II - higher tier ship with better upgrade potential
     {
-        "Asp Mk II", 1.1f, 1.1f, 0.9f, 1.0f, // More expensive hull/shields, cheaper utilities
+        "Asp Mk II", 1.1f, 1.1f, 0.9f, 1.0F, // More expensive hull/shields, cheaper utilities
         50, 12, 6, 4                         // Higher maximum levels overall
     }};
 
@@ -113,10 +106,10 @@ static const ShipUpgradeParameters SHIP_UPGRADE_PARAMS[] = {
  * Get upgrade parameters for a specific ship class
  *
  * @param shipClassName The name of the ship class to get parameters for
- * @return Pointer to the appropriate ShipUpgradeParameters, never NULL
+ * @return Pointer to the appropriate ShipUpgradeParameters, never nullptr
  */
 static inline const ShipUpgradeParameters *GetShipUpgradeParameters(const char *shipClassName) {
-    if (shipClassName == NULL) {
+    if (shipClassName == nullptr) {
         return &DEFAULT_UPGRADE_PARAMS;
     }
 
@@ -139,7 +132,7 @@ static inline const ShipUpgradeParameters *GetShipUpgradeParameters(const char *
  * @return The cost of the upgrade in credits
  */
 static inline int GetUpgradeCost(ShipUpgradeType upgradeType, const ShipUpgradeParameters *shipParameters) {
-    if (shipParameters == NULL) {
+    if (shipParameters == nullptr) {
         return 0;
     }
     switch (upgradeType) {
@@ -168,7 +161,7 @@ static inline int GetUpgradeCost(ShipUpgradeType upgradeType, const ShipUpgradeP
  * @return The maximum level for this upgrade type
  */
 static inline int GetMaxUpgradeLevel(ShipUpgradeType upgradeType, const ShipUpgradeParameters *shipParameters) {
-    if (shipParameters == NULL) {
+    if (shipParameters == nullptr) {
         return 0;
     }
     switch (upgradeType) {
@@ -193,7 +186,7 @@ static inline int GetMaxUpgradeLevel(ShipUpgradeType upgradeType, const ShipUpgr
  * Apply a direct upgrade to a ship's core attributes, beyond just adding equipment.
  * This function is for structural/core system upgrades rather than adding separate equipment items.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @param upgradeType The type of upgrade to apply
  * @param upgradeLevel The level/amount to upgrade (interpretation depends on upgradeType)
  * @param cost The cost of the upgrade in credits
@@ -201,9 +194,9 @@ static inline int GetMaxUpgradeLevel(ShipUpgradeType upgradeType, const ShipUpgr
  *
  * @return 1 if upgrade was successful, 0 otherwise
  */
-static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeType, int upgradeLevel, int cost,
+static inline bool ApplyUpgrade(player_ship_t*playerShip, ShipUpgradeType upgradeType, int upgradeLevel, int cost,
                                 bool externalSync) {
-    if (playerShip == NULL || upgradeLevel <= 0) {
+    if (playerShip == nullptr || upgradeLevel <= 0) {
         return 0;
     }
 
@@ -225,7 +218,7 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         int maxLevel = shipParams->maxHullUpgrade;
 
         // Check current hull reinforcement level
-        int currentLevel = playerShip->attributes.hullStrength - playerShip->shipType->baseHullStrength;
+        int currentLevel = playerShip->attributes.hullStrength - playerShip->ship_type_t->baseHullStrength;
         // Check if at max level
         if (currentLevel + upgradeLevel > maxLevel) {
             printf("Error: Maximum hull reinforcement level reached. Max: %d, Current: %d\n", maxLevel, currentLevel);
@@ -245,7 +238,7 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
 
         // Calculate current shield level (approximate, based on default values)
         int currentLevel =
-            (int)((playerShip->attributes.shieldStrengthFront - playerShip->shipType->baseShieldStrengthFront) /
+            (int)((playerShip->attributes.shieldStrengthFront - playerShip->ship_type_t->baseShieldStrengthFront) /
                   (SHIELD_UPGRADE_AMOUNT / 2.0));
         // Check if at max level
         if (currentLevel + upgradeLevel > maxLevel) {
@@ -266,7 +259,7 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         int maxLevel = shipParams->maxCargoUpgrade;
 
         // Calculate current cargo level
-        int currentLevel = (playerShip->attributes.cargoCapacityTons - playerShip->shipType->baseCargoCapacityTons) /
+        int currentLevel = (playerShip->attributes.cargoCapacityTons - playerShip->ship_type_t->baseCargoCapacityTons) /
                            CARGO_BAY_EXTENSION_CAPACITY;
         // Check if at max level
         if (currentLevel + upgradeLevel > maxLevel) {
@@ -286,7 +279,7 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
         int maxLevel = shipParams->maxMissilePylonUpgrade;
 
         // Calculate current pylon level
-        int currentLevel = playerShip->attributes.missilePylons - playerShip->shipType->initialMissilePylons;
+        int currentLevel = playerShip->attributes.missilePylons - playerShip->ship_type_t->initialMissilePylons;
         // Check if at max level
         if (currentLevel + upgradeLevel > maxLevel) {
             printf("Error: Maximum missile pylon level reached. Max: %d, Current: %d\n", maxLevel, currentLevel);
@@ -322,37 +315,37 @@ static inline bool ApplyUpgrade(PlayerShip *playerShip, ShipUpgradeType upgradeT
  * This setup prioritizes combat capabilities with military-grade weapons,
  * defensive systems, and energy management.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @return 1 if loadout was successfully applied, 0 otherwise
  */
-static inline bool ConfigureCombatLoadout(PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+static inline bool ConfigureCombatLoadout(player_ship_t*playerShip) {
+    if (playerShip == nullptr) {
         return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
         if (playerShip->equipment[i].isActive) {
-            RemoveEquipment(playerShip, (EquipmentSlotType)i);
+            remove_equipment(playerShip, (equipment_slot_type_t)i);
         }
     }
 
     // Add military-grade weapons
-    EquipmentTypeSpecifics equipType; // Use the new named union    // Forward military laser
+    equipment_type_specifics_t equipType; // Use the new named union    // Forward military laser
     equipType.weaponType = WEAPON_TYPE_MILITARY_LASER;
-    bool success = AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Military Laser", equipType,
+    bool success = add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Military Laser", equipType,
                                 10.0 // Higher damage output
     );                               // Rear-mounted beam laser
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
-    success &= AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_AFT_WEAPON, "Beam Laser (Aft)", equipType,
+    success &= add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_AFT_WEAPON, "Beam Laser (Aft)", equipType,
                             7.5 // Damage output
     );                          // ECM System    equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
-    success &= AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, "ECM System", equipType,
+    success &= add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, "ECM System", equipType,
                             0.0 // No damage (defensive)
     );
     // Escape Pod
     equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_1, "Escape Pod", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_1, "Escape Pod", equipType,
                             0.0                                                     // No damage (utility)
     );                                                                              // Apply core upgrades for combat
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_SHIELD_ENHANCEMENT, 2, 0, 0);  // Improved shields
@@ -379,41 +372,41 @@ static inline bool ConfigureCombatLoadout(PlayerShip *playerShip) {
  * This setup prioritizes cargo capacity, defensive capabilities,
  * and quality-of-life improvements for traders.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @return 1 if loadout was successfully applied, 0 otherwise
  */
-static inline bool ConfigureTradingLoadout(PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+static inline bool ConfigureTradingLoadout(player_ship_t*playerShip) {
+    if (playerShip == nullptr) {
         return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
         if (playerShip->equipment[i].isActive) {
-            RemoveEquipment(playerShip, (EquipmentSlotType)i);
+            remove_equipment(playerShip, (equipment_slot_type_t)i);
         }
     }
 
     // Add trading-focused equipment
-    EquipmentTypeSpecifics equipType; // Use the new named union
+    equipment_type_specifics_t equipType; // Use the new named union
                                       // Forward beam laser (better than pulse, less energy than military)
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
-    bool success = AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Beam Laser", equipType,
+    bool success = add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Beam Laser", equipType,
                                 7.5 // Damage output
     );                              // ECM System for missile defense
     equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
-    success &= AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, "ECM System", equipType,
+    success &= add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, "ECM System", equipType,
                             0.0 // No damage (defensive)
     );                          // Docking Computer for easier station docking
     equipType.utilityType = UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER;
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_1, "Docking Computer", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_1, "Docking Computer", equipType,
                             0.0 // No damage (utility)
     );                          // Cargo Bay Extension in Utility Slot 2
     equipType.utilityType = UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION;
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_2, "Cargo Bay Extension", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_2, "Cargo Bay Extension", equipType,
                             0.0 // No damage (utility)
     );                          // Cargo Bay Extension in Utility Slot 3
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_3, "Cargo Bay Extension", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_3, "Cargo Bay Extension", equipType,
                             0.0 // No damage (utility)
     );
 
@@ -436,44 +429,44 @@ static inline bool ConfigureTradingLoadout(PlayerShip *playerShip) {
  * This setup prioritizes range, fuel efficiency, and self-sufficiency
  * for long journeys through space.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @return 1 if loadout was successfully applied, 0 otherwise
  */
-static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+static inline bool ConfigureExplorerLoadout(player_ship_t*playerShip) {
+    if (playerShip == nullptr) {
         return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
         if (playerShip->equipment[i].isActive) {
-            RemoveEquipment(playerShip, (EquipmentSlotType)i);
+            remove_equipment(playerShip, (equipment_slot_type_t)i);
         }
     }
 
     // Add explorer-focused equipment
-    EquipmentTypeSpecifics equipType; // Use the new named union
+    equipment_type_specifics_t equipType; // Use the new named union
                                       // Forward pulse laser (standard)
     equipType.weaponType = WEAPON_TYPE_PULSE_LASER;
-    bool success = AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Pulse Laser", equipType,
+    bool success = add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Pulse Laser", equipType,
                                 5.0 // Damage output
     );                              // Fuel Scoops - essential for explorers
     equipType.utilityType = UTILITY_SYSTEM_TYPE_FUEL_SCOOPS;
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_1, "Fuel Scoops", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_1, "Fuel Scoops", equipType,
                             0.0 // No damage (utility)
     );                          // Scanner Upgrade
     equipType.utilityType = UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE;
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_2, "Advanced Scanner", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_2, "Advanced Scanner", equipType,
                             0.0 // No damage (utility)
     );                          // Escape Pod for safety
     equipType.utilityType = UTILITY_SYSTEM_TYPE_ESCAPE_POD;
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_3, "Escape Pod", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_3, "Escape Pod", equipType,
                             0.0 // No damage (utility)
     );                          // Apply core upgrades for exploration
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_HULL_REINFORCEMENT, 10, 0, 0); // Some hull reinforcement
 
     // Fill fuel tanks to maximum
-    playerShip->attributes.fuelLiters = playerShip->shipType->maxFuelLY * 100.0; // Assuming 100L = 1LY
+    playerShip->attributes.fuelLiters = playerShip->ship_type_t->maxFuelLY * 100.0; // Assuming 100L = 1LY
 
     if (success) {
         printf("Explorer loadout successfully configured.\n");
@@ -490,43 +483,43 @@ static inline bool ConfigureExplorerLoadout(PlayerShip *playerShip) {
  * This setup prioritizes mining capabilities, cargo capacity,
  * and defensive equipment for protection in asteroid fields.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @return 1 if loadout was successfully applied, 0 otherwise
  */
-static inline bool ConfigureMiningLoadout(PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+static inline bool ConfigureMiningLoadout(player_ship_t*playerShip) {
+    if (playerShip == nullptr) {
         return 0;
     }
 
     // Clear any existing equipment by iterating through all slots
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
         if (playerShip->equipment[i].isActive) {
-            RemoveEquipment(playerShip, (EquipmentSlotType)i);
+            remove_equipment(playerShip, (equipment_slot_type_t)i);
         }
     } // Add mining-focused equipment
-    EquipmentTypeSpecifics equipType; // Use the new named union
+    equipment_type_specifics_t equipType; // Use the new named union
                                       // Forward Mining Laser - essential for asteroid mining
     equipType.weaponType = WEAPON_TYPE_MINING_LASER;
-    bool success = AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Mining Laser", equipType,
+    bool success = add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON, "Mining Laser", equipType,
                                 3.0 // Less combat damage, but effective on asteroids
     );
     // Beam Laser - for defense against pirates
     equipType.weaponType = WEAPON_TYPE_BEAM_LASER;
-    success &= AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_AFT_WEAPON, "Beam Laser (Aft)", equipType,
+    success &= add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_AFT_WEAPON, "Beam Laser (Aft)", equipType,
                             7.5 // Damage output
     );
     // ECM System for defense
     equipType.defensiveType = DEFENSIVE_SYSTEM_TYPE_ECM;
-    success &= AddEquipment(playerShip, EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, "ECM System", equipType,
+    success &= add_equipment(playerShip, EQUIPMENT_SLOT_TYPE_DEFENSIVE_1, "ECM System", equipType,
                             0.0 // No damage (defensive)
     );
     // Cargo Bay Extension in Utility Slot 1
     equipType.utilityType = UTILITY_SYSTEM_TYPE_CARGO_BAY_EXTENSION;
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_1, "Cargo Bay Extension", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_1, "Cargo Bay Extension", equipType,
                             0.0 // No damage (utility)
     );
     // Cargo Bay Extension in Utility Slot 2
-    success &= AddEquipment(playerShip, UTILITY_SYSTEM_2, "Cargo Bay Extension", equipType,
+    success &= add_equipment(playerShip, UTILITY_SYSTEM_2, "Cargo Bay Extension", equipType,
                             0.0                                           // No damage (utility)
     );                                                                    // Apply core upgrades for mining
     success &= ApplyUpgrade(playerShip, UPGRADE_TYPE_CARGO_BAY, 2, 0, 0); // More cargo space for mined materials
@@ -547,7 +540,7 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip) {
  * Purchases equipment for the player's ship from a station.
  * This integrates with the global economy and verifies that the player has enough cash.
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @param equipmentName Name of the equipment to purchase
  * @param slotType The type of slot this equipment will be installed in
  * @param specificType A union containing the type-specific data
@@ -556,11 +549,11 @@ static inline bool ConfigureMiningLoadout(PlayerShip *playerShip) {
  *
  * @return 1 if purchase successful, 0 otherwise
  */
-static inline bool PurchaseEquipment(PlayerShip *playerShip, const char *equipmentName, EquipmentSlotType slotType,
-                                     EquipmentTypeSpecifics specificType, // Changed to named union
+static inline bool PurchaseEquipment(player_ship_t*playerShip, const char *equipmentName, equipment_slot_type_t slotType,
+                                     equipment_type_specifics_t specificType, // Changed to named union
                                      int cost, int techLevelRequired, double damageOutput) {
 
-    if (playerShip == NULL || equipmentName == NULL) {
+    if (playerShip == nullptr || equipmentName == nullptr) {
         return 0;
     }
 
@@ -577,15 +570,14 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip, const char *equipme
                g_state.Galaxy[g_state.CurrentPlanet].techLev);
         return 0;
     } // Try to add the equipment
-    bool equipmentAdded = AddEquipment(playerShip, slotType, equipmentName, specificType, damageOutput);
+    bool equipmentAdded = add_equipment(playerShip, slotType, equipmentName, specificType, damageOutput);
     if (equipmentAdded) {
         // Deduct cost
         g_state.Cash -= cost;
         printf("Successfully purchased %s for %d credits.\n", equipmentName, cost);
 
-// Update equipment mapping for quick access
-#include "elite_equipment_constants.h"
-        MapEquipmentIndices(playerShip);
+        // Update equipment mapping for quick access
+        map_equipment_indices(playerShip);
 
         return 1;
     }
@@ -599,10 +591,10 @@ static inline bool PurchaseEquipment(PlayerShip *playerShip, const char *equipme
 /**
  * Displays a list of upgrades available for purchase at the shipyard
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  */
-static inline void DisplayUpgrades(const PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+static inline void DisplayUpgrades(const player_ship_t*playerShip) {
+    if (playerShip == nullptr) {
         printf("Error: Invalid ship data.\n");
         return;
     }
@@ -625,25 +617,25 @@ static inline void DisplayUpgrades(const PlayerShip *playerShip) {
 
     // 1. Hull reinforcement
     // Calculate current hull upgrade level
-    int currentHullLevel = playerShip->attributes.hullStrength - playerShip->shipType->baseHullStrength;
+    int currentHullLevel = playerShip->attributes.hullStrength - playerShip->ship_type_t->baseHullStrength;
     printf("%-4d %-25s %-15d %-15d +1 Hull\n", 1, "Hull Reinforcement", currentHullLevel, COST_HULL_REINFORCEMENT);
 
     // 2. Shield enhancement
     // Calculate current shield level (approximate, based on default values)
     int currentShieldLevel =
-        (int)((playerShip->attributes.shieldStrengthFront - playerShip->shipType->baseShieldStrengthFront) /
+        (int)((playerShip->attributes.shieldStrengthFront - playerShip->ship_type_t->baseShieldStrengthFront) /
               (SHIELD_UPGRADE_AMOUNT / 2.0));
     printf("%-4d %-25s %-15d %-15d +%.1f Shield\n", 2, "Shield Enhancement", currentShieldLevel,
            COST_SHIELD_ENHANCEMENT, SHIELD_UPGRADE_AMOUNT); // 3. Cargo Bay Extension
     // Calculate current cargo upgrade level
-    int currentCargoLevel = (playerShip->attributes.cargoCapacityTons - playerShip->shipType->baseCargoCapacityTons) /
+    int currentCargoLevel = (playerShip->attributes.cargoCapacityTons - playerShip->ship_type_t->baseCargoCapacityTons) /
                             CARGO_BAY_EXTENSION_CAPACITY;
     printf("%-4d %-25s %-15d %-15d +%d Cargo Space\n", 3, "Cargo Bay Extension", currentCargoLevel,
            COST_CARGO_BAY_EXTENSION, CARGO_BAY_EXTENSION_CAPACITY);
 
     // 5. Missile Pylon
     // Calculate current pylon upgrade level
-    int currentPylonLevel = playerShip->attributes.missilePylons - playerShip->shipType->initialMissilePylons;
+    int currentPylonLevel = playerShip->attributes.missilePylons - playerShip->ship_type_t->initialMissilePylons;
     printf("%-4d %-25s %-15d %-15d +1 Missile Pylon\n", 5, "Missile Pylon", currentPylonLevel, COST_MISSILE_PYLON);
 
     // Instructions for the player
@@ -654,11 +646,11 @@ static inline void DisplayUpgrades(const PlayerShip *playerShip) {
 /**
  * Display available ship upgrades at the current station
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @return 1 if upgrades were displayed successfully
  */
-static inline bool DisplayUpgradesShop(PlayerShip *playerShip) {
-    if (playerShip == NULL) {
+static inline bool DisplayUpgradesShop(player_ship_t*playerShip) {
+    if (playerShip == nullptr) {
         printf("Error: Invalid ship data.\n");
         return 0;
     }
@@ -685,7 +677,7 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip) {
 
     // 1. Hull Reinforcement
     // Calculate current hull upgrade level
-    int currentHullLevel = playerShip->attributes.hullStrength - playerShip->shipType->baseHullStrength;
+    int currentHullLevel = playerShip->attributes.hullStrength - playerShip->ship_type_t->baseHullStrength;
     int maxHullLevel = shipParams->maxHullUpgrade;
     int hullCost = GetUpgradeCost(UPGRADE_TYPE_HULL_REINFORCEMENT, shipParams);
     printf("%-4d %-25s %-15d %-15.1f +1 Hull (%d max)\n", 1, "Hull Reinforcement", currentHullLevel,
@@ -694,14 +686,14 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip) {
     // 2. Shield Enhancement
     // Calculate current shield level (approximate, based on default values)
     int currentShieldLevel =
-        (int)((playerShip->attributes.shieldStrengthFront - playerShip->shipType->baseShieldStrengthFront) /
+        (int)((playerShip->attributes.shieldStrengthFront - playerShip->ship_type_t->baseShieldStrengthFront) /
               (SHIELD_UPGRADE_AMOUNT / 2.0));
     int maxShieldLevel = shipParams->maxShieldUpgrade;
     int shieldCost = GetUpgradeCost(UPGRADE_TYPE_SHIELD_ENHANCEMENT, shipParams);
     printf("%-4d %-25s %-15d %-15.1f +%.1f Shield (%d max)\n", 2, "Shield Enhancement", currentShieldLevel,
            (double)shieldCost / 10.0, SHIELD_UPGRADE_AMOUNT, maxShieldLevel); // 3. Cargo Bay Extension
     // Calculate current cargo upgrade level
-    int currentCargoLevel = (playerShip->attributes.cargoCapacityTons - playerShip->shipType->baseCargoCapacityTons) /
+    int currentCargoLevel = (playerShip->attributes.cargoCapacityTons - playerShip->ship_type_t->baseCargoCapacityTons) /
                             CARGO_BAY_EXTENSION_CAPACITY;
     int maxCargoLevel = shipParams->maxCargoUpgrade;
     int cargoCost = GetUpgradeCost(UPGRADE_TYPE_CARGO_BAY, shipParams);
@@ -710,7 +702,7 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip) {
 
     // 4. Missile Pylon
     // Calculate current pylon upgrade level
-    int currentPylonLevel = playerShip->attributes.missilePylons - playerShip->shipType->initialMissilePylons;
+    int currentPylonLevel = playerShip->attributes.missilePylons - playerShip->ship_type_t->initialMissilePylons;
     int maxPylonLevel = shipParams->maxMissilePylonUpgrade;
     int pylonCost = GetUpgradeCost(UPGRADE_TYPE_MISSILE_PYLON, shipParams);
     printf("%-4d %-25s %-15d %-15.1f +1 Missile Pylon (%d max)\n", 5, "Missile Pylon", currentPylonLevel,
@@ -728,13 +720,13 @@ static inline bool DisplayUpgradesShop(PlayerShip *playerShip) {
 /**
  * Process a ship upgrade purchase
  *
- * @param playerShip Pointer to the PlayerShip structure
+ * @param player_ship_tPointer to the player_ship_tstructure
  * @param upgradeId ID of the upgrade to purchase (1-5)
  * @param quantity Quantity of the upgrade to purchase
  * @return 1 if purchase was successful
  */
-static inline bool PurchaseUpgrade(PlayerShip *playerShip, int upgradeId, int quantity) {
-    if (playerShip == NULL || upgradeId < 1 || upgradeId > 4 || quantity <= 0) {
+static inline bool PurchaseUpgrade(player_ship_t*playerShip, int upgradeId, int quantity) {
+    if (playerShip == nullptr || upgradeId < 1 || upgradeId > 4 || quantity <= 0) {
         printf("Error: Invalid upgrade parameters.\n");
         return 0;
     }
@@ -814,7 +806,7 @@ static inline bool UpgradeCommand(const char *arguments) {
     }
 
     // If no arguments, just display the upgrade shop
-    if (arguments == NULL || arguments[0] == '\0') {
+    if (arguments == nullptr || arguments[0] == '\0') {
         return DisplayUpgradesShop(g_state.PlayerShipPtr);
     }
 

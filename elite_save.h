@@ -75,8 +75,8 @@ typedef struct {
 // Structure for the game state
 typedef struct {
     // Galaxy and seed data
-    struct SeedType seed;
-    struct FastSeedType rndSeed;
+    struct seed_type_t seed;
+    struct fast_seed_type_t rndSeed;
     uint16_t galaxyNum;
 
     // Player state
@@ -89,20 +89,20 @@ typedef struct {
     uint16_t shipHold[COMMODITY_ARRAY_SIZE];
 
     // Market state
-    MarketType localMarket;
+    market_type_t localMarket;
 
     // Game Time
     uint64_t gameTimeSeconds; // Added to save the game time
 
     // Navigation state
-    CelestialType currentLocationType;
+    celestial_type_t currentLocationType;
     double distanceFromStar;
     uint8_t currentPlanetIndex;  // Index of planet in player location, if applicable
     uint8_t currentStationIndex; // Index of station in player location, if applicable
 
     // Ship data
     char shipClassName[MAX_SHIP_NAME_LENGTH];
-    ShipCoreAttributes shipAttributes;
+    ship_core_attributes_t shipAttributes;
 } save_game_state_t;
 
 /**
@@ -134,7 +134,7 @@ typedef struct {
     memset(&header, 0, sizeof(header));
     memcpy(header.signature, SAVE_SIGNATURE, 7);
     header.version = SAVE_VERSION;
-    header.timestamp = time(NULL);
+    header.timestamp = time(nullptr);
     if (description) {
         if (snprintf(header.description, sizeof(header.description), "%s", description) < 0) {
             printf("Error: Failed to format save description.\n");
@@ -208,7 +208,7 @@ typedef struct {
         }
     } else if (g_state.PlayerNavState.currentLocationType == CELESTIAL_STATION) {
         for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++) {
-            Planet *planet = &g_state.CurrentStarSystem->planets[i];
+            planet_t*planet = &g_state.CurrentStarSystem->planets[i];
             for (uint8_t j = 0; j < planet->numStations; j++) {
                 if (g_state.PlayerNavState.currentLocation.station == planet->stations[j]) {
                     state.currentPlanetIndex = i;
@@ -289,10 +289,10 @@ static inline bool load_game(const char *filename) {
     g_state.Cash = state.cash;
     g_state.Fuel = state.fuel;
 
-    // PlayerShip restoration
+    // player_ship_trestoration
     if (g_state.PlayerShipPtr) {
         g_state.PlayerShipPtr->attributes = state.shipAttributes;
-        // In a more complete implementation, we'd lookup shipType by shipClassName
+        // In a more complete implementation, we'd lookup ship_type_t by shipClassName
 
         // Restore cargo from saved shipHold array
         for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
@@ -334,7 +334,7 @@ static inline bool load_game(const char *filename) {
         }
     } else if (state.currentLocationType == CELESTIAL_STATION) {
         if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets) {
-            Planet *planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
+            planet_t*planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
             if (state.currentStationIndex < planet->numStations) {
                 g_state.PlayerNavState.currentLocation.station = planet->stations[state.currentStationIndex];
             } else {
@@ -384,17 +384,17 @@ static inline bool load_game(const char *filename) {
  *
  * @note The function handles its own error messages, printing them to stdout
  */
-static inline bool show_save_info(const char *filename) {
-    char fullPath[256];
+[[maybe_unused]] static inline bool show_save_info(const char *filename) {
+    char full_path[256];
 
     // Get the full path with save directory
-    if (!get_save_file_path(filename, fullPath, sizeof(fullPath))) {
+    if (!get_save_file_path(filename, full_path, sizeof(full_path))) {
         return 0;
     }
 
-    FILE *file = safe_fopen(fullPath, "rb");
+    FILE *file = safe_fopen(full_path, "rb");
     if (!file) {
-        printf("Error: Could not open file '%s' for reading.\n", fullPath);
+        printf("Error: Could not open file '%s' for reading.\n", full_path);
         return 0;
     }
     // Read header
@@ -423,7 +423,10 @@ static inline bool show_save_info(const char *filename) {
     printf("Created: %s\n", timeStr);
     printf("Description: %s\n", header.description);
 
-    fclose(file);
+    if (fclose(file) != 0) {
+        printf("Error: Failed to close save file '%s'.\n", full_path);
+        return false;
+    }
     return true;
 }
 

@@ -4,22 +4,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Forward declarations for structures used in NavigationState
-// These will be resolved by the including file
-typedef struct Star Star;
-typedef struct Planet Planet;
-typedef struct Station Station;
 
 // Enum for celestial body types
-typedef enum { CELESTIAL_STAR, CELESTIAL_PLANET, CELESTIAL_STATION, CELESTIAL_NAV_BEACON } CelestialType;
+typedef enum { CELESTIAL_STAR, CELESTIAL_PLANET, CELESTIAL_STATION, CELESTIAL_NAV_BEACON } celestial_type_t;
 
 // Navigation helper structure for travel within system
-typedef struct NavigationState {
-    CelestialType currentLocationType; // Type of current location
+typedef struct navigation_state_t {
+    celestial_type_t currentLocationType; // Type of current location
     union {
-        Star *star;
-        Planet *planet;
-        Station *station;
+        struct star_t *star;
+        struct planet_t *planet;
+        struct station_t *station;
     } currentLocation;       // Pointer to current location
     double distanceFromStar; // Current distance from system's star in AU
-} NavigationState;
+} navigation_state_t;

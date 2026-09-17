@@ -20,58 +20,76 @@ This `full-game` branch is where the active development of a full game built upo
 
 ## Recent Refactoring Changes
 
-The following changes have been made to improve code organization and maintainability:
+The following changes have been made to improve code organization and maintainability, driven by a recent large-scale refactoring and modernization effort:
 
 ### Modular Header-Only Architecture
 
-The original single-file implementation (`txtelite.c`) has been refactored into multiple header-only modules:
+The original single-file implementation (`txtelite.c`) has been expanded and refactored into a modular architecture logically grouped by domain:
 
-* **`elite_state.h`**: Unified header that centralizes constants, data structures, and global variables
-* **`elite_utils.h`**: Utility functions for random numbers, string manipulation, and math helpers
-* **`elite_galaxy.h`**: Galaxy/system generation logic
-* **`elite_market.h`**: Market data and trading functions
-* **`elite_navigation.h`**: System navigation and distance calculations
-* **`elite_planet_info.h`**: Planet description generation
-* **`elite_commands.h`**: Command implementation functions
-* **`elite_command_handler.h`**: Command parsing and execution
-* **`elite_player_state.h`**: Player state initialization and management
+* **Core & State Management**:
+  * `elite_state.h`: Unified header now encapsulating global variables into a `GameState` struct.
+  * `elite_utils.h`: Utility functions for random numbers, string manipulation, and math helpers.
+  * `platform_compat.h`: Cross-platform compatibility for case-insensitive string and directory handling.
+  * `elite_save.h`: Player save/load system.
+* **Ship Systems**:
+  * `elite_player_ship.h`, `elite_ship_cargo.h`, `elite_ship_components.h`, `elite_ship_equipment.h`, `elite_ship_inventory.h`, `elite_ship_maintenance.h`, `elite_ship_registry.h`, `elite_ship_trading.h`, `elite_ship_upgrades.h`, `elite_equipment_constants.h`: A comprehensive refactor of player ship management, including a full upgrade system, travel mechanics, cargo, and inventory.
+* **Galaxy & Star Systems**:
+  * `elite_galaxy.h`: Galaxy procedural generation logic, now isolating state mutation.
+  * `elite_star_system.h`: Advanced system generation for better realism.
+  * `elite_planet_info.h`: Enhanced planetary descriptions featuring detailed habitability analysis.
+* **Navigation & Market**:
+  * `elite_navigation.h`, `elite_navigation_types.h`: System navigation and distance calculations.
+  * `elite_market.h`: Market data and trading functions.
+* **Commands**:
+  * `elite_commands.h`: Command implementation functions.
+  * `elite_command_handler.h`: Command parsing and execution, now utilizing a structured data-driven approach.
+  * `elite_player_state.h`: Player state initialization and management.
 
 ### Implementation Details
 
-1. **Header-Only Approach**: All functions are implemented as `static inline` to maintain the single compilation unit approach while improving code organization
-2. **Unified State Management**: Consolidated all constants, types, and global variable management into a single `elite_state.h` file
-3. **Initialization Flow**: Created a proper `initialize_player_state()` function in `elite_player_state.h` to centralize player setup
-4. **Improved Market Display**: Enhanced the market information display with better formatting
-5. **Robust Error Handling**: Added boundary checks and error handling to critical functions
-6. **Type Safety**: Added a `PlanetNum` typedef for planet indexing to improve code clarity
-7. **Consistent Field Naming**: Updated struct field names (e.g., SeedType fields w0,w1,w2 to a,b,c,d)
-8. **Safe String Handling**: Improved string manipulation with buffer size checks
+1. **Header-Only Approach**: All functions are implemented as `static inline` to maintain the single compilation unit approach while improving code organization.
+2. **Unified State Management**: Consolidated all constants, types, and global variables into a unified `GameState` structure in `elite_state.h` to reduce namespace pollution.
+3. **Advanced Ship Systems**: Added a comprehensive ship upgrade system and refined travel mechanics.
+4. **Enhanced System Info**: Improved the system info display featuring detailed planet habitability analysis.
+5. **Platform Compatibility**: Added cross-platform case-insensitive string comparison and directory iteration (POSIX-compatible) via `platform_compat.h`.
+6. **Type Safety & Readability**: Standardized naming conventions, replaced boolean literals with integer constants, and improved overall type safety.
+7. **Developer Environment**: Added `clangd` configuration support for C/C++ analysis.
 
 ### Bug Fixes
 
-1. Fixed segmentation fault in the market display by preventing out-of-bounds array access
-2. Corrected initialization order to ensure galaxy data and market information are properly set up
-3. Resolved parameter type mismatches in function calls
-4. Fixed memory corruption issues by properly sizing arrays using consistent constants
+1. Fixed segmentation fault in the market display by preventing out-of-bounds array access.
+2. Corrected initialization order to ensure galaxy data and market information are properly set up.
+3. Resolved parameter type mismatches in function calls.
+4. Fixed memory corruption issues by properly sizing arrays using consistent constants.
+5. Fixed buffer overflow in `goat_soup` random character generation.
+6. Replaced `strnlen` with `compat_strnlen` for better portability.
 
 ## Changelog
 
 This section details the significant changes made to the original codebase to modernize it, improve readability, and ensure it compiles on contemporary systems.
 
-**1. Naming Conventions & Readability:**
+**1. Modernization & Build:**
+
+* Migrated to modern C23 standards.
+* Added `clangd` configuration for developer tooling.
+
+**2. Naming Conventions & Readability:**
 
 * Function Parameters: Updated to `lowerCamelCase` (e.g., `initialSeed` instead of `s`). Single-letter parameter names were replaced with more descriptive ones.
 * Constants: Ensured all constants adhere to `ALL_CAPS` (e.g., `MAX_LEN`, `GAL_SIZE`).
-* Structs and Types: Converted to `CapitalCase` (e.g., `PlanSys`, `SeedType`, `TradeGood`, `MarketType`, `DescChoice`).
+* Structs and Types: Converted to `CapitalCase` (e.g., `plan_sys_t`, `SeedType`, `TradeGood`, `MarketType`, `DescChoice`).
 * Struct Members: Updated to `lowerCamelCase` within structs (e.g., `planetSystem.techLev`, `Commodities[i].basePrice`).
 * Function Names: Refactored to `snake_case` (e.g., `make_system`, `do_buy`, `print_system_info`).
 * Defines: Renamed `nocomms` to `NUM_COMMANDS` for clarity.
 
-**2. Bug Fixes & Refactoring:**
+**3. Bug Fixes & Refactoring:**
 
+* Encapsulated global state into the `GameState` structure.
+* Structured data-driven approach for commands instead of hardcoded help.
+* Replaced boolean literals with integer constants throughout the codebase.
 * Struct Definitions:
   * Updated `desc_choice` struct to `DescChoice` and its member `option` to `options`.
-  * Updated members of `FastSeedType` (e.g., `A` to `a`), `SeedType` (e.g., `W0` to `w0`), `PlanSys` (e.g., `X` to `x`, `Economy` to `economy`), `TradeGood` (e.g., `BasePrice` to `basePrice`), and `MarketType` (e.g., `Quantity` to `quantity`) to use `lowerCamelCase`.
+  * Updated members of `FastSeedType` (e.g., `A` to `a`), `SeedType` (e.g., `W0` to `w0`), `plan_sys_t` (e.g., `X` to `x`, `Economy` to `economy`), `TradeGood` (e.g., `BasePrice` to `basePrice`), and `MarketType` (e.g., `Quantity` to `quantity`) to use `lowerCamelCase`.
 
 **3. Build System:**
 

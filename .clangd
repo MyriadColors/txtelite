@@ -17,9 +17,6 @@ CompileFlags:
     - -Wformat=2
     - -Wimplicit-fallthrough
     - -Wmisleading-indentation
-    - -Wduplicated-cond
-    - -Wduplicated-branches
-    - -Wlogical-op
     - -Wstrict-prototypes
     - -Wmissing-prototypes
     - -Wbad-function-cast
@@ -42,12 +39,15 @@ Diagnostics:
     Remove:
       - readability-identifier-length
       - readability-magic-numbers
+      - readability-function-cognitive-complexity
+      - readability-function-size
       - bugprone-easily-swappable-parameters
     CheckOptions:
-      readability-identifier-naming.FunctionCase: lower_case
-      readability-identifier-naming.VariableCase: lower_case
-      readability-identifier-naming.ParameterCase: lower_case
-      readability-identifier-naming.LocalVariableCase: lower_case
+      readability-identifier-naming.FunctionCase: aNy
+      readability-identifier-naming.VariableCase: aNy
+      readability-identifier-naming.ParameterCase: aNy
+      readability-identifier-naming.LocalVariableCase: aNy
+      readability-identifier-naming.LocalConstantCase: aNy
       readability-identifier-naming.GlobalVariableCase: lower_case
       readability-identifier-naming.GlobalVariablePrefix: 'g_'
       readability-identifier-naming.StaticVariablePrefix: 's_'
@@ -57,13 +57,9 @@ Diagnostics:
       readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
       readability-identifier-naming.TypedefCase: lower_case
       readability-identifier-naming.TypedefSuffix: '_t'
-      readability-identifier-naming.StructCase: lower_case
-      readability-identifier-naming.StructSuffix: '_t'
+      readability-identifier-naming.StructCase: aNy
       readability-identifier-naming.EnumCase: lower_case
       readability-identifier-naming.EnumSuffix: '_t'
-      readability-function-cognitive-complexity.Threshold: 25
-      readability-function-size.LineThreshold: 100
-      readability-function-size.StatementThreshold: 50
   UnusedIncludes: Strict
   MissingIncludes: Strict
   Suppress:
@@ -93,11 +89,6 @@ CompileFlags:
     - -Wformat=2
     - -Wimplicit-fallthrough
     - -Wmisleading-indentation
-    - -Wduplicated-cond
-    - -Wduplicated-branches
-    - -Wlogical-op
-    - -Wuseless-cast
-    - -Weffc++
     - -xc++
   Remove:
     - -W*

@@ -11,9 +11,9 @@
 #include "elite_navigation.h"          // For NavigationState definition
 #include "elite_navigation_types.h"
 #include "elite_player_ship.h"
-#include "elite_star_system.h"         // For StarSystem
-#include "elite_state.h"               // Unified header for constants, structures, and globals
-#include "elite_utils.h"               // For minimum_value
+#include "elite_star_system.h" // For StarSystem
+#include "elite_state.h"       // Unified header for constants, structures, and globals
+#include "elite_utils.h"       // For minimum_value
 
 /**
  * @brief Initializes the player's state at the start of a new game.
@@ -57,7 +57,7 @@
     g_state.RndSeed.d = (uint8_t)((rand_seed >> 24) & 0xFF);
 
     g_state.NativeRand = false; // Set to 0 as per original logic for predictable generation initially
-    g_state.GalaxyNum = 1;  // Start in Galaxy 1
+    g_state.GalaxyNum = 1;      // Start in Galaxy 1
 
     // Populate Galaxy[] array for the current GalaxyNum using the Seed
     build_galaxy_data(g_state.SEED);
@@ -67,14 +67,14 @@
 
     // Populate LocalMarket for the starting planet. Use random fluctuation instead of 0.
     // Galaxy[CurrentPlanet] is now valid after build_galaxy_data()
-    g_state.LocalMarket = generate_market(random_byte(), g_state.Galaxy[g_state.CurrentPlanet]);
+    g_state.LocalMarket = generate_market((uint16_t)random_byte(), g_state.Galaxy[g_state.CurrentPlanet]);
 
     // Initialize player ship
     if (g_state.PlayerShipPtr != nullptr) {
         free(g_state.PlayerShipPtr);
     }
 
-    g_state.PlayerShipPtr = (player_ship_t*)malloc(sizeof(player_ship_t));
+    g_state.PlayerShipPtr = (player_ship_t *)malloc(sizeof(player_ship_t));
     if (g_state.PlayerShipPtr == nullptr) {
         printf("Error: Could not allocate memory for player ship!\n");
         return;
@@ -217,10 +217,10 @@ static inline void initialize_star_system_for_current_planet(void) {
     int current_fuel_cost = get_fuel_cost();
     if (current_fuel_cost <= 0) {
         return 0; // Avoid division by zero if FuelCost is invalid
-}
+    }
     if (g_state.Cash <= 0) {
         return 0; // No cash, no fuel
-}
+    }
 
     // Calculate fuel units player can afford (1 unit = 0.1 LY)
     uint16_t affordable_fuel_units = (uint16_t)((double)g_state.Cash / current_fuel_cost);

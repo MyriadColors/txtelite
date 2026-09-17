@@ -50,8 +50,8 @@
     }
 }
 
-[[maybe_unused]] static inline void restore_active_equipment(
-    player_ship_t *player_ship, const ship_equipment_item_t *original_equipment) {
+[[maybe_unused]] static inline void restore_active_equipment(player_ship_t *player_ship,
+                                                             const ship_equipment_item_t *original_equipment) {
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; i++) {
         if (original_equipment[i].isActive) {
             player_ship->equipment[i] = original_equipment[i];
@@ -59,15 +59,13 @@
     }
 }
 
-[[maybe_unused]] static inline void map_equipment_item(
-    player_ship_t *player_ship, const ship_equipment_item_t *item) {
+[[maybe_unused]] static inline void map_equipment_item(player_ship_t *player_ship, const ship_equipment_item_t *item) {
     if (!item->isActive) {
         return;
     }
 
     equipment_slot_type_t slot_type = item->slotType;
-    if (slot_type == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 &&
-        item->typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM) {
+    if (slot_type == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1 && item->typeSpecific.defensiveType == DEFENSIVE_SYSTEM_TYPE_ECM) {
         player_ship->equipment[EQUIP_ECM_SYSTEM].isActive = true;
         return;
     }
@@ -75,11 +73,20 @@
     if (slot_type >= UTILITY_SYSTEM_1 && slot_type <= UTILITY_SYSTEM_4) {
         int index = -1;
         switch (item->typeSpecific.utilityType) {
-        case UTILITY_SYSTEM_TYPE_FUEL_SCOOPS: index = EQUIP_FUEL_SCOOP; break;
-        case UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER: index = EQUIP_DOCKING_COMPUTER; break;
-        case UTILITY_SYSTEM_TYPE_ESCAPE_POD: index = EQUIP_ESCAPE_POD; break;
-        case UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE: index = EQUIP_SCANNER_UPGRADE; break;
-        default: break;
+        case UTILITY_SYSTEM_TYPE_FUEL_SCOOPS:
+            index = EQUIP_FUEL_SCOOP;
+            break;
+        case UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER:
+            index = EQUIP_DOCKING_COMPUTER;
+            break;
+        case UTILITY_SYSTEM_TYPE_ESCAPE_POD:
+            index = EQUIP_ESCAPE_POD;
+            break;
+        case UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE:
+            index = EQUIP_SCANNER_UPGRADE;
+            break;
+        default:
+            break;
         }
         if (index >= 0) {
             player_ship->equipment[index].isActive = true;
@@ -90,10 +97,17 @@
     if (slot_type == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON) {
         int index = -1;
         switch (item->typeSpecific.weaponType) {
-        case WEAPON_TYPE_MINING_LASER: index = EQUIP_MINING_LASER; break;
-        case WEAPON_TYPE_BEAM_LASER: index = EQUIP_BEAM_LASER; break;
-        case WEAPON_TYPE_MILITARY_LASER: index = EQUIP_MILITARY_LASER; break;
-        default: break;
+        case WEAPON_TYPE_MINING_LASER:
+            index = EQUIP_MINING_LASER;
+            break;
+        case WEAPON_TYPE_BEAM_LASER:
+            index = EQUIP_BEAM_LASER;
+            break;
+        case WEAPON_TYPE_MILITARY_LASER:
+            index = EQUIP_MILITARY_LASER;
+            break;
+        default:
+            break;
         }
         if (index >= 0) {
             player_ship->equipment[index].isActive = true;
@@ -124,4 +138,3 @@
         map_equipment_item(player_ship, &player_ship->equipment[i]);
     }
 }
-

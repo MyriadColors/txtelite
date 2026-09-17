@@ -92,12 +92,13 @@ typedef struct StarSystem {
 } star_system_t;
 
 // Forward function declarations
-static inline market_type_t generate_station_market(station_t *station, planet_t *planet, struct plan_sys_t *plan_sys_t);
-static inline void update_station_market(station_t *station, uint64_t currentTime, planet_t *planet,
+static inline market_type_t generate_station_market(station_t *station, planet_t *planet,
+                                                    struct plan_sys_t *plan_sys_t);
+static inline void update_station_market(station_t *station, uint64_t current_time, planet_t *planet,
                                          struct plan_sys_t *plan_sys_t);
 static inline void use_station_market(station_t *station, planet_t *planet, struct plan_sys_t *plan_sys_t);
 static inline market_type_t generate_planetary_market(planet_t *planet, struct plan_sys_t *plan_sys_t);
-static inline void update_planetary_market(planet_t *planet, uint64_t currentTime, struct plan_sys_t *plan_sys_t);
+static inline void update_planetary_market(planet_t *planet, uint64_t current_time, struct plan_sys_t *plan_sys_t);
 static inline void use_planetary_market(planet_t *planet, struct plan_sys_t *plan_sys_t);
 
 // Realistic stellar classification data for main sequence stars
@@ -167,7 +168,8 @@ calculate_planet_temperature(double stellar_luminosity, double orbital_distance,
 }
 
 // Function to generate the market for a station
-static inline market_type_t generate_station_market(station_t *station, planet_t *planet, struct plan_sys_t *plan_sys_t) {
+static inline market_type_t generate_station_market(station_t *station, planet_t *planet,
+                                                    struct plan_sys_t *plan_sys_t) {
     if (!station || !plan_sys_t) // planet_tcan be nullptr if station is not orbiting one (e.g. deep
                                  // space station, though plan implies planet context)
     {
@@ -388,7 +390,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
 }
 
 // Function to initialize a star system from a plan_sys_t entry
-static inline void initialize_star_system(star_system_t *system, struct plan_sys_t *plan_sys_tEntry) {
+[[maybe_unused]] static inline void initialize_star_system(star_system_t *system, struct plan_sys_t *plan_sys_tEntry) {
     if (!system || !plan_sys_tEntry) {
         fprintf(stderr, "Error: Invalid parameters for star system initialization.\n");
         return;
@@ -568,8 +570,8 @@ static inline void initialize_star_system(star_system_t *system, struct plan_sys
                 for (int j = 0; j < name_len; j++) {
                     name_seed *=
                         UINT32_C(2654435761); // Knuth's multiplicative hash; uint32_t arithmetic wraps modulo 2^32
-                    static const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
-                    char letter = alphabet[name_seed % 26];
+                    static const char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
+                    char letter = ALPHABET[name_seed % 26];
                     if (j == 0)
                         letter = (char)toupper((unsigned char)letter);
                     alt_name[j] = letter;
@@ -822,28 +824,28 @@ static inline void initialize_star_system(star_system_t *system, struct plan_sys
 
             // Set station services based on tech level, planet type, and conditions
             station->hasDockingComputer =
-                (plan_sys_tEntry->techLev >= 8) || ((plan_sys_tEntry->goatSoupSeed.b + j) % 5 == 0);
+                (((plan_sys_tEntry->techLev >= 8) || ((plan_sys_tEntry->goatSoupSeed.b + j) % 5 == 0)) != 0);
 
             // Shipyards more common around habitable and terrestrial worlds
-            bool shipyard_bonus = planet->isInHabitableZone || (planet->type <= 1);
-            station->hasShipyard = (plan_sys_tEntry->techLev >= 5) ||
-                                   (shipyard_bonus && (plan_sys_tEntry->goatSoupSeed.c + j) % 3 == 0) ||
-                                   ((plan_sys_tEntry->goatSoupSeed.c + j) % 4 == 0);
+            bool shipyard_bonus = (planet->isInHabitableZone || (planet->type <= 1)) != 0;
+            station->hasShipyard = (((plan_sys_tEntry->techLev >= 5) ||
+                                     (shipyard_bonus && (plan_sys_tEntry->goatSoupSeed.c + j) % 3 == 0) ||
+                                     ((plan_sys_tEntry->goatSoupSeed.c + j) % 4 == 0)) != 0);
 
-            station->hasMarket = 1; // All stations have markets
+            station->hasMarket = true; // All stations have markets
 
             // Missions more common in populated (habitable) systems
             bool mission_bonus = planet->isInHabitableZone;
-            station->hasMissions = (plan_sys_tEntry->techLev >= 3) ||
-                                   (mission_bonus && (plan_sys_tEntry->goatSoupSeed.d + j) % 2 == 0) ||
-                                   ((plan_sys_tEntry->goatSoupSeed.d + j) % 3 == 0);
+            station->hasMissions = (((plan_sys_tEntry->techLev >= 3) ||
+                                     (mission_bonus && (plan_sys_tEntry->goatSoupSeed.d + j) % 2 == 0) ||
+                                     ((plan_sys_tEntry->goatSoupSeed.d + j) % 3 == 0)) != 0);
 
             // Set economic specialization based on planet type, habitability, and
             // environmental conditions Generate specialization: 0=Balanced,
             // 1=Industrial, 2=Agricultural, 3=Mining
             if (planet->isInHabitableZone) {
                 // Habitable zone planets favor agricultural and balanced economies
-                uint8_t spec_roll = (plan_sys_tEntry->goatSoupSeed.a + i + j) % 10;
+                uint8_t spec_roll = (uint8_t)((plan_sys_tEntry->goatSoupSeed.a + i + j) % 10);
                 if (spec_roll < 5) {
                     station->specialization = 2; // Agricultural
                 } else if (spec_roll < 7) {
@@ -854,7 +856,7 @@ static inline void initialize_star_system(star_system_t *system, struct plan_sys
             } else if (planet->type <= 1) {
                 // Rocky/Terrestrial planets outside habitable zone - mining and
                 // industrial
-                uint8_t spec_roll = (plan_sys_tEntry->goatSoupSeed.b + i + j) % 10;
+                uint8_t spec_roll = (uint8_t)((plan_sys_tEntry->goatSoupSeed.b + i + j) % 10);
                 if (spec_roll < 4) {
                     station->specialization = 3; // Mining
                 } else if (spec_roll < 8) {
@@ -864,7 +866,7 @@ static inline void initialize_star_system(star_system_t *system, struct plan_sys
                 }
             } else {
                 // Gas and Ice Giants - primarily mining and industrial
-                uint8_t spec_roll = (plan_sys_tEntry->goatSoupSeed.c + i + j) % 10;
+                uint8_t spec_roll = (uint8_t)((plan_sys_tEntry->goatSoupSeed.c + i + j) % 10);
                 if (spec_roll < 7) {
                     station->specialization = 3; // Mining (fuel processing, etc.)
                 } else if (spec_roll < 9) {
@@ -994,10 +996,10 @@ static inline void initialize_star_system(star_system_t *system, struct plan_sys
                     }
 
                     // Initialize all station services for populated systems
-                    new_station->hasDockingComputer = 1; // High population areas need docking computers
-                    new_station->hasShipyard = 1;        // Major population centers have shipyards
-                    new_station->hasMarket = 1;          // All stations have markets
-                    new_station->hasMissions = 1;        // Populated areas have missions
+                    new_station->hasDockingComputer = true; // High population areas need docking computers
+                    new_station->hasShipyard = true;        // Major population centers have shipyards
+                    new_station->hasMarket = true;          // All stations have markets
+                    new_station->hasMissions = true;        // Populated areas have missions
 
                     // Set specialization based on planet type
                     // planet_ttypes: 0=Rocky, 1=Terrestrial, 2=Gas Giant, 3=Ice Giant
@@ -1024,15 +1026,17 @@ static inline void initialize_star_system(star_system_t *system, struct plan_sys
 }
 
 // Function to clean up allocated memory for a star system
-static inline void cleanup_star_system(star_system_t *system) {
-    if (!system)
+[[maybe_unused]] static inline void cleanup_star_system(star_system_t *system) {
+    if (!system) {
         return;
+    }
 
     // Free memory for each station
     for (int i = 0; i < system->numPlanets; i++) {
         planet_t *planet = &system->planets[i];
-        if (!planet)
+        if (!planet) {
             continue;
+        }
 
         for (int j = 0; j < planet->numStations; j++) {
             if (planet->stations[j]) {
@@ -1053,14 +1057,15 @@ static inline void cleanup_star_system(star_system_t *system) {
 }
 
 // Function to get planet from a star system by index
-static inline planet_t *get_planet_by_index(star_system_t *system, uint8_t index) {
-    if (!system || index >= system->numPlanets)
+[[maybe_unused]] static inline planet_t *get_planet_by_index(star_system_t *system, uint8_t index) {
+    if (!system || index >= system->numPlanets) {
         return nullptr;
+    }
     return &system->planets[index];
 }
 
 // Function to get station from a planet by index
-static inline struct station_t *get_station_by_index(planet_t *planet, uint8_t index) {
+[[maybe_unused]] static inline struct station_t *get_station_by_index(planet_t *planet, uint8_t index) {
     if (!planet || index >= planet->numStations) {
         return nullptr;
     }
@@ -1082,22 +1087,22 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
 
 // Function to travel to a celestial body within a star system
 // Updates navigation state and game time
-static inline bool travel_to_celestial(star_system_t *system, navigation_state_t *nav_state, celestial_type_t target_type,
-                                       void *target_body) {
+[[maybe_unused]] static inline bool travel_to_celestial(star_system_t *system, navigation_state_t *nav_state,
+                                                        celestial_type_t target_type, void *target_body) {
     if (!system) {
         fprintf(stderr, "Error: Invalid star system data for travel.\n");
-        return 0;
+        return false;
     }
 
     if (!nav_state) {
         fprintf(stderr, "Error: Invalid navigation state for travel.\n");
-        return 0;
+        return false;
     }
 
     // For non-NavBeacon targets, we need a valid body pointer
     if (target_type != CELESTIAL_NAV_BEACON && !target_body) {
         fprintf(stderr, "Error: Invalid target body for travel destination.\n");
-        return 0;
+        return false;
     }
 
     double start_distance = nav_state->distanceFromStar;
@@ -1113,17 +1118,17 @@ static inline bool travel_to_celestial(star_system_t *system, navigation_state_t
         planet_t *target_planet = (planet_t *)target_body;
 
         // Validate the planet is part of this system
-        bool planet_found = 0;
+        bool planet_found = false;
         for (int i = 0; i < system->numPlanets; i++) {
             if (&system->planets[i] == target_planet) {
-                planet_found = 1;
+                planet_found = true;
                 break;
             }
         }
 
         if (!planet_found) {
             fprintf(stderr, "Error: Target planet is not part of the current star system.\n");
-            return 0;
+            return false;
         }
 
         end_distance = target_planet->orbitalDistance;
@@ -1152,7 +1157,7 @@ static inline bool travel_to_celestial(star_system_t *system, navigation_state_t
 
         if (!parent_planet) {
             fprintf(stderr, "Error: Could not find parent planet for target station.\n");
-            return 0;
+            return false;
         }
 
         // station_t distance is planet distance plus orbital offset
@@ -1166,7 +1171,7 @@ static inline bool travel_to_celestial(star_system_t *system, navigation_state_t
 
     default:
         fprintf(stderr, "Error: Unknown celestial type for travel destination.\n");
-        return 0;
+        return false;
     } // Calculate travel time
     uint32_t travel_time = calculate_travel_time(start_distance, end_distance); // Calculate fuel requirement for travel
     double distance_delta = fabs(end_distance - start_distance);
@@ -1180,14 +1185,14 @@ static inline bool travel_to_celestial(star_system_t *system, navigation_state_t
             printf("\nTravel aborted: Insufficient fuel.\n");
             printf("Required: %.3f liters, Available: %.1f liters\n", fuel_required,
                    g_state.PlayerShipPtr->attributes.fuelLiters);
-            return 0;
+            return false;
         }
 
         // Consume fuel using ConsumeFuel function
         if (!consume_fuel(fuel_required, 1)) {
             fprintf(stderr, "Error: Failed to consume fuel for travel.\n");
             printf("\nTravel aborted: Insufficient fuel for operation.\n");
-            return 0;
+            return false;
         }
 
         printf("\nTravel fuel consumed: %.3f liters (%.5f LY)", fuel_required, fuel_required / 100.0);
@@ -1223,11 +1228,11 @@ static inline bool travel_to_celestial(star_system_t *system, navigation_state_t
 
     nav_state->distanceFromStar = end_distance;
 
-    return 1;
+    return true;
 }
 
 // Function to convert celestial type to string for display
-static inline const char *celestial_type_to_string(celestial_type_t type) {
+[[maybe_unused]] static inline const char *celestial_type_to_string(celestial_type_t type) {
     switch (type) {
     case CELESTIAL_STAR:
         return "Star";
@@ -1243,7 +1248,8 @@ static inline const char *celestial_type_to_string(celestial_type_t type) {
 }
 
 // Function to get current location name with more context
-static inline void get_current_location_name(navigation_state_t *navState, char *buffer, size_t bufferSize) {
+[[maybe_unused]] static inline void get_current_location_name(navigation_state_t *navState, char *buffer,
+                                                              size_t bufferSize) {
     if (!navState || !buffer || bufferSize == 0) {
         return;
     }
@@ -1263,8 +1269,9 @@ static inline void get_current_location_name(navigation_state_t *navState, char 
             const char *planetTypes[] = {"Rocky/Airless", "Terrestrial", "Gas Giant", "Ice Giant", "Unknown"};
 
             uint8_t type = navState->currentLocation.planet->type;
-            if (type >= 4)
+            if (type >= 4) {
                 type = 4; // Default to "Unknown" for invalid types
+            }
 
             snprintf(buffer, bufferSize, "%s (%s Planet)", navState->currentLocation.planet->name, planetTypes[type]);
         } else {
@@ -1298,7 +1305,8 @@ static inline void get_current_location_name(navigation_state_t *navState, char 
  * @param planet Pointer to the parent planet
  * @param plan_sys_t Pointer to the planet system data
  */
-static inline void use_station_market(station_t *station, planet_t *planet, struct plan_sys_t *plan_sys_t) {
+[[maybe_unused]] static inline void use_station_market(station_t *station, planet_t *planet,
+                                                       struct plan_sys_t *plan_sys_t) {
     if (!station || !plan_sys_t) // planet_tcan be nullptr for deep space stations
     {
         // fprintf(stderr, "Warning: use_station_market called with nullptr station or
@@ -1326,7 +1334,7 @@ static inline void use_station_market(station_t *station, planet_t *planet, stru
  * @param planet Pointer to the planet being landed on
  * @param plan_sys_t Pointer to the planet system data
  */
-static inline void use_planetary_market(planet_t *planet, struct plan_sys_t *plan_sys_t) {
+[[maybe_unused]] static inline void use_planetary_market(planet_t *planet, struct plan_sys_t *plan_sys_t) {
     if (!planet || !plan_sys_t) {
         memset(&g_state.LocalMarket, 0, sizeof(market_type_t));
         return;
@@ -1410,21 +1418,21 @@ static inline bool check_tidal_locking(planet_t *planet, star_t *star) {
 /**
  * Check if a planet has potential for retaining an atmosphere
  */
-static inline bool check_planetary_atmosphere_potential(planet_t *planet, star_t *star) {
+[[maybe_unused]] static inline bool check_planetary_atmosphere_potential(planet_t *planet, star_t *star) {
     // Planets need sufficient mass/size to retain atmosphere
     if (planet->radius < 2000) {
-        return 0; // Too small to retain significant atmosphere
+        return false; // Too small to retain significant atmosphere
     }
 
     // Check if planet is not too close to star (atmosphere stripped)
     double escape_distance = 0.1 * sqrt(star->luminosity); // Simplified calculation
     if (planet->orbitalDistance < escape_distance) {
-        return 0; // Too close, atmosphere likely stripped
+        return false; // Too close, atmosphere likely stripped
     }
 
     // Gas giants and ice giants have atmospheres by definition
     if (planet->type >= 2) {
-        return 1;
+        return true;
     }
 
     // Terrestrial and rocky planets depend on size and distance
@@ -1434,26 +1442,29 @@ static inline bool check_planetary_atmosphere_potential(planet_t *planet, star_t
 /**
  * Get human-readable temperature category for a planet
  */
-static inline const char *get_temperature_category(double temperature) {
+[[maybe_unused]] static inline const char *get_temperature_category(double temperature) {
     if (temperature < 200) {
         return "Very Cold";
-    } else if (temperature < 250) {
-        return "Cold";
-    } else if (temperature < 290) {
-        return "Cool";
-    } else if (temperature < 323) {
-        return "Warm";
-    } else if (temperature < 373) {
-        return "Hot";
-    } else {
-        return "Very Hot";
     }
+    if (temperature < 250) {
+        return "Cold";
+    }
+    if (temperature < 290) {
+        return "Cool";
+    }
+    if (temperature < 323) {
+        return "Warm";
+    }
+    if (temperature < 373) {
+        return "Hot";
+    }
+    return "Very Hot";
 }
 
 /**
  * Get human-readable habitability rating based on score
  */
-static inline const char *get_habitability_rating(double score) {
+[[maybe_unused]] static inline const char *get_habitability_rating(double score) {
     if (score >= 80) {
         return "Excellent";
     }
@@ -1474,13 +1485,13 @@ static inline const char *get_habitability_rating(double score) {
  * Returns a score from 0-100 based on multiple factors including temperature,
  * orbital position, planet type, stellar characteristics, and hazards
  */
-static inline double calculate_habitability_score(planet_t *planet, star_t *star) {
+[[maybe_unused]] static inline double calculate_habitability_score(planet_t *planet, star_t *star) {
     double score = 0.0;
 
     // Generate pseudo-random variations based on planet properties for
     // consistency Use planet radius and orbital distance as seeds for
     // reproducible "randomness"
-    unsigned int seed = (unsigned int)(planet->radius * 1000 + planet->orbitalDistance * 10000);
+    unsigned int seed = (unsigned int)((planet->radius * 1000) + (planet->orbitalDistance * 10000));
     double variation_factor = (double)(seed % 1000) / 1000.0; // 0.0 to 1.0
 
     // Temperature scoring (0-25 points, more conservative)
@@ -1639,11 +1650,11 @@ static inline double calculate_habitability_score(planet_t *planet, star_t *star
     // Larger planets and gas giants typically have stronger magnetic fields
     double magnetic_field_strength = 1.0;
     if (planet->type >= 2) {                                    // Gas/Ice giants
-        magnetic_field_strength = 1.5 + variation_factor * 1.0; // 1.5-2.5x Earth's field
+        magnetic_field_strength = 1.5 + (variation_factor * 1.0); // 1.5-2.5x Earth's field
     } else if (planet->radius > 6000) {
-        magnetic_field_strength = 0.8 + variation_factor * 0.8; // 0.8-1.6x Earth's field
+        magnetic_field_strength = 0.8 + (variation_factor * 0.8); // 0.8-1.6x Earth's field
     } else {
-        magnetic_field_strength = 0.2 + variation_factor * 0.6; // 0.2-0.8x Earth's field
+        magnetic_field_strength = 0.2 + (variation_factor * 0.6); // 0.2-0.8x Earth's field
     }
 
     // Adjust radiation exposure based on magnetic field

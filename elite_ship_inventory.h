@@ -16,7 +16,7 @@
  * @param equipment The equipment item to store
  * @return 1 if equipment was successfully stored, 0 if inventory is full
  */
-static inline bool store_equipment_in_inventory(player_ship_t*player_ship, ship_equipment_item_t equipment) {
+static inline bool store_equipment_in_inventory(player_ship_t *player_ship, ship_equipment_item_t equipment) {
     if (player_ship == nullptr) {
         return false;
     }
@@ -43,7 +43,7 @@ static inline bool store_equipment_in_inventory(player_ship_t*player_ship, ship_
  * @param slotType The slot to remove equipment from
  * @return 1 if equipment was successfully removed and stored, 0 otherwise
  */
-static inline bool remove_equipment_to_inventory(player_ship_t*player_ship, equipment_slot_type_t slot_type) {
+static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equipment_slot_type_t slot_type) {
     if (player_ship == nullptr || slot_type >= MAX_EQUIPMENT_SLOTS) {
         return false;
     }
@@ -105,7 +105,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t*player_ship, equi
  * @param slotType The slot to equip the item to
  * @return 1 if equipment was successfully equipped, 0 otherwise
  */
-[[maybe_unused]] static inline bool equip_from_inventory(player_ship_t*player_ship, int inventory_index,
+[[maybe_unused]] static inline bool equip_from_inventory(player_ship_t *player_ship, int inventory_index,
                                                          equipment_slot_type_t slot_type) {
     if (player_ship == nullptr || inventory_index < 0 || inventory_index >= MAX_EQUIPMENT_INVENTORY || slot_type < 0 ||
         slot_type >= MAX_EQUIPMENT_SLOTS) {
@@ -187,7 +187,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t*player_ship, equi
  *
  * @param player_ship_tPointer to the player_ship_tstructure
  */
-[[maybe_unused]] static inline void list_equipment_inventory(const player_ship_t*player_ship) {
+[[maybe_unused]] static inline void list_equipment_inventory(const player_ship_t *player_ship) {
     if (player_ship == nullptr) {
         return;
     }
@@ -229,7 +229,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t*player_ship, equi
  *
  * @param player_ship Pointer to the player_ship_tstructure
  */
-[[maybe_unused]] static inline void print_equipment_slots(const player_ship_t*player_ship) {
+[[maybe_unused]] static inline void print_equipment_slots(const player_ship_t *player_ship) {
     if (player_ship == nullptr) {
         return;
     }
@@ -250,8 +250,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t*player_ship, equi
         } else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
             written = snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 2");
         } else if (i >= UTILITY_SYSTEM_1 && i <= UTILITY_SYSTEM_4) {
-            written = snprintf(slot_type_name, sizeof(slot_type_name), "Utility System %d",
-                               (i - UTILITY_SYSTEM_1) + 1);
+            written = snprintf(slot_type_name, sizeof(slot_type_name), "Utility System %d", (i - UTILITY_SYSTEM_1) + 1);
         }
 
         if (written < 0 || (size_t)written >= sizeof(slot_type_name)) {

@@ -254,8 +254,8 @@ static inline int safe_strncat(char *dest, size_t dest_size, const char *src, si
 #include <sys/stat.h>
 
 // Platform-specific stat definitions
-#define platform_stat _stat
-#define platform_stat_struct struct _stat
+#define PLATFORM_STAT _stat
+#define PLATFORM_STAT_STRUCT struct _stat
 
 // Directory operations
 #define MKDIR(dir) _mkdir(dir)
@@ -273,10 +273,10 @@ typedef struct {
     HANDLE handle;
     bool firstCall;
     char pattern[MAX_PATH]; // Store the original pattern for reference
-} DirectoryIterator;
+} directory_iterator_t;
 
 // Function to start directory enumeration
-static inline bool platform_find_first_file(DirectoryIterator *iter, const char *pattern_in) {
+static inline bool platform_find_first_file(directory_iterator_t *iter, const char *pattern_in) {
     // Copy pattern to iterator, ensuring nullptr termination
     snprintf(iter->pattern, MAX_PATH, "%s", pattern_in);
     iter->pattern[MAX_PATH - 1] = '\0'; // Ensure nullptr termination
@@ -287,7 +287,7 @@ static inline bool platform_find_first_file(DirectoryIterator *iter, const char 
 }
 
 // Function to get next file in enumeration
-static inline bool platform_find_next_file(DirectoryIterator *iter) {
+static inline bool platform_find_next_file(directory_iterator_t *iter) {
     if (iter->firstCall) {
         iter->firstCall = 0;
         // Data for the first file is already in findData from FindFirstFile
@@ -297,15 +297,15 @@ static inline bool platform_find_next_file(DirectoryIterator *iter) {
 }
 
 // Function to get current filename
-static inline const char *platform_get_filename(DirectoryIterator *iter) { return iter->findData.cFileName; }
+static inline const char *platform_get_filename(directory_iterator_t *iter) { return iter->findData.cFileName; }
 
 // Function to check if current entry is a directory
-static inline bool platform_is_directory(DirectoryIterator *iter) {
+static inline bool platform_is_directory(directory_iterator_t *iter) {
     return (iter->findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
 // Function to get file modification time
-static inline time_t platform_get_file_time(DirectoryIterator *iter) {
+static inline time_t platform_get_file_time(directory_iterator_t *iter) {
     SYSTEMTIME sysTime;
     if (FileTimeToSystemTime(&iter->findData.ftLastWriteTime, &sysTime)) {
         struct tm timeStruct = {0};
@@ -322,7 +322,7 @@ static inline time_t platform_get_file_time(DirectoryIterator *iter) {
 }
 
 // Function to close directory enumeration
-static inline void platform_find_close(DirectoryIterator *iter) {
+static inline void platform_find_close(directory_iterator_t *iter) {
     if (iter->handle != INVALID_HANDLE_VALUE) {
         FindClose(iter->handle);
         iter->handle = INVALID_HANDLE_VALUE;
@@ -338,8 +338,8 @@ static inline void platform_find_close(DirectoryIterator *iter) {
 #include <unistd.h>    // For access, getcwd, rmdir (mkdir is often here too)
 
 // Platform-specific stat definitions
-#define platform_stat stat
-#define platform_stat_struct struct stat
+#define PLATFORM_STAT stat
+#define PLATFORM_STAT_STRUCT struct stat
 
 // Directory operations
 #define MKDIR(dir) mkdir(dir, 0755) // POSIX mkdir
@@ -359,10 +359,10 @@ typedef struct {
     char pattern[MAX_PATH];             // Filename pattern part
     char dirPath[MAX_PATH];             // Directory path part
     char currentFileFullName[MAX_PATH]; // Full path of current file
-} DirectoryIterator;
+} directory_iterator_t;
 
 // Function to get next file in enumeration
-static inline bool platform_find_next_file(DirectoryIterator *iter) {
+static inline bool platform_find_next_file(directory_iterator_t *iter) {
     if (!iter->dir) {
         return 0;
     }
@@ -377,7 +377,7 @@ static inline bool platform_find_next_file(DirectoryIterator *iter) {
                      PATH_SEPARATOR_CHAR, iter->entry->d_name);
             iter->currentFileFullName[sizeof(iter->currentFileFullName) - 1] = '\0';
 
-            if (platform_stat(iter->currentFileFullName, &iter->fileStat) == 0) {
+            if (PLATFORM_STAT(iter->currentFileFullName, &iter->fileStat) == 0) {
                 // S_ISREG check removed, now returns all matching file types.
                 return true;
             }
@@ -387,7 +387,7 @@ static inline bool platform_find_next_file(DirectoryIterator *iter) {
 }
 
 // Function to start directory enumeration
-static inline bool platform_find_first_file(DirectoryIterator *iter, const char *pattern_in) {
+static inline bool platform_find_first_file(directory_iterator_t *iter, const char *pattern_in) {
     const char *last_slash = strrchr(pattern_in, PATH_SEPARATOR_CHAR);
     if (last_slash) {
         size_t dir_len = last_slash - pattern_in;
@@ -411,12 +411,12 @@ static inline bool platform_find_first_file(DirectoryIterator *iter, const char 
 }
 
 // Function to get current filename
-static inline const char *platform_get_filename(DirectoryIterator *iter) {
+static inline const char *platform_get_filename(directory_iterator_t *iter) {
     return iter->entry ? iter->entry->d_name : nullptr;
 }
 
 // Function to check if current entry is a directory
-static inline bool platform_is_directory(DirectoryIterator *iter) {
+static inline bool platform_is_directory(directory_iterator_t *iter) {
     if (iter && iter->entry) {
         return S_ISDIR(iter->fileStat.st_mode);
     }
@@ -424,13 +424,13 @@ static inline bool platform_is_directory(DirectoryIterator *iter) {
 }
 
 // Function to get file modification time
-static inline time_t platform_get_file_time(DirectoryIterator *iter) {
+static inline time_t platform_get_file_time(directory_iterator_t *iter) {
     // fileStat should be populated by platform_find_next_file
     return iter->entry ? iter->fileStat.st_mtime : 0;
 }
 
 // Function to close directory enumeration
-static inline void platform_find_close(DirectoryIterator *iter) {
+static inline void platform_find_close(directory_iterator_t *iter) {
     if (iter->dir) {
         closedir(iter->dir);
         iter->dir = nullptr;

@@ -51,24 +51,24 @@ of Elite with no combat or missions.
 // Global State Definition
 // =====================================
 game_state_t g_state = {.ExitStatus = EXIT_SUCCESS,
-                     .CurrentSystemName = "Lave",
-                     .CurrentSystemEconomy = 0,
-                     .PlayerLocationType = 0,
-                     .InCombat = false,
-                     .currentGameTimeSeconds = 0,
-                     .PlayerShipPtr = nullptr,
-                     .CurrentStarSystem = nullptr,
-                     .PlayerNavState = {0}};
+                        .CurrentSystemName = "Lave",
+                        .CurrentSystemEconomy = 0,
+                        .PlayerLocationType = 0,
+                        .InCombat = false,
+                        .currentGameTimeSeconds = 0,
+                        .PlayerShipPtr = nullptr,
+                        .CurrentStarSystem = nullptr,
+                        .PlayerNavState = {0}};
 
 const uint16_t BASE_0 = 0x5A4A;
 const uint16_t BASE_1 = 0x0248;
 const uint16_t BASE_2 = 0xB753;
 
 char g_gov_names[GOV_MAX_COUNT][MAX_LEN] = {"Anarchy",   "Feudal",      "Multi-gov", "Dictatorship",
-                                         "Communist", "Confederacy", "Democracy", "Corporate State"};
+                                            "Communist", "Confederacy", "Democracy", "Corporate State"};
 
 char g_econ_names[ECON_MAX_COUNT][MAX_LEN] = {"Rich Ind",    "Average Ind", "Poor Ind",     "Mainly Ind",
-                                           "Mainly Agri", "Rich Agri",   "Average Agri", "Poor Agri"};
+                                              "Mainly Agri", "Rich Agri",   "Average Agri", "Poor Agri"};
 
 /**
  * Gets the fuel cost per unit based on ship type
@@ -102,8 +102,8 @@ int get_max_fuel(void) {
 static void display_game_status(char* location_buffer) {
     // Enhanced status display with ship information
     if (g_state.PlayerShipPtr != nullptr) { // Calculate hull percentage
-        int hull_percentage =
-            (g_state.PlayerShipPtr->attributes.hullStrength * 100) / g_state.PlayerShipPtr->ship_type_t->baseHullStrength;
+        int hull_percentage = (g_state.PlayerShipPtr->attributes.hullStrength * 100) /
+                              g_state.PlayerShipPtr->ship_type_t->baseHullStrength;
         // Prepare equipment status string
         char equipment_status[MAX_LEN] = "";
         if (check_equipment_active(g_state.PlayerShipPtr, EQUIP_ECM_SYSTEM)) {
@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
 
         if (!fgets(getcommand, sizeof(getcommand) - 1, stdin)) {
             break;
-		}
+        }
         getcommand[sizeof(getcommand) - 1] = '\0';
         parse_and_execute_command(getcommand);
     }

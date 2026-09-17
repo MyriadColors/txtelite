@@ -40,8 +40,8 @@
  */
 static inline bool get_save_file_path(const char *filename, char *full_path, size_t size) {
     // Create the save directory if it doesn't exist
-    platform_stat_struct st = {0};
-    if (platform_stat(SAVE_DIRECTORY, &st) == -1) {
+    PLATFORM_STAT_STRUCT st = {0};
+    if (PLATFORM_STAT(SAVE_DIRECTORY, &st) == -1) {
         if (MKDIR(SAVE_DIRECTORY) != 0) {
             printf("Error: Could not create directory '%s'.\n", SAVE_DIRECTORY);
             return false;
@@ -117,7 +117,9 @@ typedef struct {
  */
 // This header exposes optional save functionality; not every translation unit uses it.
 // The implementation is intentionally kept together to preserve the save transaction order.
-[[maybe_unused]] static inline bool save_game(const char *filename, const char *description) { // NOLINT(readability-function-size, readability-function-cognitive-complexity)
+[[maybe_unused]] static inline bool
+save_game(const char *filename,
+          const char *description) { // NOLINT(readability-function-size, readability-function-cognitive-complexity)
     char full_path[256];
 
     // Get the full path with save directory
@@ -208,7 +210,7 @@ typedef struct {
         }
     } else if (g_state.PlayerNavState.currentLocationType == CELESTIAL_STATION) {
         for (uint8_t i = 0; i < g_state.CurrentStarSystem->numPlanets; i++) {
-            planet_t*planet = &g_state.CurrentStarSystem->planets[i];
+            planet_t *planet = &g_state.CurrentStarSystem->planets[i];
             for (uint8_t j = 0; j < planet->numStations; j++) {
                 if (g_state.PlayerNavState.currentLocation.station == planet->stations[j]) {
                     state.currentPlanetIndex = i;
@@ -334,7 +336,7 @@ static inline bool load_game(const char *filename) {
         }
     } else if (state.currentLocationType == CELESTIAL_STATION) {
         if (state.currentPlanetIndex < g_state.CurrentStarSystem->numPlanets) {
-            planet_t*planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
+            planet_t *planet = &g_state.CurrentStarSystem->planets[state.currentPlanetIndex];
             if (state.currentStationIndex < planet->numStations) {
                 g_state.PlayerNavState.currentLocation.station = planet->stations[state.currentStationIndex];
             } else {
@@ -460,8 +462,8 @@ static inline bool load_game(const char *filename) {
  * @return 1 if the directory exists or was created successfully, 0 if an error occurred
  */
 static inline bool create_save_directory() {
-    platform_stat_struct st = {0};
-    if (platform_stat(SAVE_DIRECTORY, &st) == -1) {
+    PLATFORM_STAT_STRUCT st = {0};
+    if (PLATFORM_STAT(SAVE_DIRECTORY, &st) == -1) {
         // Directory does not exist, attempt to create it
         if (MKDIR(SAVE_DIRECTORY) != 0) {
             printf("Error: Failed to create save directory '%s'.\n", SAVE_DIRECTORY);
@@ -470,4 +472,3 @@ static inline bool create_save_directory() {
     }
     return true;
 }
-

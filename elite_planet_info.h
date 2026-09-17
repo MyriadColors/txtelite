@@ -118,11 +118,11 @@ static inline void goat_soup_print_adjective_name(const struct plan_sys_t *plane
  */
 static inline void goat_soup_print_random_name(void) {
     int len = gen_rnd_number() & 3;
-    const size_t max_pairs = (sizeof(PLANET_NAME_PAIRS) / 2) - 1;
+    const size_t MAX_PAIRS = (sizeof(PLANET_NAME_PAIRS) / 2) - 1;
     for (int i = 0; i <= len; i++) {
         // The random name generation uses the same pairs as planet naming.
         // The index is carefully calculated to prevent out-of-bounds access.
-        size_t x = 2 * ((size_t)gen_rnd_number() % max_pairs);
+        size_t x = 2 * ((size_t)gen_rnd_number() % MAX_PAIRS);
         if (i == 0) {
             printf("%c", PLANET_NAME_PAIRS[x]);
         } else {

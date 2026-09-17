@@ -17,13 +17,14 @@
  * @param cargoName Name of the cargo item to search for.
  * @return The index of the cargo slot if found; -1 if not found or if input is invalid.
  */
-static inline int find_cargo_slot(const player_ship_t*player_ship, const char *cargo_name) {
+static inline int find_cargo_slot(const player_ship_t *player_ship, const char *cargo_name) {
     if (player_ship == nullptr || cargo_name == nullptr) {
         return -1;
     }
 
     for (int i = 0; i < MAX_CARGO_SLOTS; ++i) {
-        if (player_ship->cargo[i].quantity > 0 && StringCompareIgnoreCase(player_ship->cargo[i].name, cargo_name) == 0) {
+        if (player_ship->cargo[i].quantity > 0 &&
+            StringCompareIgnoreCase(player_ship->cargo[i].name, cargo_name) == 0) {
             return i;
         }
     }
@@ -40,7 +41,7 @@ static inline int find_cargo_slot(const player_ship_t*player_ship, const char *c
  * @param player_ship_tPointer to the player_ship_tstructure to search for an empty cargo slot.
  * @return The index of the first empty cargo slot, or -1 if no empty slot is found or if player_ship_tis nullptr.
  */
-static inline int find_empty_cargo_slot(const player_ship_t*player_ship) {
+static inline int find_empty_cargo_slot(const player_ship_t *player_ship) {
     if (player_ship == nullptr) {
         return -1;
     }
@@ -64,7 +65,7 @@ static inline int find_empty_cargo_slot(const player_ship_t*player_ship) {
  * @param purchasePrice Price per tonne (for player's reference)
  * @return 1 if cargo was successfully added, 0 if there was no space
  */
-static inline bool add_cargo(player_ship_t*player_ship, const char *cargo_name, int quantity, int purchase_price) {
+static inline bool add_cargo(player_ship_t *player_ship, const char *cargo_name, int quantity, int purchase_price) {
     if (player_ship == nullptr || cargo_name == nullptr || quantity <= 0) {
         return false;
     }
@@ -99,8 +100,7 @@ static inline bool add_cargo(player_ship_t*player_ship, const char *cargo_name, 
         }
 
         // Add new cargo type
-        int name_length = snprintf(player_ship->cargo[cargo_slot].name,
-                                   MAX_SHIP_NAME_LENGTH, "%s", cargo_name);
+        int name_length = snprintf(player_ship->cargo[cargo_slot].name, MAX_SHIP_NAME_LENGTH, "%s", cargo_name);
         if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
             printf("Error: Cargo name is too long or could not be formatted.\n");
             return false;
@@ -124,7 +124,7 @@ static inline bool add_cargo(player_ship_t*player_ship, const char *cargo_name, 
  * @param quantity Amount of cargo to remove (in tonnes)
  * @return 1 if cargo was successfully removed, 0 if the ship doesn't have that cargo
  */
-static inline bool remove_cargo(player_ship_t*player_ship, const char *cargo_name, int quantity) {
+static inline bool remove_cargo(player_ship_t *player_ship, const char *cargo_name, int quantity) {
     if (player_ship == nullptr || cargo_name == nullptr || quantity <= 0) {
         return false;
     }
@@ -176,8 +176,8 @@ static inline bool remove_cargo(player_ship_t*player_ship, const char *cargo_nam
  * @param externalSync If 1, synchronize with the global state (Cash)
  * @return 1 if cargo was successfully sold, 0 if there was an error
  */
-[[maybe_unused]] static inline bool sell_cargo(player_ship_t*player_ship, const char *cargo_name, int quantity, int sale_price,
-                             bool external_sync) {
+[[maybe_unused]] static inline bool sell_cargo(player_ship_t *player_ship, const char *cargo_name, int quantity,
+                                               int sale_price, bool external_sync) {
     if (player_ship == nullptr || cargo_name == nullptr || quantity <= 0 || sale_price < 0) {
         return false;
     }
@@ -209,8 +209,8 @@ static inline bool remove_cargo(player_ship_t*player_ship, const char *cargo_nam
  * @param externalSync If 1, synchronize with the global state (Cash)
  * @return 1 if cargo was successfully purchased, 0 if there was an error
  */
-[[maybe_unused]] static inline bool buy_cargo(player_ship_t*player_ship, const char *cargo_name, int quantity, int purchase_price,
-                            bool external_sync) {
+[[maybe_unused]] static inline bool buy_cargo(player_ship_t *player_ship, const char *cargo_name, int quantity,
+                                              int purchase_price, bool external_sync) {
     if (player_ship == nullptr || cargo_name == nullptr || quantity <= 0 || purchase_price < 0) {
         return false;
     }
@@ -245,7 +245,7 @@ static inline bool remove_cargo(player_ship_t*player_ship, const char *cargo_nam
  *
  * @param player_ship_tPointer to the player_ship_tstructure
  */
-[[maybe_unused]] static inline void list_cargo(const player_ship_t*player_ship) {
+[[maybe_unused]] static inline void list_cargo(const player_ship_t *player_ship) {
     if (player_ship == nullptr) {
         return;
     }
@@ -276,7 +276,7 @@ static inline bool remove_cargo(player_ship_t*player_ship, const char *cargo_nam
  * @param cargoName Name of the cargo/commodity to check for
  * @return The quantity of the specified cargo, or 0 if not found
  */
-[[maybe_unused]] static inline int get_cargo_quantity(const player_ship_t*player_ship, const char *cargo_name) {
+[[maybe_unused]] static inline int get_cargo_quantity(const player_ship_t *player_ship, const char *cargo_name) {
     if (player_ship == nullptr || cargo_name == nullptr) {
         return 0;
     }
@@ -298,7 +298,7 @@ static inline bool remove_cargo(player_ship_t*player_ship, const char *cargo_nam
  * @param quantity Amount of cargo to jettison (in tonnes)
  * @return 1 if cargo was successfully jettisoned, 0 if there was an error
  */
-[[maybe_unused]] static inline bool jettison_cargo(player_ship_t*player_ship, const char *cargo_name, int quantity) {
+[[maybe_unused]] static inline bool jettison_cargo(player_ship_t *player_ship, const char *cargo_name, int quantity) {
     if (player_ship == nullptr || cargo_name == nullptr || quantity <= 0) {
         return false;
     }
@@ -319,7 +319,7 @@ static inline bool remove_cargo(player_ship_t*player_ship, const char *cargo_nam
  * @param player_ship_tPointer to the player_ship_tstructure
  * @return 1 if cargo was successfully jettisoned, 0 if there was an error
  */
-[[maybe_unused]] static inline bool jettison_all_cargo(player_ship_t*player_ship) {
+[[maybe_unused]] static inline bool jettison_all_cargo(player_ship_t *player_ship) {
     if (player_ship == nullptr) {
         return false;
     }

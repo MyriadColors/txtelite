@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-
 // Enum for celestial body types
 typedef enum { CELESTIAL_STAR, CELESTIAL_PLANET, CELESTIAL_STATION, CELESTIAL_NAV_BEACON } celestial_type_t;
 

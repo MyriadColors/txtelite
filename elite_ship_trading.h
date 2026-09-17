@@ -3,6 +3,7 @@
 #include "elite_navigation_types.h"
 #include "elite_player_ship.h"
 #include "elite_ship_components.h"
+#include "elite_ship_inventory.h"
 #include "elite_ship_registry.h"
 #include "elite_state.h"
 #include <ctype.h> // For isdigit()
@@ -81,7 +82,7 @@ static inline bool is_ship_available_in_system(const char *ship_class_name, int 
             default:
                 // For other economies, available if industrial or agricultural
                 return (shipAvailabilityDB[i].availableInIndustrialSystems ||
-                       shipAvailabilityDB[i].availableInAgriculturalSystems) != 0;
+                        shipAvailabilityDB[i].availableInAgriculturalSystems) != 0;
             }
         }
     }
@@ -106,11 +107,11 @@ static inline double get_ship_price_multiplier(const char *ship_class_name, int 
 
             // Additional adjustments based on system economy
             switch (system_economy) {
-            case 0:                           // Agricultural
+            case 0:                            // Agricultural
                 return base_multiplier * 1.05; // 5% more expensive
-            case 1:                           // Industrial
+            case 1:                            // Industrial
                 return base_multiplier * 0.95; // 5% cheaper
-            case 7:                           // Military
+            case 7:                            // Military
                 return base_multiplier * 1.1;  // 10% more expensive
             default:
                 return base_multiplier;
@@ -132,7 +133,7 @@ static inline double get_ship_price_multiplier(const char *ship_class_name, int 
  * @return Number of ships available
  */
 static inline int get_available_ships(const char *system_name, int system_economy, const ship_type_t **available_ships,
-                                    double *ship_prices) {
+                                      double *ship_prices) {
     // Initialize ship registry if needed
     intialize_ship_registry_t();
 
@@ -170,7 +171,7 @@ static inline int get_available_ships(const char *system_name, int system_econom
  * @param gameTime Current game time in seconds
  * @return Trade-in value in credits
  */
-static inline double calculate_trade_in_value(const player_ship_t*player_ship, uint64_t game_time) {
+static inline double calculate_trade_in_value(const player_ship_t *player_ship, uint64_t game_time) {
     if (player_ship == nullptr || player_ship->ship_type_t == nullptr) {
         return 0.0;
     }
@@ -214,8 +215,8 @@ static inline double calculate_trade_in_value(const player_ship_t*player_ship, u
  * @param player_ship Pointer to the player_ship_tstructure
  * @param game_time Current game time in seconds
  */
-static inline void display_shipyard(const char *system_name, int system_economy, const player_ship_t*player_ship,
-                                   uint64_t game_time) {
+static inline void display_shipyard(const char *system_name, int system_economy, const player_ship_t *player_ship,
+                                    uint64_t game_time) {
     // Get list of available ships
     const ship_type_t *available_ships[MAX_SHIPS_AT_SHIPYARD];
     double ship_prices[MAX_SHIPS_AT_SHIPYARD];
@@ -258,7 +259,7 @@ static inline void display_shipyard(const char *system_name, int system_economy,
  * @param player_ship Pointer to the player_ship_tstructure
  * @param compare_ship_name Name of the ship to compare with
  */
-static inline void compare_ships(const player_ship_t*player_ship, const char *compare_ship_name) {
+static inline void compare_ships(const player_ship_t *player_ship, const char *compare_ship_name) {
     if (player_ship == nullptr || compare_ship_name == nullptr) {
         printf("Error: Invalid ship data.\n");
         return;
@@ -316,15 +317,16 @@ static inline void compare_ships(const player_ship_t*player_ship, const char *co
 
     // Compare equipment slots
     printf("%-20s %-15d %-15d %+d\n", "Weapon Slots", player_ship->ship_type_t->defaultWeaponSlots,
-           compare_ship->defaultWeaponSlots, compare_ship->defaultWeaponSlots - player_ship->ship_type_t->defaultWeaponSlots);
+           compare_ship->defaultWeaponSlots,
+           compare_ship->defaultWeaponSlots - player_ship->ship_type_t->defaultWeaponSlots);
     printf("%-20s %-15d %-15d %+d\n", "Defensive Slots", player_ship->ship_type_t->defaultDefensiveSlots,
            compare_ship->defaultDefensiveSlots,
            compare_ship->defaultDefensiveSlots - player_ship->ship_type_t->defaultDefensiveSlots);
     printf("%-20s %-15d %-15d %+d\n", "Utility Slots", player_ship->ship_type_t->defaultUtilitySlots,
            compare_ship->defaultUtilitySlots,
            compare_ship->defaultUtilitySlots - player_ship->ship_type_t->defaultUtilitySlots); // Compare cost
-    printf("%-20s %-15.1f %-15.1f %+.1f\n", "Base Cost (CR)", player_ship->ship_type_t->baseCost, compare_ship->baseCost,
-           compare_ship->baseCost - player_ship->ship_type_t->baseCost);
+    printf("%-20s %-15.1f %-15.1f %+.1f\n", "Base Cost (CR)", player_ship->ship_type_t->baseCost,
+           compare_ship->baseCost, compare_ship->baseCost - player_ship->ship_type_t->baseCost);
 }
 
 /**
@@ -334,7 +336,7 @@ static inline void compare_ships(const player_ship_t*player_ship, const char *co
  * @param target_ship Target ship to transfer to
  * @return Number of equipment items transferred
  */
-static inline int transfer_equipment(player_ship_t*source_ship, player_ship_t*target_ship) {
+static inline int transfer_equipment(player_ship_t *source_ship, player_ship_t *target_ship) {
     if (source_ship == nullptr || target_ship == nullptr) {
         return 0;
     }
@@ -385,9 +387,8 @@ static inline int transfer_equipment(player_ship_t*source_ship, player_ship_t*ta
                 transfer_count++;
 
                 // Clear the slot in the source ship
-                source_ship->equipment[i].isActive = 0;
-                if (snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH,
-                             "Empty") < 0) {
+                source_ship->equipment[i].isActive = false;
+                if (snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
                     source_ship->equipment[i].name[0] = '\0';
                 }
             } else {
@@ -404,9 +405,8 @@ static inline int transfer_equipment(player_ship_t*source_ship, player_ship_t*ta
 
                 if (stored) {
                     // Clear the slot in the source ship
-                    source_ship->equipment[i].isActive = 0;
-                    if (snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH,
-                                 "Empty") < 0) {
+                    source_ship->equipment[i].isActive = false;
+                    if (snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
                         source_ship->equipment[i].name[0] = '\0';
                     }
                 } else {
@@ -432,9 +432,8 @@ static inline int transfer_equipment(player_ship_t*source_ship, player_ship_t*ta
 
             if (stored) {
                 // Clear the slot in the source ship
-                source_ship->equipmentInventory[i].isActive = 0;
-                if (snprintf(source_ship->equipmentInventory[i].name,
-                             MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+                source_ship->equipmentInventory[i].isActive = false;
+                if (snprintf(source_ship->equipmentInventory[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
                     source_ship->equipmentInventory[i].name[0] = '\0';
                 }
             } else {
@@ -454,7 +453,7 @@ static inline int transfer_equipment(player_ship_t*source_ship, player_ship_t*ta
  * @param target_ship Target ship to transfer to
  * @return Amount of cargo (in tons) that could not be transferred due to space limitations
  */
-static inline int transfer_cargo(player_ship_t*source_ship, player_ship_t*target_ship) {
+static inline int transfer_cargo(player_ship_t *source_ship, player_ship_t *target_ship) {
     if (source_ship == nullptr || target_ship == nullptr) {
         return 0;
     }
@@ -496,15 +495,15 @@ static inline int transfer_cargo(player_ship_t*source_ship, player_ship_t*target
                         // Copy cargo details
                         target_ship->cargo[target_slot].quantity = source_ship->cargo[i].quantity;
                         target_ship->cargo[target_slot].purchasePrice = source_ship->cargo[i].purchasePrice;
-                        int name_length = snprintf(target_ship->cargo[target_slot].name,
-                                                   MAX_SHIP_NAME_LENGTH, "%s",
+                        int name_length = snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
                                                    source_ship->cargo[i].name);
                         if (name_length < 0) {
                             target_ship->cargo[target_slot].name[0] = '\0';
                         } else if (name_length >= MAX_SHIP_NAME_LENGTH) {
                             target_ship->cargo[target_slot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0';
                         }
-                        target_ship->cargo[target_slot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure nullptr termination
+                        target_ship->cargo[target_slot].name[MAX_SHIP_NAME_LENGTH - 1] =
+                            '\0'; // Ensure nullptr termination
                     }
 
                     // Update quantities
@@ -547,13 +546,13 @@ static inline int transfer_cargo(player_ship_t*source_ship, player_ship_t*target
                         // Copy cargo details
                         target_ship->cargo[target_slot].quantity = source_ship->cargo[i].quantity;
                         target_ship->cargo[target_slot].purchasePrice = source_ship->cargo[i].purchasePrice;
-                        int name_length = snprintf(target_ship->cargo[target_slot].name,
-                                                   MAX_SHIP_NAME_LENGTH, "%s",
+                        int name_length = snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
                                                    source_ship->cargo[i].name);
                         if (name_length < 0) {
                             target_ship->cargo[target_slot].name[0] = '\0';
                         }
-                        target_ship->cargo[target_slot].name[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure nullptr termination
+                        target_ship->cargo[target_slot].name[MAX_SHIP_NAME_LENGTH - 1] =
+                            '\0'; // Ensure nullptr termination
                     }
 
                     // Update quantities
@@ -596,9 +595,7 @@ static inline int transfer_cargo(player_ship_t*source_ship, player_ship_t*target
  * @param tradeIn Whether to trade in the current ship
  * @return 1 if purchase successful, 0 otherwise
  */
-static inline bool initialize_purchased_ship(player_ship_t*player_ship,
-                                             const ship_type_t *ship_type,
-                                             bool trade_in) {
+static inline bool initialize_purchased_ship(player_ship_t *player_ship, const ship_type_t *ship_type, bool trade_in) {
     if (trade_in) {
         g_trade_in_storage.ship = *player_ship;
         g_trade_in_storage.isActive = true;
@@ -616,10 +613,8 @@ static inline bool initialize_purchased_ship(player_ship_t*player_ship,
     return false;
 }
 
-static inline void display_purchase_summary(const ship_type_t *ship_type, double price,
-                                            double trade_in_value, double net_cost,
-                                            int equipment_transferred, int cargo_lost,
-                                            bool trade_in) {
+static inline void display_purchase_summary(const ship_type_t *ship_type, double price, double trade_in_value,
+                                            double net_cost, int equipment_transferred, int cargo_lost, bool trade_in) {
     printf("\nCongratulations on your new ship purchase!\n");
     printf("You are now the proud owner of a %s.\n", ship_type->className);
     printf("Purchase price: %.1f CR\n", price);
@@ -627,17 +622,15 @@ static inline void display_purchase_summary(const ship_type_t *ship_type, double
         printf("Trade-in value: %.1f CR\n", trade_in_value);
         printf("Equipment transferred: %d items\n", equipment_transferred);
         if (cargo_lost > 0) {
-            printf("Warning: %d tons of cargo could not be transferred due to space limitations.\n",
-                   cargo_lost);
+            printf("Warning: %d tons of cargo could not be transferred due to space limitations.\n", cargo_lost);
         }
     }
     printf("Net cost: %.1f CR\n", net_cost);
     printf("Remaining cash: %.1f CR\n", (double)g_state.Cash / 10.0);
 }
 
-static inline bool buy_new_ship(const char *system_name, int system_economy,
-                                player_ship_t*player_ship, const char *new_ship_name,
-                                uint64_t game_time, bool trade_in) {
+static inline bool buy_new_ship(const char *system_name, int system_economy, player_ship_t *player_ship,
+                                const char *new_ship_name, uint64_t game_time, bool trade_in) {
     (void)system_name; // Unused parameter
     if (player_ship == nullptr || new_ship_name == nullptr) {
         printf("Error: Invalid ship data.\n");
@@ -694,10 +687,10 @@ static inline bool buy_new_ship(const char *system_name, int system_economy,
     g_state.Cash -= (int32_t)(net_cost * 10.0);
 
     // Display purchase information
-    display_purchase_summary(newship_type_t, price, trade_in_value, net_cost,
-                             equipment_transferred, cargo_lost, trade_in);
+    display_purchase_summary(newship_type_t, price, trade_in_value, net_cost, equipment_transferred, cargo_lost,
+                             trade_in);
 
-    return 1;
+    return true;
 }
 
 // Command handler functions to be included in elite_commands.h
@@ -720,7 +713,7 @@ static inline bool buy_new_ship(const char *system_name, int system_economy,
 
     // Display the shipyard
     display_shipyard(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, g_state.PlayerShipPtr,
-                    g_state.currentGameTimeSeconds);
+                     g_state.currentGameTimeSeconds);
 
     return true;
 }
@@ -777,7 +770,7 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
 
     // Copy the ship name to the buffer
     int name_length = snprintf(ship_name, ship_name_size, "%s", available_ships[ship_index]->className);
-    return name_length < 0 || (size_t)(name_length) >= ship_name_size;
+    return (name_length < 0 || (size_t)(name_length) >= ship_name_size) != 0;
 }
 
 /**
@@ -811,9 +804,7 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
     const char *space = strchr(arguments, ' ');
     if (space != nullptr) {
         size_t name_len = (size_t)(space - arguments);
-        const size_t COPY_LEN = name_len < sizeof(ship_name_or_id) - 1
-                        ? name_len
-                        : sizeof(ship_name_or_id) - 1;
+        const size_t COPY_LEN = name_len < sizeof(ship_name_or_id) - 1 ? name_len : sizeof(ship_name_or_id) - 1;
         memcpy(ship_name_or_id, arguments, COPY_LEN);
         ship_name_or_id[COPY_LEN] = '\0';
 
@@ -824,9 +815,7 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
     } else {
         // No space, just copy the entire argument
         const size_t NAME_LEN = strlen(arguments);
-        const size_t COPY_LEN = NAME_LEN < sizeof(ship_name_or_id) - 1
-                      ? NAME_LEN
-                      : sizeof(ship_name_or_id) - 1;
+        const size_t COPY_LEN = NAME_LEN < sizeof(ship_name_or_id) - 1 ? NAME_LEN : sizeof(ship_name_or_id) - 1;
         memcpy(ship_name_or_id, arguments, COPY_LEN);
         ship_name_or_id[COPY_LEN] = '\0';
     }
@@ -848,8 +837,8 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
         char *endptr = NULL;
         errno = 0;
         long parsed_ship_id = strtol(ship_name_or_id, &endptr, 10);
-        if (ship_name_or_id[0] == '\0' || *endptr != '\0' || errno == ERANGE ||
-            parsed_ship_id < INT_MIN || parsed_ship_id > INT_MAX) {
+        if (ship_name_or_id[0] == '\0' || *endptr != '\0' || errno == ERANGE || parsed_ship_id < INT_MIN ||
+            parsed_ship_id > INT_MAX) {
             printf("Error: Invalid ship ID: %s\n", ship_name_or_id);
             return false;
         }
@@ -857,7 +846,7 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
 
         // Get the ship name by ID
         if (!get_ship_name_by_id(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, ship_id, actual_ship_name,
-                             MAX_SHIP_NAME_LENGTH)) {
+                                 MAX_SHIP_NAME_LENGTH)) {
             printf("Error: Invalid ship ID: %d\n", ship_id);
             return false;
         }
@@ -872,6 +861,6 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
     }
 
     // Buy the new ship
-    return buy_new_ship(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, g_state.PlayerShipPtr, actual_ship_name,
-                      g_state.currentGameTimeSeconds, trade_in);
+    return buy_new_ship(g_state.CurrentSystemName, g_state.CurrentSystemEconomy, g_state.PlayerShipPtr,
+                        actual_ship_name, g_state.currentGameTimeSeconds, trade_in);
 }

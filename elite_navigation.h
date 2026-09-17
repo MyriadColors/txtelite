@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elite_market.h"           // For generate_market
+#include "elite_market.h" // For generate_market
 #include "elite_state.h"
 #include "elite_utils.h" // For float_to_int_round, random_byte, string_begins_with
 #include <math.h>        // For sqrt
@@ -64,7 +64,7 @@ static inline uint16_t distance(struct plan_sys_t system_a, struct plan_sys_t sy
 [[maybe_unused]] static inline planet_num_t find_matching_system_name(const char *search_name) {
     planet_num_t syscount;
     planet_num_t p = (planet_num_t)g_state.CurrentPlanet; // Global variable
-    uint16_t d = 0xFFFF;                 // Initialize with max uint16_t value
+    uint16_t d = 0xFFFF;                                  // Initialize with max uint16_t value
 
     for (syscount = 0; syscount < GAL_SIZE; ++syscount) {
         if (string_begins_with(search_name, g_state.Galaxy[syscount].name)) // Galaxy is global
@@ -99,7 +99,8 @@ static inline uint16_t distance(struct plan_sys_t system_a, struct plan_sys_t sy
 [[maybe_unused]] static inline void execute_jump_to_planet(planet_num_t planet_index) {
     g_state.CurrentPlanet = planet_index; // Global variable
     // Galaxy is a global variable, random_byte from elite_utils, generate_market from elite_market
-    g_state.LocalMarket = generate_market((uint16_t)(unsigned char)random_byte(), g_state.Galaxy[planet_index]); // Global variable
+    g_state.LocalMarket =
+        generate_market((uint16_t)(unsigned char)random_byte(), g_state.Galaxy[planet_index]); // Global variable
 
     // Update the star system and navigation state for the new planet
     initialize_star_system_for_current_planet();

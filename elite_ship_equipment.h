@@ -20,8 +20,7 @@
 
     // Iterate through equipment slots
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
-        if (player_ship->equipment[i].isActive &&
-            player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+        if (player_ship->equipment[i].isActive && player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             player_ship->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             player_ship->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_FUEL_SCOOPS) {
             return true;
@@ -68,8 +67,7 @@ static inline bool has_docking_computer(const player_ship_t *player_ship) {
 
     // Iterate through equipment slots
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
-        if (player_ship->equipment[i].isActive &&
-            player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+        if (player_ship->equipment[i].isActive && player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             player_ship->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             player_ship->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_DOCKING_COMPUTER) {
             return true;
@@ -91,8 +89,7 @@ static inline bool has_upgraded_scanner(const player_ship_t *player_ship) {
     }
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
-        if (player_ship->equipment[i].isActive &&
-            player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+        if (player_ship->equipment[i].isActive && player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             player_ship->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             player_ship->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_SCANNER_UPGRADE) {
             return true;
@@ -114,8 +111,7 @@ static inline bool has_escape_pod(const player_ship_t *player_ship) {
     }
 
     for (int i = 0; i < MAX_EQUIPMENT_SLOTS; ++i) {
-        if (player_ship->equipment[i].isActive &&
-            player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
+        if (player_ship->equipment[i].isActive && player_ship->equipment[i].slotType >= UTILITY_SYSTEM_1 &&
             player_ship->equipment[i].slotType <= UTILITY_SYSTEM_4 &&
             player_ship->equipment[i].typeSpecific.utilityType == UTILITY_SYSTEM_TYPE_ESCAPE_POD) {
             return true;
@@ -230,7 +226,8 @@ static inline bool has_escape_pod(const player_ship_t *player_ship) {
  * @param slot_type The weapon slot to check (forward or aft)
  * @return The damage output value, or 0.0 if no weapon is installed
  */
-[[maybe_unused]] static inline double get_weapon_damage(const player_ship_t *player_ship, equipment_slot_type_t slot_type) {
+[[maybe_unused]] static inline double get_weapon_damage(const player_ship_t *player_ship,
+                                                        equipment_slot_type_t slot_type) {
     if (player_ship == nullptr ||
         (slot_type != EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON && slot_type != EQUIPMENT_SLOT_TYPE_AFT_WEAPON)) {
         return 0.0;

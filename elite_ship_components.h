@@ -90,7 +90,7 @@ typedef struct ship_core_attributes_t {
 typedef struct ship_equipment_item_t {
     char name[MAX_SHIP_NAME_LENGTH];
     equipment_slot_type_t slotType;          // What kind of slot this is (e.g. Forward Weapon)
-    bool isActive;                        // 0 for empty/damaged, 1 for active
+    bool isActive;                           // 0 for empty/damaged, 1 for active
     equipment_type_specifics_t typeSpecific; // Use the new named union
 
     // Common attributes

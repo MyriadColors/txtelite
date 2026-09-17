@@ -70,57 +70,58 @@ static trade_good_t g_commodities[] = {
 // Indexed by [station_specialization_t][CommodityIndex]
 // Commodity Indices: 0:Food, 1:Textiles, 2:Radioactives, 3:Slaves, 4:Liquor, 5:Luxuries, 6:Narcotics, 7:Computers,
 // 8:Machinery, 9:Alloys
-[[maybe_unused]] static market_modifier_t g_station_specialization_modifiers[NUM_STATION_SPECIALIZATIONS][NUM_STANDARD_COMMODITIES] = {
-    // STATION_SPECIALIZATION_BALANCED (0) - Minor or no strong modifications
-    {{NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR}},
-    // STATION_SPECIALIZATION_INDUSTRIAL (1)
-    // Produces: Machinery (8), Alloys (9)
-    // Consumes: Food (0), Textiles (1), Radioactives (2)
-    {{PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
-     {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
-     {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
-     {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR}},
-    // STATION_SPECIALIZATION_AGRICULTURAL (2)
-    // Produces: Food (0), Textiles (1)
-    // Consumes: Machinery (8), Luxuries (5)
-    {{PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
-     {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR}},
-    // STATION_SPECIALIZATION_MINING (3)
-    // Produces: Radioactives (2), Alloys (9)
-    // Consumes: Food (0), Machinery (8)
-    {{PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
-     {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
-     {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR}}};
+[[maybe_unused]] static market_modifier_t
+    g_station_specialization_modifiers[NUM_STATION_SPECIALIZATIONS][NUM_STANDARD_COMMODITIES] = {
+        // STATION_SPECIALIZATION_BALANCED (0) - Minor or no strong modifications
+        {{NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR}},
+        // STATION_SPECIALIZATION_INDUSTRIAL (1)
+        // Produces: Machinery (8), Alloys (9)
+        // Consumes: Food (0), Textiles (1), Radioactives (2)
+        {{PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
+         {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
+         {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
+         {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR}},
+        // STATION_SPECIALIZATION_AGRICULTURAL (2)
+        // Produces: Food (0), Textiles (1)
+        // Consumes: Machinery (8), Luxuries (5)
+        {{PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
+         {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR}},
+        // STATION_SPECIALIZATION_MINING (3)
+        // Produces: Radioactives (2), Alloys (9)
+        // Consumes: Food (0), Machinery (8)
+        {{PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {NO_CHANGE_FACTOR, NO_CHANGE_FACTOR},
+         {PRICE_INCREASE_FACTOR, QUANTITY_DECREASE_FACTOR},
+         {PRICE_DECREASE_FACTOR, QUANTITY_INCREASE_FACTOR}}};
 
 // Market Modifiers for planet_tTypes
 // Indexed by [planet_market_type_t][CommodityIndex]
@@ -282,8 +283,7 @@ static trade_good_t g_commodities[] = {
     }
 
     if (g_state.LocalMarket.price[item_index] > 0) {
-        return minimum_value(quantity,
-                            (uint16_t)((double)g_state.Cash / g_state.LocalMarket.price[item_index]));
+        return minimum_value(quantity, (uint16_t)((double)g_state.Cash / g_state.LocalMarket.price[item_index]));
     }
     if (g_state.Cash > 0 && g_state.LocalMarket.quantity[item_index] > 0) {
         return quantity;
@@ -368,8 +368,7 @@ static trade_good_t g_commodities[] = {
 
     g_state.PlayerShipPtr->cargo[slot].quantity -= t;
     if (g_state.PlayerShipPtr->cargo[slot].quantity == 0) {
-        int written = snprintf(g_state.PlayerShipPtr->cargo[slot].name,
-                               MAX_SHIP_NAME_LENGTH, "Empty");
+        int written = snprintf(g_state.PlayerShipPtr->cargo[slot].name, MAX_SHIP_NAME_LENGTH, "Empty");
         if (written < 0 || written >= MAX_SHIP_NAME_LENGTH) {
             g_state.PlayerShipPtr->cargo[slot].name[0] = '\0';
         }

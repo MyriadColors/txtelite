@@ -5,6 +5,7 @@
 #include "elite_navigation_types.h"
 #include "elite_ship_maintenance.h"
 #include "elite_state.h" // For plan_sys_t and other related structures
+#include "platform_compat.h"
 #include <ctype.h>
 #include <math.h>
 #include <stddef.h>
@@ -421,10 +422,8 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
         break;
     }
 
-    if (snprintf(system->centralStar.name, MAX_LEN, "%s%s",
-                 plan_sys_tEntry->name, nameSuffix) < 0) {
-        return;
-    }
+    safe_snprintf(system->centralStar.name, MAX_LEN, "%s%s",
+                  plan_sys_tEntry->name, nameSuffix);
     
     // Realistic spectral class distribution (M-class stars are most common)
     // Use cumulative probability distribution based on seed
@@ -532,54 +531,30 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
             // First planet often shares system name
             uint8_t name_variant = (plan_sys_tEntry->goatSoupSeed.b % 2);
             if (name_variant == 0) {
-                int written = snprintf(planet->name, MAX_LEN, "%s", plan_sys_tEntry->name);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s", plan_sys_tEntry->name);
             } else {
-                int written = snprintf(planet->name, MAX_LEN, "%s Prime", plan_sys_tEntry->name);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s Prime", plan_sys_tEntry->name);
             }
         } else if (i == 1) {
             // Second planet often has "New" prefix
             uint8_t name_variant = (plan_sys_tEntry->goatSoupSeed.c % 3);
             if (name_variant == 0) {
-                int written = snprintf(planet->name, MAX_LEN, "New %s", plan_sys_tEntry->name);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "New %s", plan_sys_tEntry->name);
             } else if (name_variant == 1) {
-                int written = snprintf(planet->name, MAX_LEN, "%s II", plan_sys_tEntry->name);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s II", plan_sys_tEntry->name);
             } else {
-                int written = snprintf(planet->name, MAX_LEN, "%s Beta", plan_sys_tEntry->name);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s Beta", plan_sys_tEntry->name);
             }
         } else {
             // Other planets get variety in naming
             uint8_t name_variant = (uint8_t)((plan_sys_tEntry->goatSoupSeed.d + i) % 4);
             if (name_variant == 0) {
-                int written = snprintf(planet->name, MAX_LEN, "%s %c", plan_sys_tEntry->name, 'A' + i);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s %c", plan_sys_tEntry->name, 'A' + i);
             } else if (name_variant == 1) {
-                int written = snprintf(planet->name, MAX_LEN, "%s %d", plan_sys_tEntry->name, i + 1);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s %d", plan_sys_tEntry->name, i + 1);
             } else if (name_variant == 2) {
                 const char *suffixes[] = {"Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta"};
-                int written = snprintf(planet->name, MAX_LEN, "%s %s", plan_sys_tEntry->name, suffixes[i % 8]);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s %s", plan_sys_tEntry->name, suffixes[i % 8]);
             } else {
                 // Generate a slightly different name using seed
                 char alt_name[MAX_LEN];
@@ -598,10 +573,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
                 }
                 alt_name[name_len] = '\0';
 
-                int written = snprintf(planet->name, MAX_LEN, "%s", alt_name);
-                if (written < 0 || written >= MAX_LEN) {
-                    planet->name[MAX_LEN - 1] = '\0';
-                }
+                safe_snprintf(planet->name, MAX_LEN, "%s", alt_name);
             }
         } // Set orbital distance with physics-based constraints and enhanced stability
           // Use modified Titius-Bode law with Hill sphere and resonane considerations
@@ -797,16 +769,16 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
             // Set station name with more variety
             int station_name_variant = (plan_sys_tEntry->goatSoupSeed.a + i + j) % 4;
             if (station_name_variant == 0) {
-                snprintf(station->name, MAX_LEN, "%s station_t %d", planet->name, j + 1);
+                safe_snprintf(station->name, MAX_LEN, "%s station_t %d", planet->name, j + 1);
             } else if (station_name_variant == 1) {
                 const char *prefixes[] = {"Alpha", "Beta", "Gamma", "Delta", "Epsilon"};
-                snprintf(station->name, MAX_LEN, "%s %s", prefixes[j % 5], planet->name);
+                safe_snprintf(station->name, MAX_LEN, "%s %s", prefixes[j % 5], planet->name);
             } else if (station_name_variant == 2) {
                 const char *prefixes[] = {"Orbital", "Port", "Hub", "Gateway", "Outpost"};
-                snprintf(station->name, MAX_LEN, "%s %s", prefixes[j % 5], planet->name);
+                safe_snprintf(station->name, MAX_LEN, "%s %s", prefixes[j % 5], planet->name);
             } else {
                 const char *uniqueNames[] = {"Nexus", "StarPort", "Horizon", "Tranquility", "Zenith"};
-                snprintf(station->name, MAX_LEN, "%s %s", uniqueNames[j % 5], planet->name);
+                safe_snprintf(station->name, MAX_LEN, "%s %s", uniqueNames[j % 5], planet->name);
             } // Set orbital distance from planet - realistic based on planet type and
               // safety
             double base_orbit_distance = 0.0;
@@ -986,12 +958,8 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
                     memset(new_station, 0, sizeof(station_t));
 
                     // Set up the emergency station with basic properties
-                    int name_length = snprintf(new_station->name, sizeof(new_station->name), "Orbital Hab %c",
-                                               'A' + best_planet->numStations);
-                    if (name_length < 0 || (size_t)name_length >= sizeof(new_station->name)) {
-                        free(new_station);
-                        new_station = NULL;
-                    }
+                    safe_snprintf(new_station->name, sizeof(new_station->name), "Orbital Hab %c",
+                                  'A' + best_planet->numStations);
                     new_station->type = 0;        // Coriolis (most common)
                     new_station->size = 1;        // Medium size
                     new_station->services = 0xFF; // All services available for populated areas
@@ -1277,9 +1245,9 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
     switch (navState->currentLocationType) {
     case CELESTIAL_STAR:
         if (navState->currentLocation.star) {
-            snprintf(buffer, bufferSize, "%s (Star)", navState->currentLocation.star->name);
+            safe_snprintf(buffer, bufferSize, "%s (Star)", navState->currentLocation.star->name);
         } else {
-            snprintf(buffer, bufferSize, "Unknown Star");
+            safe_snprintf(buffer, bufferSize, "Unknown Star");
         }
         break;
 
@@ -1293,9 +1261,9 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
                 type = 4; // Default to "Unknown" for invalid types
             }
 
-            snprintf(buffer, bufferSize, "%s (%s Planet)", navState->currentLocation.planet->name, planetTypes[type]);
+            safe_snprintf(buffer, bufferSize, "%s (%s Planet)", navState->currentLocation.planet->name, planetTypes[type]);
         } else {
-            snprintf(buffer, bufferSize, "Unknown Planet");
+            safe_snprintf(buffer, bufferSize, "Unknown Planet");
         }
         break;
 
@@ -1303,18 +1271,18 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
         if (navState->currentLocation.station) {
             // This requires a pointer to the current star system
             // If we don't have that in this context, we'll use a generic format
-            snprintf(buffer, bufferSize, "%s (Orbital station_t)", navState->currentLocation.station->name);
+            safe_snprintf(buffer, bufferSize, "%s (Orbital station_t)", navState->currentLocation.station->name);
         } else {
-            snprintf(buffer, bufferSize, "Unknown station_t");
+            safe_snprintf(buffer, bufferSize, "Unknown station_t");
         }
         break;
 
     case CELESTIAL_NAV_BEACON:
-        snprintf(buffer, bufferSize, "Navigation Beacon");
+        safe_snprintf(buffer, bufferSize, "Navigation Beacon");
         break;
 
     default:
-        snprintf(buffer, bufferSize, "Unknown Location");
+        safe_snprintf(buffer, bufferSize, "Unknown Location");
     }
 }
 

@@ -187,12 +187,7 @@ static trade_good_t g_commodities[] = {
     // Copy names from the Commodities array
     for (i = 0; i < NUM_STANDARD_COMMODITIES; i++) {
         if (i < (sizeof(g_commodities) / sizeof(g_commodities[0]))) {
-            int written = snprintf(g_state.tradnames[i], MAX_LEN, "%s", g_commodities[i].name);
-            if (written < 0) {
-                g_state.tradnames[i][0] = '\0';
-            } else if ((size_t)written >= MAX_LEN) {
-                g_state.tradnames[i][MAX_LEN - 1] = '\0';
-            }
+            safe_snprintf(g_state.tradnames[i], MAX_LEN, "%s", g_commodities[i].name);
         } else {
             g_state.tradnames[i][0] = '\0';
         }
@@ -307,11 +302,8 @@ static trade_good_t g_commodities[] = {
     if (slot == -1) {
         for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
             if (g_state.PlayerShipPtr->cargo[i].quantity == 0) {
-                int name_length = snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s",
+                safe_snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s",
                                            g_commodities[item_index].name);
-                if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
-                    return 0;
-                }
                 slot = i;
                 g_state.PlayerShipPtr->cargo[slot].purchasePrice = g_state.LocalMarket.price[item_index] / 10;
                 break;
@@ -368,10 +360,7 @@ static trade_good_t g_commodities[] = {
 
     g_state.PlayerShipPtr->cargo[slot].quantity -= t;
     if (g_state.PlayerShipPtr->cargo[slot].quantity == 0) {
-        int written = snprintf(g_state.PlayerShipPtr->cargo[slot].name, MAX_SHIP_NAME_LENGTH, "Empty");
-        if (written < 0 || written >= MAX_SHIP_NAME_LENGTH) {
-            g_state.PlayerShipPtr->cargo[slot].name[0] = '\0';
-        }
+        safe_snprintf(g_state.PlayerShipPtr->cargo[slot].name, MAX_SHIP_NAME_LENGTH, "Empty");
     }
 
     if (g_commodities[item_index].units == TONNES_UNIT) {

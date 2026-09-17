@@ -7,6 +7,7 @@
 #include "elite_commands.h" // For do_* functions
 #include "elite_state.h"    // Unified header for constants, structures, and globals
 #include "elite_utils.h"
+#include "platform_compat.h"
 // Command definitions
 static char g_command_names[NUM_COMMANDS][MAX_LEN] = {
     "buy",   "sell",     "fuel",        "jump",    "cash",    "mkt",      "help",     "hold",   "sneak",
@@ -56,7 +57,7 @@ static bool (*g_command_functions[NUM_COMMANDS])(const char *) = {do_buy,
         return false;
     }
     char cmd_buffer[MAX_LEN];
-    snprintf(cmd_buffer, sizeof(cmd_buffer), "%s", command_string);
+    safe_snprintf(cmd_buffer, sizeof(cmd_buffer), "%s", command_string);
 
     char *cmd = strip_leading_trailing_spaces(cmd_buffer);
     if (strlen(cmd) == 0) {

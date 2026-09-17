@@ -131,7 +131,7 @@ static void display_game_status(char* location_buffer) {
             safe_strcat(equipment_status, sizeof(equipment_status), "EscPod ");
         }
         if (strlen(equipment_status) == 0) {
-            (void)snprintf(equipment_status, sizeof(equipment_status), "None");
+            (void)safe_snprintf(equipment_status, sizeof(equipment_status), "None");
         }
 
         (void)printf("\n\nLocation: %s | Cash: %.1f | Fuel: %.1fLY | Hull: %d%% | "

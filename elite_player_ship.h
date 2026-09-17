@@ -28,7 +28,7 @@ typedef struct player_ship_t {
  * @return 1 if successful, 0 otherwise
  */
 static inline bool set_ship_text(char *destination, size_t destination_size, const char *source) {
-    const int RESULT = snprintf(destination, destination_size, "%s", source);
+    const int RESULT = safe_snprintf(destination, destination_size, "%s", source);
     return (RESULT >= 0 && (size_t)(RESULT) < destination_size) != 0;
 }
 
@@ -64,7 +64,7 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
     } else {
         // Construct default name if no custom name is provided
         char default_name[MAX_SHIP_NAME_LENGTH];
-        const int RESULT = snprintf(default_name, sizeof(default_name), "%s Class", ship_type_t->className);
+        const int RESULT = safe_snprintf(default_name, sizeof(default_name), "%s Class", ship_type_t->className);
         if (RESULT < 0 || (size_t)(RESULT) >= sizeof(default_name) ||
             !set_ship_text(player_ship_t->shipName, MAX_SHIP_NAME_LENGTH, default_name)) {
             return false;
@@ -467,7 +467,7 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
     if (player_ship_t->equipment[slot_type].isActive) {
         char old_equip_name[MAX_SHIP_NAME_LENGTH];
         int old_equip_name_length =
-            snprintf(old_equip_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->equipment[slot_type].name);
+            safe_snprintf(old_equip_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->equipment[slot_type].name);
         if (old_equip_name_length < 0) {
             old_equip_name[0] = '\0';
         }
@@ -480,14 +480,14 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
                 "Warning: Replacing existing equipment '%s' in slot %d without storing it (inventory may be full).\n",
                 old_equip_name, slot_type);
             player_ship_t->equipment[slot_type].isActive = false;
-            if (snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+            if (safe_snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
                 player_ship_t->equipment[slot_type].name[0] = '\0';
             }
         }
     }
 
     player_ship_t->equipment[slot_type].isActive = true;
-    int name_length = snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "%s", equipment_name);
+    int name_length = safe_snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "%s", equipment_name);
     if (name_length < 0) {
         player_ship_t->equipment[slot_type].isActive = false;
         player_ship_t->equipment[slot_type].name[0] = '\0';
@@ -515,7 +515,7 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
     }
 
     char equipment_name[MAX_SHIP_NAME_LENGTH];
-    int name_length = snprintf(equipment_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->equipment[slot_type].name);
+    int name_length = safe_snprintf(equipment_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->equipment[slot_type].name);
     if (name_length < 0) {
         return false;
     }
@@ -534,7 +534,7 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
     }
 
     player_ship_t->equipment[slot_type].isActive = false;
-    if (snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+    if (safe_snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
         return false;
     }
 
@@ -607,7 +607,7 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
         return false;
     }
 
-    int name_length = snprintf(out_cargo_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->cargo[index].name);
+    int name_length = safe_snprintf(out_cargo_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->cargo[index].name);
     if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
         return false;
     }

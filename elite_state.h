@@ -1,5 +1,6 @@
 #pragma once
 
+#include "platform_compat.h"
 #define MAX_CARGO_ITEMS 50
 #define MAX_EQUIPMENT_SLOTS 10
 /**
@@ -220,7 +221,7 @@ int get_max_fuel(void);
 
     uint64_t current_seconds = time_val;
 
-    (void)snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu", (unsigned long long)years,
+    safe_snprintf(buffer, buffer_size, "Year: %llu, Day: %llu, %02llu:%02llu:%02llu", (unsigned long long)years,
                    (unsigned long long)days, (unsigned long long)hours, (unsigned long long)minutes,
                    (unsigned long long)current_seconds);
 }

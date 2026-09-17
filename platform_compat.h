@@ -11,12 +11,41 @@
  */
 
 // Standard C library includes
-#include <errno.h>   // For errno, errno_t
 #include <limits.h>  // For INT_MAX
+#include <stdarg.h>  // For va_list, va_start, va_end
 #include <stdbool.h> // For bool type (C99 and later)
-#include <stdio.h>   // For FILE, fopen, fopen_s, snprintf, nullptr
-#include <string.h>  // For memcpy, memchr, snprintf, strlen, strrchr, strtok_r, strspn, strcspn
+#include <stdio.h>   // For FILE, fopen, fopen_s, safe_snprintf, nullptr
+#include <string.h>  // For memcpy, memchr, safe_snprintf, strlen, strrchr, strtok_r, strspn, strcspn
 #include <time.h>    // For time_t, struct tm, mktime, localtime, localtime_s, localtime_r
+
+/**
+ * Safely formats a string into a buffer using vsnprintf.
+ * The destination buffer is always null-terminated if size > 0.
+ *
+ * @param buffer The destination buffer.
+ * @param size The size of the destination buffer.
+ * @param format The format string.
+ * @param ... Additional arguments for format.
+ * @return The number of characters that would have been written if size had been sufficiently large.
+ */
+static inline int safe_snprintf(char *buffer, size_t size, const char *format, ...) {
+    if (buffer == nullptr || size == 0 || format == nullptr) {
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+    int written = vsnprintf(buffer, size, format, args);
+    va_end(args);
+
+    // vsnprintf (C99 standard) guarantees null-termination if size > 0.
+    // We add this manual assignment here to explicitly document the safety guarantee.
+    if (written < 0 || (size_t)written >= size) {
+        buffer[size - 1] = '\0';
+    }
+
+    return written;
+}
 
 #if defined(_WIN32)
 #include <ctype.h> // For tolower, for _stricmp implementation fallback if not directly available
@@ -27,7 +56,7 @@
 // Cross-platform safe file opening function.
 // Uses fopen_s when available (Windows with compatible compiler),
 // falls back to standard fopen with proper error handling.
-static inline FILE *safe_fopen(const char *filename, const char *mode) {
+[[maybe_unused]] static inline FILE *safe_fopen(const char *filename, const char *mode) {
     FILE *file = nullptr;
 
 #if defined(_WIN32) && defined(__STDC_SECURE_LIB__) && __STDC_WANT_SECURE_LIB__
@@ -51,7 +80,7 @@ static inline FILE *safe_fopen(const char *filename, const char *mode) {
 // -2: localtime_s failed (Windows)
 // -3: localtime_r failed (POSIX)
 // -4: localtime failed (fallback)
-static inline int safe_localtime(const time_t *timer, struct tm *result) {
+[[maybe_unused]] static inline int safe_localtime(const time_t *timer, struct tm *result) {
     if (timer == nullptr || result == nullptr) {
         return -1; // Indicate error: nullptr pointer provided
     }
@@ -99,7 +128,7 @@ static inline int safe_localtime(const time_t *timer, struct tm *result) {
  * @return A pointer to the next token found in the string, or nullptr if no
  *         more tokens are found. The tokens are nullptr-terminated.
  */
-static inline char *safe_strtok(char *str, const char *delim, char **saveptr) {
+[[maybe_unused]] static inline char *safe_strtok(char *str, const char *delim, char **saveptr) {
     // POSIX strtok_r detection
 #if (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 1) || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) ||            \
     defined(_BSD_SOURCE) || defined(__APPLE__)
@@ -160,7 +189,7 @@ static inline size_t compat_strnlen(const char *s, size_t maxlen) {
 
 /**
  * Safely concatenates the source string to the destination string.
- * Uses snprintf for the concatenation operation, ensuring buffer safety.
+ * Uses safe_snprintf for the concatenation operation, ensuring buffer safety.
  * The destination buffer is always nullptr-terminated if dest_size > 0.
  *
  * @param dest The destination buffer. Must be a valid pointer.
@@ -174,9 +203,9 @@ static inline size_t compat_strnlen(const char *s, size_t maxlen) {
  *         -1: dest or src is nullptr.
  *         -2: dest_size is 0.
  *         -3: dest buffer was not nullptr-terminated.
- *         -4: snprintf encoding error.
+ *         -4: safe_snprintf encoding error.
  */
-static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
+[[maybe_unused]] static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
     if (dest == nullptr || src == nullptr) {
         return -1;
     }
@@ -191,10 +220,10 @@ static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
     }
 
     size_t remaining_space = dest_size - current_len;
-    int written = snprintf(dest + current_len, remaining_space, "%s", src);
+    int written = safe_snprintf(dest + current_len, remaining_space, "%s", src);
 
     if (written < 0) {
-        return -4; // snprintf error
+        return -4; // safe_snprintf error
     }
 
     return (int)(current_len + written);
@@ -202,7 +231,7 @@ static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
 
 /**
  * Safely concatenates at most 'n' characters from the source string to the
- * destination string. Uses snprintf for the concatenation operation, ensuring
+ * destination string. Uses safe_snprintf for the concatenation operation, ensuring
  * buffer safety. The destination buffer is always nullptr-terminated if dest_size > 0.
  *
  * @param dest The destination buffer. Must be a valid pointer.
@@ -219,9 +248,9 @@ static inline int safe_strcat(char *dest, size_t dest_size, const char *src) {
  *         -1: dest or src is nullptr.
  *         -2: dest_size is 0.
  *         -3: dest buffer was not nullptr-terminated.
- *         -4: snprintf encoding error.
+ *         -4: safe_snprintf encoding error.
  */
-static inline int safe_strncat(char *dest, size_t dest_size, const char *src, size_t n) {
+[[maybe_unused]] static inline int safe_strncat(char *dest, size_t dest_size, const char *src, size_t n) {
     if (dest == nullptr || src == nullptr) {
         return -1;
     }
@@ -236,10 +265,10 @@ static inline int safe_strncat(char *dest, size_t dest_size, const char *src, si
     }
 
     size_t remaining_space = dest_size - current_len;
-    int written = snprintf(dest + current_len, remaining_space, "%.*s", (int)n, src);
+    int written = safe_snprintf(dest + current_len, remaining_space, "%.*s", (int)n, src);
 
     if (written < 0) {
-        return -4; // snprintf error
+        return -4; // safe_snprintf error
     }
 
     return (int)(current_len + written);
@@ -278,7 +307,7 @@ typedef struct {
 // Function to start directory enumeration
 static inline bool platform_find_first_file(directory_iterator_t *iter, const char *pattern_in) {
     // Copy pattern to iterator, ensuring nullptr termination
-    snprintf(iter->pattern, MAX_PATH, "%s", pattern_in);
+    safe_snprintf(iter->pattern, MAX_PATH, "%s", pattern_in);
     iter->pattern[MAX_PATH - 1] = '\0'; // Ensure nullptr termination
 
     iter->handle = FindFirstFileA(iter->pattern, &iter->findData); // Use A for char*
@@ -364,7 +393,7 @@ typedef struct {
 // Function to get next file in enumeration
 static inline bool platform_find_next_file(directory_iterator_t *iter) {
     if (!iter->dir) {
-        return 0;
+        return false;
     }
 
     while ((iter->entry = readdir(iter->dir)) != nullptr) {
@@ -373,7 +402,7 @@ static inline bool platform_find_next_file(directory_iterator_t *iter) {
         }
 
         if (fnmatch(iter->pattern, iter->entry->d_name, 0) == 0) {
-            snprintf(iter->currentFileFullName, sizeof(iter->currentFileFullName), "%s%c%s", iter->dirPath,
+            safe_snprintf(iter->currentFileFullName, sizeof(iter->currentFileFullName), "%s%c%s", iter->dirPath,
                      PATH_SEPARATOR_CHAR, iter->entry->d_name);
             iter->currentFileFullName[sizeof(iter->currentFileFullName) - 1] = '\0';
 
@@ -387,19 +416,19 @@ static inline bool platform_find_next_file(directory_iterator_t *iter) {
 }
 
 // Function to start directory enumeration
-static inline bool platform_find_first_file(directory_iterator_t *iter, const char *pattern_in) {
+[[maybe_unused]] static inline bool platform_find_first_file(directory_iterator_t *iter, const char *pattern_in) {
     const char *last_slash = strrchr(pattern_in, PATH_SEPARATOR_CHAR);
     if (last_slash) {
         size_t dir_len = last_slash - pattern_in;
         if (dir_len > 0) {
-            snprintf(iter->dirPath, sizeof(iter->dirPath), "%.*s", (int)dir_len, pattern_in);
+            safe_snprintf(iter->dirPath, sizeof(iter->dirPath), "%.*s", (int)dir_len, pattern_in);
         } else {
             strcpy(iter->dirPath, "/");
         }
-        snprintf(iter->pattern, sizeof(iter->pattern), "%s", last_slash + 1);
+        safe_snprintf(iter->pattern, sizeof(iter->pattern), "%s", last_slash + 1);
     } else {
         strcpy(iter->dirPath, ".");
-        snprintf(iter->pattern, sizeof(iter->pattern), "%s", pattern_in);
+        safe_snprintf(iter->pattern, sizeof(iter->pattern), "%s", pattern_in);
     }
 
     iter->dir = opendir(iter->dirPath);
@@ -411,12 +440,12 @@ static inline bool platform_find_first_file(directory_iterator_t *iter, const ch
 }
 
 // Function to get current filename
-static inline const char *platform_get_filename(directory_iterator_t *iter) {
+[[maybe_unused]] static inline const char *platform_get_filename(directory_iterator_t *iter) {
     return iter->entry ? iter->entry->d_name : nullptr;
 }
 
 // Function to check if current entry is a directory
-static inline bool platform_is_directory(directory_iterator_t *iter) {
+[[maybe_unused]] static inline bool platform_is_directory(directory_iterator_t *iter) {
     if (iter && iter->entry) {
         return S_ISDIR(iter->fileStat.st_mode);
     }
@@ -424,13 +453,13 @@ static inline bool platform_is_directory(directory_iterator_t *iter) {
 }
 
 // Function to get file modification time
-static inline time_t platform_get_file_time(directory_iterator_t *iter) {
+[[maybe_unused]] static inline time_t platform_get_file_time(directory_iterator_t *iter) {
     // fileStat should be populated by platform_find_next_file
     return iter->entry ? iter->fileStat.st_mtime : 0;
 }
 
 // Function to close directory enumeration
-static inline void platform_find_close(directory_iterator_t *iter) {
+[[maybe_unused]] static inline void platform_find_close(directory_iterator_t *iter) {
     if (iter->dir) {
         closedir(iter->dir);
         iter->dir = nullptr;
@@ -441,7 +470,7 @@ static inline void platform_find_close(directory_iterator_t *iter) {
 #endif
 
 // Cross-platform case-insensitive string comparison
-static inline int StringCompareIgnoreCase(const char *s1, const char *s2) {
+[[maybe_unused]] static inline int StringCompareIgnoreCase(const char *s1, const char *s2) {
 #if defined(_WIN32)
     return _stricmp(s1, s2);
 #else
@@ -460,13 +489,13 @@ static inline int StringCompareIgnoreCase(const char *s1, const char *s2) {
  * @param dir Directory path.
  * @param filename Filename.
  */
-static inline void platform_make_path(char *dest, size_t destSize, const char *dir, const char *filename) {
+[[maybe_unused]] static inline void platform_make_path(char *dest, size_t destSize, const char *dir, const char *filename) {
     if (dir == nullptr || filename == nullptr || dest == nullptr || destSize == 0) {
         if (dest && destSize > 0)
             dest[0] = '\0';
         return;
     }
-    snprintf(dest, destSize, "%s%s%s", dir, PATH_SEPARATOR, filename);
+    safe_snprintf(dest, destSize, "%s%s%s", dir, PATH_SEPARATOR, filename);
     dest[destSize - 1] = '\0'; // Ensure nullptr-termination
 }
 
@@ -479,7 +508,7 @@ static inline void platform_make_path(char *dest, size_t destSize, const char *d
  * @param dir Directory path.
  * @param pattern Filename pattern (e.g., "*.txt").
  */
-static inline void platform_make_pattern(char *dest, size_t destSize, const char *dir, const char *pattern) {
+[[maybe_unused]] static inline void platform_make_pattern(char *dest, size_t destSize, const char *dir, const char *pattern) {
     if (dir == nullptr || pattern == nullptr || dest == nullptr || destSize == 0) {
         if (dest && destSize > 0)
             dest[0] = '\0';
@@ -488,9 +517,9 @@ static inline void platform_make_pattern(char *dest, size_t destSize, const char
     // If dir is empty or ".", just use the pattern.
     // Otherwise, combine dir, separator, and pattern.
     if (dir[0] == '\0' || (dir[0] == '.' && dir[1] == '\0')) {
-        snprintf(dest, destSize, "%s", pattern);
+        safe_snprintf(dest, destSize, "%s", pattern);
     } else {
-        snprintf(dest, destSize, "%s%s%s", dir, PATH_SEPARATOR, pattern);
+        safe_snprintf(dest, destSize, "%s%s%s", dir, PATH_SEPARATOR, pattern);
     }
     dest[destSize - 1] = '\0'; // Ensure nullptr-termination
 }

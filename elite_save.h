@@ -51,11 +51,7 @@ static inline bool get_save_file_path(const char *filename, char *full_path, siz
     // Check if filename already contains the directory
     if (strncmp(filename, SAVE_DIRECTORY, strlen(SAVE_DIRECTORY)) == 0) {
         // Filename already includes the directory path
-        int written = snprintf(full_path, size, "%s", filename);
-        if (written < 0 || (size_t)written >= size) {
-            printf("Error: Save file path is too long or could not be formatted.\n");
-            return false;
-        }
+        safe_snprintf(full_path, size, "%s", filename);
     } else {
         // Construct the full path using cross-platform path separator
         platform_make_path(full_path, size, SAVE_DIRECTORY, filename);
@@ -138,11 +134,7 @@ save_game(const char *filename,
     header.version = SAVE_VERSION;
     header.timestamp = time(nullptr);
     if (description) {
-        if (snprintf(header.description, sizeof(header.description), "%s", description) < 0) {
-            printf("Error: Failed to format save description.\n");
-            fclose(file);
-            return false;
-        }
+        safe_snprintf(header.description, sizeof(header.description), "%s", description);
     } else {
         // Create a default description
         char time_str[32];
@@ -150,9 +142,9 @@ save_game(const char *filename,
         if (safe_localtime(&header.timestamp, &timeBuffer) == 0) {
             strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeBuffer);
         } else {
-            snprintf(time_str, sizeof(time_str), "Unknown time");
+            safe_snprintf(time_str, sizeof(time_str), "Unknown time");
         }
-        snprintf(header.description, sizeof(header.description), "%s - %s (Galaxy %d)", time_str,
+        safe_snprintf(header.description, sizeof(header.description), "%s - %s (Galaxy %d)", time_str,
                  g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
     }
 
@@ -178,7 +170,7 @@ save_game(const char *filename,
     if (g_state.PlayerShipPtr) {
         state.holdSpace =
             g_state.PlayerShipPtr->attributes.cargoCapacityTons - g_state.PlayerShipPtr->attributes.currentCargoTons;
-        snprintf(state.shipClassName, MAX_SHIP_NAME_LENGTH, "%s", g_state.PlayerShipPtr->shipClassName);
+        safe_snprintf(state.shipClassName, MAX_SHIP_NAME_LENGTH, "%s", g_state.PlayerShipPtr->shipClassName);
         state.shipAttributes = g_state.PlayerShipPtr->attributes;
 
         // Populate shipHold array from PlayerShipPtr->cargo
@@ -299,13 +291,13 @@ static inline bool load_game(const char *filename) {
         // Restore cargo from saved shipHold array
         for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
             g_state.PlayerShipPtr->cargo[i].quantity = 0;
-            snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
+            safe_snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "Empty");
         }
 
         int cargoSlot = 0;
         for (int i = 0; i <= LAST_TRADE; i++) {
             if (state.shipHold[i] > 0 && cargoSlot < MAX_CARGO_SLOTS) {
-                snprintf(g_state.PlayerShipPtr->cargo[cargoSlot].name, MAX_SHIP_NAME_LENGTH, "%s",
+                safe_snprintf(g_state.PlayerShipPtr->cargo[cargoSlot].name, MAX_SHIP_NAME_LENGTH, "%s",
                          g_state.tradnames[i]);
                 g_state.PlayerShipPtr->cargo[cargoSlot].quantity = state.shipHold[i];
                 cargoSlot++;
@@ -359,7 +351,7 @@ static inline bool load_game(const char *filename) {
     if (safe_localtime(&header.timestamp, &timeBuffer) == 0) {
         strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
     } else {
-        snprintf(timeStr, sizeof(timeStr), "Unknown time");
+        safe_snprintf(timeStr, sizeof(timeStr), "Unknown time");
     }
     printf("Game loaded from '%s'.\n", filename);
     printf("Save info: %s\n", header.description);
@@ -418,7 +410,7 @@ static inline bool load_game(const char *filename) {
     if (safe_localtime(&header.timestamp, &timeBuffer) == 0) {
         strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeBuffer);
     } else {
-        snprintf(timeStr, sizeof(timeStr), "Unknown time");
+        safe_snprintf(timeStr, sizeof(timeStr), "Unknown time");
     }
     printf("Save file: %s\n", filename);
     printf("Version: %d\n", header.version);
@@ -442,14 +434,8 @@ static inline bool load_game(const char *filename) {
  */
 [[maybe_unused]] static inline void get_default_save_filename(char *buffer, size_t size) {
     char filename[MAX_PATH];
-    int written = snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav",
-                           g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
-    if (written < 0 || (size_t)written >= sizeof(filename)) {
-        if (size > 0) {
-            buffer[0] = '\0';
-        }
-        return;
-    }
+    safe_snprintf(filename, sizeof(filename), "txtelite_save_%s_g%d.sav",
+                  g_state.Galaxy[g_state.CurrentPlanet].name, g_state.GalaxyNum);
     platform_make_path(buffer, size, SAVE_DIRECTORY, filename);
 }
 

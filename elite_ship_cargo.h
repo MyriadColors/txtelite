@@ -100,7 +100,7 @@ static inline bool add_cargo(player_ship_t *player_ship, const char *cargo_name,
         }
 
         // Add new cargo type
-        int name_length = snprintf(player_ship->cargo[cargo_slot].name, MAX_SHIP_NAME_LENGTH, "%s", cargo_name);
+        int name_length = safe_snprintf(player_ship->cargo[cargo_slot].name, MAX_SHIP_NAME_LENGTH, "%s", cargo_name);
         if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
             printf("Error: Cargo name is too long or could not be formatted.\n");
             return false;
@@ -153,7 +153,7 @@ static inline bool remove_cargo(player_ship_t *player_ship, const char *cargo_na
     if (player_ship->cargo[cargo_slot].quantity == 0) {
         // Clear the cargo slot after removing all quantity
         player_ship->cargo[cargo_slot].quantity = 0;
-        int name_length = snprintf(player_ship->cargo[cargo_slot].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
+        int name_length = safe_snprintf(player_ship->cargo[cargo_slot].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
         if (name_length < 0) {
             player_ship->cargo[cargo_slot].name[0] = '\0';
         } else if (name_length >= MAX_SHIP_NAME_LENGTH) {
@@ -342,7 +342,7 @@ static inline bool remove_cargo(player_ship_t *player_ship, const char *cargo_na
 
             // Clear the cargo slot
             player_ship->cargo[i].quantity = 0;
-            (void)snprintf(player_ship->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
+            (void)safe_snprintf(player_ship->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s", "Empty");
             player_ship->cargo[i].purchasePrice = 0;
         }
     }

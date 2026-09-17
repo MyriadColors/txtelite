@@ -57,7 +57,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equ
     // Save current equipment to add to inventory
     ship_equipment_item_t equip_to_store = player_ship->equipment[slot_type];
     char equipment_name[MAX_SHIP_NAME_LENGTH];
-    int name_length = snprintf(equipment_name, MAX_SHIP_NAME_LENGTH, "%s", equip_to_store.name);
+    int name_length = safe_snprintf(equipment_name, MAX_SHIP_NAME_LENGTH, "%s", equip_to_store.name);
     if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
         printf("Error: Equipment name is invalid or too long.\n");
         return false;
@@ -170,7 +170,7 @@ static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equ
 
     // Clear the inventory slot
     player_ship->equipmentInventory[inventory_index].isActive = 0;
-    if (snprintf(player_ship->equipmentInventory[inventory_index].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+    if (safe_snprintf(player_ship->equipmentInventory[inventory_index].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
         return false;
     }
 
@@ -242,15 +242,15 @@ static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equ
 
         // Determine slot type name
         if (i == EQUIPMENT_SLOT_TYPE_FORWARD_WEAPON) {
-            written = snprintf(slot_type_name, sizeof(slot_type_name), "Forward Weapon");
+            written = safe_snprintf(slot_type_name, sizeof(slot_type_name), "Forward Weapon");
         } else if (i == EQUIPMENT_SLOT_TYPE_AFT_WEAPON) {
-            written = snprintf(slot_type_name, sizeof(slot_type_name), "Aft Weapon");
+            written = safe_snprintf(slot_type_name, sizeof(slot_type_name), "Aft Weapon");
         } else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_1) {
-            written = snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 1");
+            written = safe_snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 1");
         } else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
-            written = snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 2");
+            written = safe_snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 2");
         } else if (i >= UTILITY_SYSTEM_1 && i <= UTILITY_SYSTEM_4) {
-            written = snprintf(slot_type_name, sizeof(slot_type_name), "Utility System %d", (i - UTILITY_SYSTEM_1) + 1);
+            written = safe_snprintf(slot_type_name, sizeof(slot_type_name), "Utility System %d", (i - UTILITY_SYSTEM_1) + 1);
         }
 
         if (written < 0 || (size_t)written >= sizeof(slot_type_name)) {

@@ -352,7 +352,7 @@ static const command_help_t *find_command_help(const char *command) {
         // Check aliases
         if (COMMAND_HELP[i].aliases != nullptr) {
             char aliases_copy[MAX_LEN];
-            int aliases_length = snprintf(aliases_copy, sizeof(aliases_copy), "%s", COMMAND_HELP[i].aliases);
+            int aliases_length = safe_snprintf(aliases_copy, sizeof(aliases_copy), "%s", COMMAND_HELP[i].aliases);
             if (aliases_length < 0 || (size_t)aliases_length >= sizeof(aliases_copy)) {
                 continue;
             }
@@ -385,7 +385,7 @@ static void print_help_text(const char *text) {
             if (fractional_cost < 0) {
                 fractional_cost = -fractional_cost;
             }
-            int written = snprintf(buffer, sizeof(buffer), "%d.%d", fuel_cost / 10, fractional_cost);
+            int written = safe_snprintf(buffer, sizeof(buffer), "%d.%d", fuel_cost / 10, fractional_cost);
             if (written < 0 || (size_t)written >= sizeof(buffer)) {
                 return;
             }
@@ -581,7 +581,7 @@ static inline bool do_jump(const char *command_arguments) {
     uint16_t t;
     char s2[MAX_LEN];
     char arg_copy[MAX_LEN];
-    int copy_result = snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
+    int copy_result = safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
     if (copy_result < 0 || (size_t)copy_result >= sizeof(arg_copy)) {
         printf("\nSell command arguments are too long or could not be copied.");
         return false;
@@ -621,7 +621,7 @@ static inline bool do_jump(const char *command_arguments) {
     uint16_t t;
     char s2[MAX_LEN];
     char arg_copy[MAX_LEN];
-    int copy_result = snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
+    int copy_result = safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
     if (copy_result < 0) {
         arg_copy[0] = '\0';
     }
@@ -865,7 +865,7 @@ static inline bool do_jump(const char *command_arguments) {
 [[maybe_unused]] static inline bool do_help(const char *command_arguments) {
     char arg_copy[MAX_LEN];
     const int COPY_RESULT =
-        snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
+        safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments != nullptr ? command_arguments : "");
     if (COPY_RESULT < 0) {
         arg_copy[0] = '\0';
     } else if ((size_t)(COPY_RESULT) >= sizeof(arg_copy)) {
@@ -916,7 +916,7 @@ static inline bool do_jump(const char *command_arguments) {
             return false;
         }
     } else {
-        if (snprintf(filename, sizeof(filename), "save_%ld.sav", (long)now) < 0) {
+        if (safe_snprintf(filename, sizeof(filename), "save_%ld.sav", (long)now) < 0) {
             return false;
         }
     }
@@ -964,7 +964,7 @@ static inline bool do_jump(const char *command_arguments) {
         const char *filename = platform_get_filename(&iter);
         if (filename) {
             // Store filename
-            int filename_length = snprintf(save_files[file_count].filename, MAX_PATH, "%s", filename);
+            int filename_length = safe_snprintf(save_files[file_count].filename, MAX_PATH, "%s", filename);
             if (filename_length < 0 || filename_length >= MAX_PATH) {
                 // Ignore filenames that cannot be represented safely.
                 continue;
@@ -1021,13 +1021,13 @@ static inline bool do_jump(const char *command_arguments) {
         if (localtime_result == 0) {
             size_t formatted_length = strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
             if (formatted_length == 0) {
-                int fallback_length = snprintf(time_str, sizeof(time_str), "%s", "Invalid Date");
+                int fallback_length = safe_snprintf(time_str, sizeof(time_str), "%s", "Invalid Date");
                 if (fallback_length < 0 || (size_t)fallback_length >= sizeof(time_str)) {
                     time_str[0] = '\0';
                 }
             }
         } else {
-            int fallback_length = snprintf(time_str, sizeof(time_str), "%s", "Invalid Date");
+            int fallback_length = safe_snprintf(time_str, sizeof(time_str), "%s", "Invalid Date");
             if (fallback_length < 0 || (size_t)fallback_length >= sizeof(time_str)) {
                 time_str[0] = '\0';
             }
@@ -1300,7 +1300,7 @@ static inline bool do_jump(const char *command_arguments) {
     }
     // Parse destination string, trimming whitespace
     char dest_str[MAX_LEN];
-    int dest_len = snprintf(dest_str, sizeof(dest_str), "%s", command_arguments);
+    int dest_len = safe_snprintf(dest_str, sizeof(dest_str), "%s", command_arguments);
     if (dest_len < 0 || (size_t)dest_len >= sizeof(dest_str)) {
         printf("\nDestination is too long.");
         return false;
@@ -1920,7 +1920,7 @@ static inline bool do_jump(const char *command_arguments) {
             return false;
         }
 
-        if (snprintf(base_location_name, MAX_LEN, "%s", current_planet->name) < 0) {
+        if (safe_snprintf(base_location_name, MAX_LEN, "%s", current_planet->name) < 0) {
             printf("\nError: Failed to determine the current planet name.");
             return false;
         }
@@ -1937,7 +1937,7 @@ static inline bool do_jump(const char *command_arguments) {
             printf("\nError: Current station data is invalid for comparison.");
             return false;
         }
-        if (snprintf(base_location_name, MAX_LEN, "%s", current_station->name) < 0) {
+        if (safe_snprintf(base_location_name, MAX_LEN, "%s", current_station->name) < 0) {
             printf("\nError: Failed to determine the current station name.");
             return false;
         }
@@ -2226,7 +2226,7 @@ static inline bool do_jump(const char *command_arguments) {
     }
     // Normalize input to lowercase for case-insensitive matching
     char equip_name[MAX_LEN];
-    snprintf(equip_name, MAX_LEN, "%s", command_arguments);
+    safe_snprintf(equip_name, MAX_LEN, "%s", command_arguments);
 
     // Convert to lowercase
     for (char *p = equip_name; *p; ++p) {
@@ -2456,7 +2456,7 @@ static inline bool do_jump(const char *command_arguments) {
     } // Parse the arguments - we need two numbers: inventory index and slot
     // number
     char arg_copy[MAX_LEN];
-    snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments);
+    safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments);
     char arg1[MAX_LEN];
     char arg2[MAX_LEN];
     int invIndex = -1;
@@ -2465,12 +2465,12 @@ static inline bool do_jump(const char *command_arguments) {
     char *saveptr;
     char *token = safe_strtok(arg_copy, " \t", &saveptr);
     if (token != nullptr) {
-        snprintf(arg1, MAX_LEN, "%s", token);
+        safe_snprintf(arg1, MAX_LEN, "%s", token);
         invIndex = atoi(arg1);
 
         token = safe_strtok(nullptr, " \t", &saveptr);
         if (token != nullptr) {
-            snprintf(arg2, MAX_LEN, "%s", token);
+            safe_snprintf(arg2, MAX_LEN, "%s", token);
             slotNumber = atoi(arg2);
         } else {
             printf("\nUsage: use <inventory_index> <slot_number>\n");
@@ -2559,7 +2559,7 @@ static inline bool do_jump(const char *command_arguments) {
     if (space != nullptr) {
         size_t nameLen = space - args;
         nameLen = (nameLen < 63) ? nameLen : 63;
-        snprintf(shipNameOrID, nameLen + 1, "%.*s", (int)nameLen, args);
+        safe_snprintf(shipNameOrID, nameLen + 1, "%.*s", (int)nameLen, args);
 
         // Check for 'notrade' flag in the remaining part
         if (strstr(space + 1, "notrade") != nullptr) {
@@ -2567,7 +2567,7 @@ static inline bool do_jump(const char *command_arguments) {
         }
     } else {
         // No space, just copy the entire argument
-        snprintf(shipNameOrID, sizeof(shipNameOrID), "%s", args);
+        safe_snprintf(shipNameOrID, sizeof(shipNameOrID), "%s", args);
     }
 
     // Check if the argument is a number (ID) or a string (ship name)
@@ -2594,7 +2594,7 @@ static inline bool do_jump(const char *command_arguments) {
         }
     } else {
         // The argument is a ship name, just copy it
-        int name_length = snprintf(actualShipName, MAX_SHIP_NAME_LENGTH, "%s", shipNameOrID);
+        int name_length = safe_snprintf(actualShipName, MAX_SHIP_NAME_LENGTH, "%s", shipNameOrID);
         if (name_length < 0 || name_length >= MAX_SHIP_NAME_LENGTH) {
             printf("Error: Ship name is too long or could not be copied.\n");
             return false;
@@ -2660,7 +2660,7 @@ static inline bool do_jump(const char *command_arguments) {
     char cargoName[MAX_LEN];
     char quantityStr[MAX_LEN];
     char arg_copy[MAX_LEN];
-    snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments);
+    safe_snprintf(arg_copy, sizeof(arg_copy), "%s", command_arguments);
 
     // Split the command arguments to get the cargo name
     split_string_at_first_space(arg_copy, cargoName);
@@ -2671,7 +2671,7 @@ static inline bool do_jump(const char *command_arguments) {
     // If quantity is not provided, default to 1
     int quantity = 1;
     if (trimmed_qty != nullptr && strlen(trimmed_qty) > 0) {
-        int quantity_length = snprintf(quantityStr, sizeof(quantityStr), "%s", trimmed_qty);
+        int quantity_length = safe_snprintf(quantityStr, sizeof(quantityStr), "%s", trimmed_qty);
         if (quantity_length < 0 || quantity_length >= (int)sizeof(quantityStr)) {
             printf("\nInvalid quantity.");
             return false;

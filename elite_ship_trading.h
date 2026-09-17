@@ -6,6 +6,7 @@
 #include "elite_ship_inventory.h"
 #include "elite_ship_registry.h"
 #include "elite_state.h"
+#include "platform_compat.h"
 #include <ctype.h> // For isdigit()
 #include <errno.h>
 #include <limits.h>
@@ -388,7 +389,7 @@ static inline int transfer_equipment(player_ship_t *source_ship, player_ship_t *
 
                 // Clear the slot in the source ship
                 source_ship->equipment[i].isActive = false;
-                if (snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+                if (safe_snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
                     source_ship->equipment[i].name[0] = '\0';
                 }
             } else {
@@ -406,7 +407,7 @@ static inline int transfer_equipment(player_ship_t *source_ship, player_ship_t *
                 if (stored) {
                     // Clear the slot in the source ship
                     source_ship->equipment[i].isActive = false;
-                    if (snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+                    if (safe_snprintf(source_ship->equipment[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
                         source_ship->equipment[i].name[0] = '\0';
                     }
                 } else {
@@ -433,7 +434,7 @@ static inline int transfer_equipment(player_ship_t *source_ship, player_ship_t *
             if (stored) {
                 // Clear the slot in the source ship
                 source_ship->equipmentInventory[i].isActive = false;
-                if (snprintf(source_ship->equipmentInventory[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
+                if (safe_snprintf(source_ship->equipmentInventory[i].name, MAX_SHIP_NAME_LENGTH, "Empty") < 0) {
                     source_ship->equipmentInventory[i].name[0] = '\0';
                 }
             } else {
@@ -495,7 +496,7 @@ static inline int transfer_cargo(player_ship_t *source_ship, player_ship_t *targ
                         // Copy cargo details
                         target_ship->cargo[target_slot].quantity = source_ship->cargo[i].quantity;
                         target_ship->cargo[target_slot].purchasePrice = source_ship->cargo[i].purchasePrice;
-                        int name_length = snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
+                        int name_length = safe_snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
                                                    source_ship->cargo[i].name);
                         if (name_length < 0) {
                             target_ship->cargo[target_slot].name[0] = '\0';
@@ -546,7 +547,7 @@ static inline int transfer_cargo(player_ship_t *source_ship, player_ship_t *targ
                         // Copy cargo details
                         target_ship->cargo[target_slot].quantity = source_ship->cargo[i].quantity;
                         target_ship->cargo[target_slot].purchasePrice = source_ship->cargo[i].purchasePrice;
-                        int name_length = snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
+                        int name_length = safe_snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
                                                    source_ship->cargo[i].name);
                         if (name_length < 0) {
                             target_ship->cargo[target_slot].name[0] = '\0';
@@ -769,7 +770,7 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
     }
 
     // Copy the ship name to the buffer
-    int name_length = snprintf(ship_name, ship_name_size, "%s", available_ships[ship_index]->className);
+    int name_length = safe_snprintf(ship_name, ship_name_size, "%s", available_ships[ship_index]->className);
     return (name_length < 0 || (size_t)(name_length) >= ship_name_size) != 0;
 }
 
@@ -852,7 +853,7 @@ static inline bool get_ship_name_by_id(const char *system_name, int system_econo
         }
     } else {
         // The argument is a ship name, just copy it
-        int name_length = snprintf(actual_ship_name, sizeof(actual_ship_name), "%.63s", ship_name_or_id);
+        int name_length = safe_snprintf(actual_ship_name, sizeof(actual_ship_name), "%.63s", ship_name_or_id);
         if (name_length < 0 || (size_t)name_length >= sizeof(actual_ship_name)) {
             printf("Error: Invalid ship name.\n");
             return false;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "elite_ship_components.h"
+#include "platform_compat.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -63,11 +64,10 @@ static inline const ship_type_t *register_ship_type_t(
     ship_type_t *newship_type_t = &g_ship_registry.ship_type_ts[g_ship_registry.registeredShipCount];
 
     // Initialize the new ship type with provided values
-    int written = snprintf(newship_type_t->className, MAX_SHIP_NAME_LENGTH, "%s", class_name);
+    int written = safe_snprintf(newship_type_t->className, MAX_SHIP_NAME_LENGTH, "%s", class_name);
     if (written < 0) {
         return nullptr;
     }
-    newship_type_t->className[MAX_SHIP_NAME_LENGTH - 1] = '\0'; // Ensure nullptr termination
     newship_type_t->baseHullStrength = base_hull_strength;
     newship_type_t->baseShieldStrengthFront = base_shield_strength_front;
     newship_type_t->baseShieldStrengthAft = base_shield_strength_aft;

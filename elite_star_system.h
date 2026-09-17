@@ -392,7 +392,9 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
 // Function to initialize a star system from a plan_sys_t entry
 [[maybe_unused]] static inline void initialize_star_system(star_system_t *system, struct plan_sys_t *plan_sys_tEntry) {
     if (!system || !plan_sys_tEntry) {
-        fprintf(stderr, "Error: Invalid parameters for star system initialization.\n");
+        if (fprintf(stderr, "Error: Invalid parameters for star system initialization.\n") < 0) {
+            return;
+        }
         return;
     }
 
@@ -403,17 +405,28 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
 
     // Generate star name with variety based on system characteristics
     uint8_t nameVariant = (plan_sys_tEntry->goatSoupSeed.a % 3);
+    const char *nameSuffix;
     switch (nameVariant) {
     case 0:
-        snprintf(system->centralStar.name, MAX_LEN, "%s Prime", plan_sys_tEntry->name);
+        nameSuffix = " Prime";
         break;
     case 1:
-        snprintf(system->centralStar.name, MAX_LEN, "%s Star", plan_sys_tEntry->name);
+        nameSuffix = " Star";
         break;
     case 2:
-        snprintf(system->centralStar.name, MAX_LEN, "%s Alpha", plan_sys_tEntry->name);
+        nameSuffix = " Alpha";
         break;
-    } // Realistic spectral class distribution (M-class stars are most common)
+    default:
+        nameSuffix = " Star";
+        break;
+    }
+
+    if (snprintf(system->centralStar.name, MAX_LEN, "%s%s",
+                 plan_sys_tEntry->name, nameSuffix) < 0) {
+        return;
+    }
+    
+    // Realistic spectral class distribution (M-class stars are most common)
     // Use cumulative probability distribution based on seed
     // Combine multiple seed components to get better distribution
     uint32_t seedCombined = ((uint32_t)plan_sys_tEntry->goatSoupSeed.a << 16) | plan_sys_tEntry->goatSoupSeed.b;
@@ -439,9 +452,9 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
     system->centralStar.luminosity = calculate_luminosity_from_mass(system->centralStar.mass);
 
     // Set temperature based on spectral class with some variation
-    double temp_variation = ((double)(plan_sys_tEntry->goatSoupSeed.c % 1000)) / 1000.0 - 0.5;
+    double temp_variation = (((double)(plan_sys_tEntry->goatSoupSeed.c % 1000)) / 1000.0) - 0.5;
     system->centralStar.temperature =
-        star_data->temperature * (1.0 + temp_variation * 0.1); // Generate stellar age (more realistic distribution)
+        star_data->temperature * (1.0 + (temp_variation * 0.1)); // Generate stellar age (more realistic distribution)
     // Use a weighted distribution that favors older stars for more realistic
     // galactic population
     double universe_age = 13.8; // Age of universe in billion years
@@ -519,9 +532,15 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
             // First planet often shares system name
             uint8_t name_variant = (plan_sys_tEntry->goatSoupSeed.b % 2);
             if (name_variant == 0) {
-                snprintf(planet->name, MAX_LEN, "%s", plan_sys_tEntry->name);
+                int written = snprintf(planet->name, MAX_LEN, "%s", plan_sys_tEntry->name);
+                if (written < 0 || written >= MAX_LEN) {
+                    planet->name[MAX_LEN - 1] = '\0';
+                }
             } else {
-                snprintf(planet->name, MAX_LEN, "%s Prime", plan_sys_tEntry->name);
+                int written = snprintf(planet->name, MAX_LEN, "%s Prime", plan_sys_tEntry->name);
+                if (written < 0 || written >= MAX_LEN) {
+                    planet->name[MAX_LEN - 1] = '\0';
+                }
             }
         } else if (i == 1) {
             // Second planet often has "New" prefix
@@ -572,8 +591,9 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
                         UINT32_C(2654435761); // Knuth's multiplicative hash; uint32_t arithmetic wraps modulo 2^32
                     static const char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
                     char letter = ALPHABET[name_seed % 26];
-                    if (j == 0)
+                    if (j == 0) {
                         letter = (char)toupper((unsigned char)letter);
+}
                     alt_name[j] = letter;
                 }
                 alt_name[name_len] = '\0';
@@ -625,7 +645,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
 
         // Reduced randomization for better stability
         double variability =
-            ((double)((plan_sys_tEntry->goatSoupSeed.d + i * 17) % 100) / 200.0) - 0.25; // -0.25 to 0.25
+            ((double)((plan_sys_tEntry->goatSoupSeed.d + (i * 17)) % 100) / 200.0) - 0.25; // -0.25 to 0.25
         planet->orbitalDistance = base_distance * (1.0 + (variability * 0.4));           // Reduced from 0.8 to 0.4
         // Further reduced habitable zone bias to minimize super-habitable planets
         uint32_t habitable_bias = (plan_sys_tEntry->goatSoupSeed.c + i) % 100;
@@ -644,8 +664,8 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
         }
 
         // Check if planet is in habitable zone
-        planet->isInHabitableZone = (planet->orbitalDistance >= system->centralStar.habitableZoneInner &&
-                                     planet->orbitalDistance <= system->centralStar.habitableZoneOuter);
+        planet->isInHabitableZone = ((planet->orbitalDistance >= system->centralStar.habitableZoneInner &&
+                                     planet->orbitalDistance <= system->centralStar.habitableZoneOuter) != 0);
 
         // Calculate surface temperature (assuming Earth-like albedo of 0.3)
         planet->surfaceTemperature =
@@ -704,7 +724,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
 
         // Set realistic planet radius based on type and formation conditions
         double base_radius = 0.0;
-        uint32_t radius_seed = plan_sys_tEntry->goatSoupSeed.b + i * 1009; // Use different seed offset
+        uint32_t radius_seed = plan_sys_tEntry->goatSoupSeed.b + (i * 1009); // Use different seed offset
 
         switch (planet->type) {
         case 0:                                                    // Rocky/Airless (Mercury-like to Mars-like)

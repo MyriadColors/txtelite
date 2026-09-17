@@ -41,7 +41,6 @@ of Elite with no combat or missions.
 #include "elite_command_handler.h"     // For command parsing
 #include "elite_commands.h"            // For game commands
 #include "elite_equipment_constants.h" // For equipment indices
-#include "elite_player_ship.h"         // For ship initialization and status functions
 #include "elite_player_state.h"        // For player state initialization
 #include "elite_star_system.h"         // For star system data
 #include "elite_state.h"               // Unified header for constants, structures, and globals
@@ -167,9 +166,9 @@ int main(int argc, char* argv[]) {
 
     if (!parse_and_execute_command("help")) {
         if (fprintf(stderr, "Error: Failed to parse initial command 'help'\n") < 0) {
-            exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
     for (;;) {
         char location_buffer[MAX_LEN];
@@ -188,5 +187,5 @@ int main(int argc, char* argv[]) {
 
     printf("\n");
 
-    exit(g_state.ExitStatus);
+    return g_state.ExitStatus;
 }

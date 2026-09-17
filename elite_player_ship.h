@@ -5,6 +5,7 @@
 #include "elite_ship_inventory.h"
 #include "elite_ship_registry.h"
 #include "elite_state.h"
+#include "platform_compat.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

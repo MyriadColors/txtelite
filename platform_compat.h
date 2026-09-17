@@ -28,7 +28,7 @@
  * @param ... Additional arguments for format.
  * @return The number of characters that would have been written if size had been sufficiently large.
  */
-static inline int safe_snprintf(char *buffer, size_t size, const char *format, ...) {
+[[gnu::format(printf, 3, 4)]] static inline int safe_snprintf(char *buffer, size_t size, const char *format, ...) {
     if (buffer == nullptr || size == 0 || format == nullptr) {
         return -1;
     }
@@ -181,8 +181,9 @@ static inline int safe_snprintf(char *buffer, size_t size, const char *format, .
  * This replaces strnlen which might not be available in all environments/standards.
  */
 static inline size_t compat_strnlen(const char *s, size_t maxlen) {
-    if (s == nullptr)
+    if (s == nullptr) {
         return 0;
+    }
     const char *p = (const char *)memchr(s, '\0', maxlen);
     return p ? (size_t)(p - s) : maxlen;
 }
@@ -226,7 +227,7 @@ static inline size_t compat_strnlen(const char *s, size_t maxlen) {
         return -4; // safe_snprintf error
     }
 
-    return (int)(current_len + written);
+    return (int)(current_len + (size_t)written);
 }
 
 /**
@@ -271,7 +272,7 @@ static inline size_t compat_strnlen(const char *s, size_t maxlen) {
         return -4; // safe_snprintf error
     }
 
-    return (int)(current_len + written);
+    return (int)(current_len + (size_t)written);
 }
 
 #ifdef _WIN32
@@ -384,6 +385,7 @@ static inline void platform_find_close(directory_iterator_t *iter) {
 typedef struct {
     DIR *dir;
     struct dirent *entry;
+    struct dirent entry_storage;
     struct stat fileStat;               // Stat info for the current entry
     char pattern[MAX_PATH];             // Filename pattern part
     char dirPath[MAX_PATH];             // Directory path part
@@ -396,14 +398,20 @@ static inline bool platform_find_next_file(directory_iterator_t *iter) {
         return false;
     }
 
-    while ((iter->entry = readdir(iter->dir)) != nullptr) {
+    for (;;) {
+        struct dirent *entry = readdir(iter->dir);
+        if (entry == nullptr) {
+            iter->entry = nullptr;
+            break;
+        }
+        iter->entry = entry;
         if (strcmp(iter->entry->d_name, ".") == 0 || strcmp(iter->entry->d_name, "..") == 0) {
             continue; // Skip . and ..
         }
 
         if (fnmatch(iter->pattern, iter->entry->d_name, 0) == 0) {
             safe_snprintf(iter->currentFileFullName, sizeof(iter->currentFileFullName), "%s%c%s", iter->dirPath,
-                     PATH_SEPARATOR_CHAR, iter->entry->d_name);
+                          PATH_SEPARATOR_CHAR, iter->entry->d_name);
             iter->currentFileFullName[sizeof(iter->currentFileFullName) - 1] = '\0';
 
             if (PLATFORM_STAT(iter->currentFileFullName, &iter->fileStat) == 0) {
@@ -419,7 +427,7 @@ static inline bool platform_find_next_file(directory_iterator_t *iter) {
 [[maybe_unused]] static inline bool platform_find_first_file(directory_iterator_t *iter, const char *pattern_in) {
     const char *last_slash = strrchr(pattern_in, PATH_SEPARATOR_CHAR);
     if (last_slash) {
-        size_t dir_len = last_slash - pattern_in;
+        size_t dir_len = (size_t)(last_slash - pattern_in);
         if (dir_len > 0) {
             safe_snprintf(iter->dirPath, sizeof(iter->dirPath), "%.*s", (int)dir_len, pattern_in);
         } else {
@@ -489,10 +497,12 @@ static inline bool platform_find_next_file(directory_iterator_t *iter) {
  * @param dir Directory path.
  * @param filename Filename.
  */
-[[maybe_unused]] static inline void platform_make_path(char *dest, size_t destSize, const char *dir, const char *filename) {
+[[maybe_unused]] static inline void platform_make_path(char *dest, size_t destSize, const char *dir,
+                                                       const char *filename) {
     if (dir == nullptr || filename == nullptr || dest == nullptr || destSize == 0) {
-        if (dest && destSize > 0)
+        if (dest && destSize > 0) {
             dest[0] = '\0';
+        }
         return;
     }
     safe_snprintf(dest, destSize, "%s%s%s", dir, PATH_SEPARATOR, filename);
@@ -508,10 +518,12 @@ static inline bool platform_find_next_file(directory_iterator_t *iter) {
  * @param dir Directory path.
  * @param pattern Filename pattern (e.g., "*.txt").
  */
-[[maybe_unused]] static inline void platform_make_pattern(char *dest, size_t destSize, const char *dir, const char *pattern) {
+[[maybe_unused]] static inline void platform_make_pattern(char *dest, size_t destSize, const char *dir,
+                                                          const char *pattern) {
     if (dir == nullptr || pattern == nullptr || dest == nullptr || destSize == 0) {
-        if (dest && destSize > 0)
+        if (dest && destSize > 0) {
             dest[0] = '\0';
+        }
         return;
     }
     // If dir is empty or ".", just use the pattern.

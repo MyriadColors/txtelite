@@ -488,7 +488,8 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
     }
 
     player_ship_t->equipment[slot_type].isActive = true;
-    int name_length = safe_snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "%s", equipment_name);
+    int name_length =
+        safe_snprintf(player_ship_t->equipment[slot_type].name, MAX_SHIP_NAME_LENGTH, "%s", equipment_name);
     if (name_length < 0) {
         player_ship_t->equipment[slot_type].isActive = false;
         player_ship_t->equipment[slot_type].name[0] = '\0';
@@ -516,7 +517,8 @@ static inline bool initialize_ship(player_ship_t *player_ship_t, const ship_type
     }
 
     char equipment_name[MAX_SHIP_NAME_LENGTH];
-    int name_length = safe_snprintf(equipment_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->equipment[slot_type].name);
+    int name_length =
+        safe_snprintf(equipment_name, MAX_SHIP_NAME_LENGTH, "%s", player_ship_t->equipment[slot_type].name);
     if (name_length < 0) {
         return false;
     }

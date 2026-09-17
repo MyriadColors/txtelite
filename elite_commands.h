@@ -2472,8 +2472,7 @@ static inline bool do_jump(const char *command_arguments) {
         safe_snprintf(arg1, MAX_LEN, "%s", token);
         errno = 0;
         long parsedIndex = strtol(arg1, &endptr, 10);
-        if (endptr == arg1 || *endptr != '\0' || errno == ERANGE ||
-            parsedIndex < INT_MIN || parsedIndex > INT_MAX) {
+        if (endptr == arg1 || *endptr != '\0' || errno == ERANGE || parsedIndex < INT_MIN || parsedIndex > INT_MAX) {
             invIndex = -1;
         } else {
             invIndex = (int)parsedIndex;
@@ -2485,8 +2484,8 @@ static inline bool do_jump(const char *command_arguments) {
             errno = 0;
             char *slotEndptr = nullptr;
             long parsedSlot = strtol(arg2, &slotEndptr, 10);
-            if (slotEndptr == arg2 || *slotEndptr != '\0' || errno == ERANGE ||
-                parsedSlot < INT_MIN || parsedSlot > INT_MAX) {
+            if (slotEndptr == arg2 || *slotEndptr != '\0' || errno == ERANGE || parsedSlot < INT_MIN ||
+                parsedSlot > INT_MAX) {
                 slotNumber = -1;
             } else {
                 slotNumber = (int)parsedSlot;
@@ -2511,8 +2510,7 @@ static inline bool do_jump(const char *command_arguments) {
     }
 
     // Try to equip the item from inventory
-    return equip_from_inventory(g_state.PlayerShipPtr, invIndex,
-                                (equipment_slot_type_t)slotNumber);
+    return equip_from_inventory(g_state.PlayerShipPtr, invIndex, (equipment_slot_type_t)slotNumber);
 }
 
 // Ship trading commands
@@ -2706,8 +2704,7 @@ static inline bool do_jump(const char *command_arguments) {
         }
         char *quantity_end = nullptr;
         long parsed_quantity = strtol(quantityStr, &quantity_end, 10);
-        if (quantity_end == quantityStr || *quantity_end != '\0' ||
-            parsed_quantity <= 0 || parsed_quantity > INT_MAX) {
+        if (quantity_end == quantityStr || *quantity_end != '\0' || parsed_quantity <= 0 || parsed_quantity > INT_MAX) {
             printf("\nInvalid quantity. Please specify a positive number.");
             return false;
         }

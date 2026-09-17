@@ -38,9 +38,7 @@ static inline uint32_t step_sas_lcg(uint32_t *state) {
 }
 
 static inline int my_rand(void) {
-    uint32_t r = (int)g_state.NativeRand 
-        ? step_xorshift32(&g_s_xorshift_state) 
-        : step_sas_lcg(&g_s_sas_rand_state);
+    uint32_t r = (int)g_state.NativeRand ? step_xorshift32(&g_s_xorshift_state) : step_sas_lcg(&g_s_sas_rand_state);
 
     return (int)r;
 }

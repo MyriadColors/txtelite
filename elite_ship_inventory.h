@@ -251,7 +251,8 @@ static inline bool remove_equipment_to_inventory(player_ship_t *player_ship, equ
         } else if (i == EQUIPMENT_SLOT_TYPE_DEFENSIVE_2) {
             written = safe_snprintf(slot_type_name, sizeof(slot_type_name), "Defensive System 2");
         } else if (i >= UTILITY_SYSTEM_1 && i <= UTILITY_SYSTEM_4) {
-            written = safe_snprintf(slot_type_name, sizeof(slot_type_name), "Utility System %d", (i - UTILITY_SYSTEM_1) + 1);
+            written =
+                safe_snprintf(slot_type_name, sizeof(slot_type_name), "Utility System %d", (i - UTILITY_SYSTEM_1) + 1);
         }
 
         if (written < 0 || (size_t)written >= sizeof(slot_type_name)) {

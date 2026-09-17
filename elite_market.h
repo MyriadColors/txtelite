@@ -303,7 +303,7 @@ static trade_good_t g_commodities[] = {
         for (int i = 0; i < MAX_CARGO_SLOTS; i++) {
             if (g_state.PlayerShipPtr->cargo[i].quantity == 0) {
                 safe_snprintf(g_state.PlayerShipPtr->cargo[i].name, MAX_SHIP_NAME_LENGTH, "%s",
-                                           g_commodities[item_index].name);
+                              g_commodities[item_index].name);
                 slot = i;
                 g_state.PlayerShipPtr->cargo[slot].purchasePrice = g_state.LocalMarket.price[item_index] / 10;
                 break;

@@ -496,8 +496,8 @@ static inline int transfer_cargo(player_ship_t *source_ship, player_ship_t *targ
                         // Copy cargo details
                         target_ship->cargo[target_slot].quantity = source_ship->cargo[i].quantity;
                         target_ship->cargo[target_slot].purchasePrice = source_ship->cargo[i].purchasePrice;
-                        int name_length = safe_snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
-                                                   source_ship->cargo[i].name);
+                        int name_length = safe_snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH,
+                                                        "%s", source_ship->cargo[i].name);
                         if (name_length < 0) {
                             target_ship->cargo[target_slot].name[0] = '\0';
                         } else if (name_length >= MAX_SHIP_NAME_LENGTH) {
@@ -547,8 +547,8 @@ static inline int transfer_cargo(player_ship_t *source_ship, player_ship_t *targ
                         // Copy cargo details
                         target_ship->cargo[target_slot].quantity = source_ship->cargo[i].quantity;
                         target_ship->cargo[target_slot].purchasePrice = source_ship->cargo[i].purchasePrice;
-                        int name_length = safe_snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH, "%s",
-                                                   source_ship->cargo[i].name);
+                        int name_length = safe_snprintf(target_ship->cargo[target_slot].name, MAX_SHIP_NAME_LENGTH,
+                                                        "%s", source_ship->cargo[i].name);
                         if (name_length < 0) {
                             target_ship->cargo[target_slot].name[0] = '\0';
                         }

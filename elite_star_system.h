@@ -422,9 +422,8 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
         break;
     }
 
-    safe_snprintf(system->centralStar.name, MAX_LEN, "%s%s",
-                  plan_sys_tEntry->name, nameSuffix);
-    
+    safe_snprintf(system->centralStar.name, MAX_LEN, "%s%s", plan_sys_tEntry->name, nameSuffix);
+
     // Realistic spectral class distribution (M-class stars are most common)
     // Use cumulative probability distribution based on seed
     // Combine multiple seed components to get better distribution
@@ -568,7 +567,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
                     char letter = ALPHABET[name_seed % 26];
                     if (j == 0) {
                         letter = (char)toupper((unsigned char)letter);
-}
+                    }
                     alt_name[j] = letter;
                 }
                 alt_name[name_len] = '\0';
@@ -618,7 +617,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
         // Reduced randomization for better stability
         double variability =
             ((double)((plan_sys_tEntry->goatSoupSeed.d + (i * 17)) % 100) / 200.0) - 0.25; // -0.25 to 0.25
-        planet->orbitalDistance = base_distance * (1.0 + (variability * 0.4));           // Reduced from 0.8 to 0.4
+        planet->orbitalDistance = base_distance * (1.0 + (variability * 0.4));             // Reduced from 0.8 to 0.4
         // Further reduced habitable zone bias to minimize super-habitable planets
         uint32_t habitable_bias = (uint32_t)((plan_sys_tEntry->goatSoupSeed.c + i) % 100);
         if (habitable_bias < 8 && i < system->numPlanets - 1) { // Reduced from 15% to 8% chance
@@ -637,7 +636,7 @@ static inline void update_planetary_market(planet_t *planet, uint64_t current_ti
 
         // Check if planet is in habitable zone
         planet->isInHabitableZone = ((planet->orbitalDistance >= system->centralStar.habitableZoneInner &&
-                                     planet->orbitalDistance <= system->centralStar.habitableZoneOuter) != 0);
+                                      planet->orbitalDistance <= system->centralStar.habitableZoneOuter) != 0);
 
         // Calculate surface temperature (assuming Earth-like albedo of 0.3)
         planet->surfaceTemperature =
@@ -1263,7 +1262,8 @@ static inline uint32_t calculate_travel_time(double start_distance, double end_d
                 type = 4; // Default to "Unknown" for invalid types
             }
 
-            safe_snprintf(buffer, bufferSize, "%s (%s Planet)", navState->currentLocation.planet->name, planetTypes[type]);
+            safe_snprintf(buffer, bufferSize, "%s (%s Planet)", navState->currentLocation.planet->name,
+                          planetTypes[type]);
         } else {
             safe_snprintf(buffer, bufferSize, "Unknown Planet");
         }
@@ -1641,7 +1641,7 @@ static inline bool check_tidal_locking(planet_t *planet, star_t *star) {
     // Add planet-specific magnetic field variation
     // Larger planets and gas giants typically have stronger magnetic fields
     double magnetic_field_strength = 1.0;
-    if (planet->type >= 2) {                                    // Gas/Ice giants
+    if (planet->type >= 2) {                                      // Gas/Ice giants
         magnetic_field_strength = 1.5 + (variation_factor * 1.0); // 1.5-2.5x Earth's field
     } else if (planet->radius > 6000) {
         magnetic_field_strength = 0.8 + (variation_factor * 0.8); // 0.8-1.6x Earth's field
